@@ -5,27 +5,31 @@
 ### 1.1 Prerequisites
 
 - Node.js **22 LTS** (`node -v`)
-- Docker Desktop (runs Postgres and MinIO for you)
+- PostgreSQL 16+ installed locally, **or** Docker Desktop (`docker compose up -d`) (D-29)
 - Git
 - Access to the **dev** Entra app registration (ask the tech lead for the
   client ID and secret) and a Gemini API key for development
 
 ### 1.2 Steps
 
+With a locally installed PostgreSQL, first create the role and databases once (as a superuser):
+`CREATE ROLE psc LOGIN PASSWORD 'psc'; CREATE DATABASE psc OWNER psc; CREATE DATABASE psc_test OWNER psc;`
+
 ```bash
 git clone <repo-url> paper-standards-check
 cd paper-standards-check
 npm install
 cp .env.example .env          # then fill in the values marked TODO
-docker compose up -d          # starts postgres:16 on 5432 and minio on 9000 (console 9001)
+docker compose up -d          # only if you use Docker for Postgres (MinIO is added in M2)
 npm run db:migrate            # creates the tables
-npm run seed                  # loads SaaS / Cloud / Infra paper types + placeholder reference files
-npm run dev                   # starts the app with nodemon + Tailwind watch on http://localhost:3000
+npm run admin -- create admin # first local administrator; prints a temporary password (D-27)
+npm run seed                  # (from M2) loads SaaS / Cloud / Infra paper types + placeholder reference files
+npm run dev                   # starts the app (node --watch) + Tailwind watch on http://localhost:3000
 ```
 
-Then open http://localhost:3000, sign in with your company account, and make
-sure your account is assigned the `Architect` and/or `Admin` app role in the
-**dev** enterprise application.
+Then open http://localhost:3000 and sign in with your company account — you are
+an **Architect**. To become an Admin, sign in as the local administrator at
+http://localhost:3000/auth/local and change your role on **Users** (D-26).
 
 ### 1.3 `docker-compose.yml` (local only)
 
@@ -51,7 +55,7 @@ volumes: { dbdata: {}, s3data: {} }
 
 | Script | Does |
 |--------|------|
-| `dev` | `nodemon src/server.js` + `tailwindcss --watch` (in parallel) |
+| `dev` | `node --watch src/server.js` + `tailwindcss --watch` (in parallel, `scripts/dev.js`) |
 | `build` | Builds CSS (`tailwindcss -i src/styles/app.css -o public/css/app.css --minify`), copies `readinessRules.js` and the pdf.js files into `public/` |
 | `start` | `node src/server.js` (production) |
 | `db:migrate` | `node db/migrate.js` |
