@@ -1,0 +1,10 @@
+# Local development only (optional): PostgreSQL in Docker.
+# If PostgreSQL is installed on your machine you don't need this (decision D-29).
+# MinIO (local S3) is added in M2, when file uploads arrive.
+services:
+  db:
+    image: postgres:16
+    environment: { POSTGRES_USER: psc, POSTGRES_PASSWORD: psc, POSTGRES_DB: psc }
+    ports: ['5432:5432']
+    volumes: [dbdata:/var/lib/postgresql/data]
+volumes: { dbdata: {} }

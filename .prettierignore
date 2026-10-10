@@ -1,0 +1,10 @@
+node_modules/
+coverage/
+public/css/
+public/vendor/
+public/js/shared/
+docs/
+*.html
+*.md
+*.ejs
+package-lock.json
