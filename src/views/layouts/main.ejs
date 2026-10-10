@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <%# Only for signed-in users: csrfToken() creates a session, which anonymous error pages don't need. %>
+  <% if (nav.user) { %><meta name="csrf-token" content="<%= csrfToken() %>"><% } %>
+  <title><%= locals.title ? `${title} · ${t.appName}` : t.appName %></title>
+  <link rel="stylesheet" href="/css/app.css?v=<%= assetVersion %>">
+  <%# Sets the dark class before the page paints (no flash). External file: the CSP allows no inline scripts. %>
+  <script src="/js/lib/theme.js?v=<%= assetVersion %>"></script>
+  <script src="/vendor/basecoat/basecoat.min.js?v=<%= assetVersion %>" defer></script>
+  <script src="/vendor/basecoat/dropdown-menu.min.js?v=<%= assetVersion %>" defer></script>
+  <script type="module" src="/js/lib/topbar.js?v=<%= assetVersion %>"></script>
+  <% if (locals.pageScript) { %>
+  <script type="module" src="/js/pages/<%= pageScript %>.js?v=<%= assetVersion %>"></script>
+  <% } %>
+</head>
+<body class="min-h-screen bg-background text-foreground">
+  <%- include('../partials/topbar') %>
+  <main id="main" class="mx-auto max-w-[1240px] px-4 pt-5 pb-24">
+    <%- include('../' + page) %>
+  </main>
+  <div id="toaster" class="toaster" aria-live="polite"></div>
+</body>
+</html>

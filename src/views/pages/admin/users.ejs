@@ -1,0 +1,46 @@
+<%# Users page (FR-ACC-09). Changes are saved by public/js/pages/adminUsers.js via PATCH /api/admin/users/:id. %>
+<div class="mb-4">
+  <h1 class="text-[22px] font-semibold leading-tight"><%= t.adminUsers.heading %></h1>
+  <p class="mt-1 text-muted-foreground"><%= t.adminUsers.subtitle %></p>
+</div>
+
+<% if (!users.length) { %>
+<div class="card empty-state"><p><%= t.adminUsers.empty %></p></div>
+<% } else { %>
+<div class="card overflow-x-auto p-0">
+  <table class="table" id="users-table">
+    <thead>
+      <tr>
+        <th scope="col"><%= t.adminUsers.colName %></th>
+        <th scope="col"><%= t.adminUsers.colEmail %></th>
+        <th scope="col"><%= t.adminUsers.colRole %></th>
+        <th scope="col"><%= t.adminUsers.colStatus %></th>
+        <th scope="col"><%= t.adminUsers.colLastLogin %></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% for (const u of users) { %>
+      <tr data-user-id="<%= u.id %>">
+        <td class="font-medium"><%= u.name %><% if (u.isSelf) { %> <span class="badge-secondary"><%= t.adminUsers.you %></span><% } %></td>
+        <td class="text-muted-foreground"><%= u.email || '—' %></td>
+        <td>
+          <select class="select" data-field="role" aria-label="<%= t.adminUsers.colRole %>: <%= u.name %>" <% if (u.isSelf) { %>disabled<% } %>>
+            <option value="architect" <% if (u.role === 'architect') { %>selected<% } %>><%= t.adminUsers.roleArchitect %></option>
+            <option value="admin" <% if (u.role === 'admin') { %>selected<% } %>><%= t.adminUsers.roleAdmin %></option>
+          </select>
+        </td>
+        <td>
+          <select class="select" data-field="status" aria-label="<%= t.adminUsers.colStatus %>: <%= u.name %>" <% if (u.isSelf) { %>disabled<% } %>>
+            <option value="active" <% if (u.status === 'active') { %>selected<% } %>><%= t.adminUsers.statusActive %></option>
+            <option value="disabled" <% if (u.status === 'disabled') { %>selected<% } %>><%= t.adminUsers.statusDisabled %></option>
+          </select>
+        </td>
+        <td class="text-muted-foreground">
+          <% if (u.lastLoginAt) { %><time datetime="<%= u.lastLoginAt.toISOString() %>"><%= u.lastLoginAt.toISOString().slice(0, 16).replace('T', ' ') %> UTC</time><% } else { %><%= t.adminUsers.never %><% } %>
+        </td>
+      </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<% } %>

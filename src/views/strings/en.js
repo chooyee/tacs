@@ -1,0 +1,75 @@
+'use strict';
+
+/**
+ * All user-facing text (docs/04 §4, A-04: English only). Views read it as `t.<group>.<key>`.
+ * Keeping text here makes wording changes a one-file edit.
+ */
+module.exports = Object.freeze({
+  appName: 'Paper Standards Check',
+  topbar: {
+    modeLabel: 'Mode',
+    modeArchitect: 'Solution Architect',
+    modeAdmin: 'Admin',
+    toggleTheme: 'Toggle dark mode',
+    userMenu: 'Account menu',
+    signOut: 'Sign out',
+    roleArchitect: 'Architect',
+    roleAdmin: 'Admin',
+    localAdmin: 'Local administrator',
+  },
+  papers: {
+    heading: 'My papers',
+    subtitle: 'Check your Solution Lab paper against the standards for its type before you present it.',
+    tabMine: 'My papers',
+    tabAll: 'All papers',
+    newPaper: 'New paper',
+    emptyTitle: 'No papers yet',
+    emptyText:
+      'Create a paper, pick its type and answer each standard. You can upload the PDF for an AI check.',
+    allComingSoon: 'The list of all papers arrives with the paper features.',
+    comingSoon: 'Creating papers arrives in the next release.',
+  },
+  adminUsers: {
+    heading: 'Users',
+    subtitle: 'Everyone who has signed in. Make people admins or disable their access.',
+    colName: 'Name',
+    colEmail: 'Email',
+    colRole: 'Role',
+    colStatus: 'Status',
+    colLastLogin: 'Last sign-in',
+    roleArchitect: 'Architect',
+    roleAdmin: 'Admin',
+    statusActive: 'Active',
+    statusDisabled: 'Disabled',
+    you: 'you',
+    never: 'never',
+    empty: 'Nobody has signed in with Microsoft yet.',
+    saved: 'Saved',
+  },
+  auth: {
+    loggedOutTitle: 'You are signed out',
+    loggedOutText: 'Thanks for using Paper Standards Check.',
+    signInAgain: 'Sign in again',
+    localTitle: 'Local administrator sign-in',
+    localText: 'For local administrator accounts only. Everyone else signs in with Microsoft.',
+    username: 'Username',
+    password: 'Password',
+    signIn: 'Sign in',
+    signInMicrosoft: 'Sign in with Microsoft',
+    localLink: 'Local administrator sign-in',
+    passwordTitle: 'Choose a new password',
+    passwordText: 'Your password is temporary. Choose a new one with at least 12 characters.',
+    newPassword: 'New password',
+    confirmPassword: 'Repeat new password',
+    savePassword: 'Save password',
+  },
+  errors: {
+    notFoundTitle: 'Page not found',
+    notFoundText: 'The page may have moved, or the link is wrong.',
+    forbiddenTitle: 'No access',
+    accessNotGrantedTitle: 'Access not granted',
+    errorTitle: 'Something went wrong',
+    reference: 'Reference',
+    goHome: 'Go to the start page',
+  },
+});

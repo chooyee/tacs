@@ -1,0 +1,65 @@
+/* Built by the Tailwind CLI into public/css/app.css (docs/10 §3). */
+@import 'tailwindcss';
+@import 'basecoat-css';
+
+/* Where Tailwind looks for class names. */
+@source '../views';
+@source '../../public/js';
+
+/* Brand colour from the prototype, applied through Basecoat's theme variables (docs/03 §1.1). */
+:root {
+  --primary: #2453d4;
+  --primary-foreground: #ffffff;
+  --ring: #2453d4;
+}
+.dark {
+  --primary: #7096ff;
+  --primary-foreground: #0a1020;
+  --ring: #7096ff;
+}
+
+/* Status colours: the only additions to Basecoat's palette (docs/03 §1.1). */
+:root {
+  --ok: #17794a;
+  --ok-soft: #e1f3e9;
+  --warn: #a05f00;
+  --warn-soft: #fcf0da;
+  --bad: #c2352a;
+  --bad-soft: #fbe6e4;
+}
+.dark {
+  --ok: #4cc38a;
+  --ok-soft: #12301f;
+  --warn: #e5a54b;
+  --warn-soft: #38290f;
+  --bad: #ff7b72;
+  --bad-soft: #3a1714;
+}
+
+@layer components {
+  /* Mode switch (FR-ACC-05): a pill-shaped toggle group of links. */
+  .modes {
+    @apply inline-flex rounded-full border bg-muted p-0.5;
+  }
+  .modes a {
+    @apply rounded-full px-3 py-1 text-[13px] text-muted-foreground no-underline;
+  }
+  .modes a[aria-current='page'] {
+    @apply bg-background font-semibold text-foreground shadow-sm;
+  }
+
+  /* Tabs rendered as links, so the URL is shareable (docs/03 §3.1). */
+  .tabs-nav {
+    @apply flex gap-1 border-b;
+  }
+  .tabs-nav a {
+    @apply -mb-px border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground no-underline;
+  }
+  .tabs-nav a[aria-current='page'] {
+    @apply border-primary font-semibold text-foreground;
+  }
+
+  .empty-state {
+    @apply px-4 py-8 text-center text-muted-foreground;
+  }
+}

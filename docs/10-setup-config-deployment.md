@@ -78,11 +78,11 @@ exactly which variable is wrong. No other file reads `process.env`.
 | `DB_POOL_MAX` | no | `10` | |
 | `ENTRA_TENANT_ID` | yes | GUID | |
 | `ENTRA_CLIENT_ID` | yes | GUID | |
-| `ENTRA_CLIENT_SECRET` | yes* | — | *or `ENTRA_CERT_THUMBPRINT` + `ENTRA_CERT_PRIVATE_KEY_PATH` in production |
+| `ENTRA_CLIENT_SECRET` | yes* | — | *or `ENTRA_CERT_THUMBPRINT` (SHA-256, hex) + `ENTRA_CERT_PRIVATE_KEY_PATH` (PEM) in production |
 | `ENTRA_REDIRECT_URI` | yes | `http://localhost:3000/auth/callback` | |
 | `ACCESS_REQUEST_TEXT` | no | "Ask the Architecture Office to add you…" | Shown on the 403 page |
 | `ADMIN_BOOTSTRAP_USERNAME` / `ADMIN_BOOTSTRAP_PASSWORD` | no | — | Creates the first local administrator at startup when none exists (D-27). Temporary: must be changed at first sign-in. Remove after use. |
-| `COOKIE_SECURE` | no | `true` | Session cookie `Secure` flag. Keep `true` (Chrome / Edge accept it on `http://localhost`); set `false` only for local browsers that refuse it (D-29). |
+| `COOKIE_SECURE` | no | `true` | Session cookie `Secure` flag. Must be `true` in production (enforced). Set `false` for local `http://localhost`: the session library only sends Secure cookies over HTTPS (D-29). |
 | `TRUST_PROXY` | no | *(empty)* | Number of proxies in front of the app (e.g. `1` behind the ALB), so `req.ip` and HTTPS detection work (D-29). |
 | `AWS_REGION` | yes (from M2) | `ap-southeast-1` | |
 | `S3_BUCKET` | yes (from M2) | `psc-local` | |
