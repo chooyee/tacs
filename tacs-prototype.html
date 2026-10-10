@@ -1,0 +1,1410 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Paper Standards Check</title>
+<style>
+:root{
+  --bg:#f4f6f9; --surface:#ffffff; --surface-2:#eef1f5; --border:#d9dee6; --text:#1a1f26; --muted:#5b6573;
+  --accent:#2453d4; --accent-ink:#ffffff; --accent-soft:#e6edfc;
+  --ok:#17794a; --ok-soft:#e1f3e9; --bad:#c2352a; --bad-soft:#fbe6e4; --warn:#a05f00; --warn-soft:#fcf0da;
+  --shadow:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.07);
+  --radius:10px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1116; --surface:#161a21; --surface-2:#1e232b; --border:#2b323c; --text:#e6e9ee; --muted:#9aa4b2;
+    --accent:#7096ff; --accent-ink:#0a1020; --accent-soft:#1b2846;
+    --ok:#4cc38a; --ok-soft:#12301f; --bad:#ff7b72; --bad-soft:#3a1714; --warn:#e5a54b; --warn-soft:#38290f;
+    --shadow:none; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1116; --surface:#161a21; --surface-2:#1e232b; --border:#2b323c; --text:#e6e9ee; --muted:#9aa4b2;
+  --accent:#7096ff; --accent-ink:#0a1020; --accent-soft:#1b2846;
+  --ok:#4cc38a; --ok-soft:#12301f; --bad:#ff7b72; --bad-soft:#3a1714; --warn:#e5a54b; --warn-soft:#38290f;
+  --shadow:none; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:var(--accent);text-decoration:none} a:hover{text-decoration:underline}
+h1{font-size:22px;margin:0;line-height:1.25} h2{font-size:15px;margin:0}
+h3{font-size:12px;margin:0 0 8px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+button,input,select,textarea{font:inherit;color:inherit}
+.muted{color:var(--muted)} .spacer{flex:1}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* top bar */
+.topbar{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--border)}
+.topbar .in{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.brand{font-weight:700;display:flex;align-items:center;gap:8px;color:var(--text)}
+.brand:hover{text-decoration:none}
+.logo{width:28px;height:28px;border-radius:8px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:13px}
+.modes{display:inline-flex;border:1px solid var(--border);border-radius:999px;padding:2px;background:var(--surface-2)}
+.modes button{border:0;background:none;border-radius:999px;padding:4px 12px;cursor:pointer;font-size:13px;color:var(--muted)}
+.modes button[aria-pressed="true"]{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--shadow)}
+.wrap{max-width:1240px;margin:0 auto;padding:20px 16px 90px}
+
+/* basics */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--surface);cursor:pointer;color:var(--text);white-space:nowrap}
+.btn:hover{background:var(--surface-2);text-decoration:none}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:4px 9px;font-size:12.5px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.icon-btn{border:0;background:none;color:var(--muted);cursor:pointer;padding:5px 7px;border-radius:6px;font-size:13px}
+.icon-btn:hover{background:var(--surface-2);color:var(--text)}
+.icon-btn.danger:hover{color:var(--bad);background:var(--bad-soft)}
+.icon-btn:disabled{opacity:.3;cursor:default;background:none}
+.linkish{border:0;background:none;color:var(--accent);cursor:pointer;padding:0;font:inherit;font-weight:600;text-align:left}
+.linkish:hover{text-decoration:underline}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow)}
+.pad{padding:16px}
+.pill{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:2px 10px;border-radius:999px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.warn{background:var(--warn-soft);color:var(--warn)}
+.ttag{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:4px;background:var(--surface-2);color:var(--muted);border:1px solid var(--border);white-space:nowrap}
+.mtag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--bad-soft);color:var(--bad);margin-left:6px;vertical-align:1px;letter-spacing:.03em}
+.bar{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;border:1px solid var(--border)}
+.bar>i{display:block;height:100%;background:var(--accent)} .bar.ok>i{background:var(--ok)}
+.page-head{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;margin-bottom:16px}
+.page-head .sub{color:var(--muted);margin-top:4px}
+.crumbs{margin-bottom:10px;font-size:13px}
+.empty{padding:32px 16px;text-align:center;color:var(--muted)}
+.field label{display:block;font-size:12.5px;font-weight:600;margin-bottom:4px}
+.field input,.field textarea,.field select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface)}
+.req{color:var(--bad)}
+.banner{padding:10px 14px;border-radius:8px;margin-bottom:14px;font-size:13.5px;background:var(--accent-soft)}
+
+/* home & admin tiles */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.tile{display:flex;flex-direction:column;gap:10px;text-align:left;padding:16px;cursor:pointer;font:inherit;color:var(--text);transition:border-color .15s,box-shadow .15s}
+.tile:hover{border-color:var(--accent);box-shadow:0 4px 14px rgba(36,83,212,.12)}
+.tile .top{display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.tile b{font-size:15px}
+.tile .meta{display:flex;gap:12px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.tile .meta b{font-size:12.5px;color:var(--text)}
+.tile.add{border-style:dashed;align-items:center;justify-content:center;min-height:150px;background:transparent;box-shadow:none;text-align:center}
+.tile.add .plus{font-size:28px;line-height:1;color:var(--accent)}
+.tile p{margin:0;font-size:13px}
+
+/* paper page */
+.title-input{font-size:22px;font-weight:700;border:1px solid transparent;border-radius:8px;padding:2px 6px;margin-left:-7px;background:transparent;width:100%}
+.sub-input{font-size:14px;color:var(--muted);border:1px solid transparent;border-radius:8px;padding:2px 6px;margin-left:-7px;background:transparent;width:100%}
+.title-input:hover,.sub-input:hover{border-color:var(--border)}
+.title-input:focus,.sub-input:focus{outline:2px solid var(--accent);outline-offset:-1px;background:var(--surface)}
+.secbar{position:sticky;top:var(--tb,52px);z-index:15;background:var(--bg);padding:10px 0;margin:0 0 14px;border-bottom:1px solid var(--border);display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:2px;flex:1 1 420px;min-width:0}
+.chips::-webkit-scrollbar{display:none}
+.cn{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 5px;border:1px solid var(--border);background:var(--surface);border-radius:999px;cursor:pointer;white-space:nowrap;font-size:13px;color:var(--text);flex:none}
+.cn:hover{border-color:var(--accent)}
+.cn .k{min-width:22px;height:22px;border-radius:999px;display:grid;place-items:center;background:var(--surface-2);font-weight:700;font-size:11.5px;padding:0 6px}
+.cn .st{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.cn.done .k{background:var(--ok);color:#fff} .cn.done .st{color:var(--ok);font-weight:700}
+.cn.warn .k{background:var(--bad);color:#fff}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--surface);flex-wrap:wrap}
+.seg button{border:0;background:none;padding:5px 10px;cursor:pointer;font-size:12.5px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--border)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.seg b{margin-left:5px;font-weight:600;font-variant-numeric:tabular-nums}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:16px;align-items:start}
+.stack{display:grid;gap:14px;min-width:0}
+.legend{font-size:12.5px;color:var(--muted);display:flex;gap:6px 16px;flex-wrap:wrap}
+.legend b{color:var(--text)}
+.seccard{scroll-margin-top:calc(var(--tb,52px) + var(--sb,56px) + 10px)}
+.sec-head{display:flex;gap:12px;align-items:center;padding:12px 14px;cursor:pointer;user-select:none;border-radius:var(--radius)}
+.sec-head:hover{background:var(--surface-2)}
+.seccard:not(.collapsed) .sec-head{border-bottom:1px solid var(--border);border-radius:var(--radius) var(--radius) 0 0}
+.letter{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-weight:800;background:var(--accent-soft);color:var(--accent);flex:none}
+.sec-head.done .letter{background:var(--ok);color:#fff}
+.sec-head .t{flex:1;min-width:0}
+.chev{border:0;background:none;cursor:pointer;color:var(--muted);font-size:14px;padding:4px;transition:transform .15s}
+.collapsed .chev{transform:rotate(-90deg)} .collapsed .sec-body{display:none}
+.std{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:12px;padding:14px 16px;border-top:1px solid var(--border);align-items:start;scroll-margin-top:calc(var(--tb,52px) + var(--sb,56px) + 20px)}
+.sec-body .std:first-child{border-top:0}
+.std .n{font-weight:700;color:var(--muted);font-variant-numeric:tabular-nums;padding-top:5px}
+.std .lbl{padding-top:4px;font-weight:500}
+.std.no{background:linear-gradient(90deg,var(--bad-soft),transparent 60%)}
+.std.na .lbl{color:var(--muted)}
+.std.flash{animation:flash 1.4s ease}
+@keyframes flash{0%,40%{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}100%{box-shadow:none}}
+.refs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ref{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:2px 10px 2px 7px;font-size:12px;cursor:pointer;color:var(--text);max-width:100%}
+.ref:hover{border-color:var(--accent);color:var(--accent)}
+.ref .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ref .ty{color:var(--muted);font-weight:600}
+.remark{width:100%;margin-top:8px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;background:var(--surface);font-size:13px}
+.remark:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+.std.need .remark{border-color:var(--bad);background:var(--bad-soft)}
+.err{color:var(--bad);font-size:12px;margin-top:4px;display:none} .std.need .err{display:block}
+.yn{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.yn button{border:0;background:var(--surface);padding:6px 13px;cursor:pointer;font-weight:600;color:var(--muted)}
+.yn button+button{border-left:1px solid var(--border)}
+.yn button[aria-pressed="true"].y{background:var(--ok);color:#fff}
+.yn button[aria-pressed="true"].x{background:var(--bad);color:#fff}
+.yn button[aria-pressed="true"].na{background:var(--muted);color:var(--surface)}
+.ai{margin-top:8px;font-size:12.5px;padding:7px 10px;border-radius:8px;display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap;background:var(--surface-2)}
+.ai.comply{background:var(--ok-soft)} .ai.partial{background:var(--warn-soft)} .ai.gap{background:var(--bad-soft)}
+.ai .msg{flex:1 1 260px}
+.ai .issue{display:block;font-weight:600;color:var(--bad)}
+.ai .issue.check{color:var(--warn)}
+.vd{font-weight:700;white-space:nowrap}
+.vd.comply{color:var(--ok)} .vd.partial{color:var(--warn)} .vd.gap{color:var(--bad)} .vd.none{color:var(--muted)}
+.filter-note{padding:12px 16px;color:var(--muted);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+aside{position:sticky;top:calc(var(--tb,52px) + var(--sb,56px) + 14px);display:grid;gap:12px;max-height:calc(100vh - var(--tb,52px) - var(--sb,56px) - 28px);overflow:auto}
+.ready{padding:14px 16px}
+.ready.ok{background:var(--ok-soft);border-color:transparent} .ready.no{background:var(--bad-soft);border-color:transparent}
+.ready .big{font-size:16px;font-weight:700}
+.ready.ok .big{color:var(--ok)} .ready.no .big{color:var(--bad)}
+.gaps{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:6px}
+.gaps button{display:flex;gap:8px;width:100%;text-align:left;border:0;background:var(--surface);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:13px;color:var(--text)}
+.gaps button:hover{box-shadow:inset 0 0 0 1px var(--bad)}
+.gaps button::after{content:"→";margin-left:auto;color:var(--muted)}
+.stats{display:flex;gap:14px;font-size:12.5px;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.stats b{color:var(--text);font-variant-numeric:tabular-nums}
+.reflist{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.reflist button{display:flex;gap:8px;width:100%;text-align:left;border:0;background:none;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text)}
+.reflist button:hover{background:var(--surface-2)}
+.reflist .ty{font-size:11.5px;color:var(--muted);display:block}
+
+/* page thumbnails & comparison */
+.cmp-pages{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pg{margin:0;min-width:0}
+.pgimg{position:relative;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:#fff;aspect-ratio:3/4}
+.pgimg svg,.pgimg img{display:block;width:100%;height:100%;object-fit:contain}
+.hl{position:absolute;border:2px solid #2453d4;border-radius:4px;background:rgba(36,83,212,.08)}
+.hl.gap{border-color:#c2352a;background:rgba(194,53,42,.10)} .hl.partial{border-color:#d48a00;background:rgba(212,138,0,.10)}
+.hl.comply{border-color:#17794a;background:rgba(23,121,74,.10)} .hl.ref{border-style:dashed}
+.pg figcaption{font-size:11.5px;color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmp{display:grid;gap:8px}
+.cmp-h{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+
+/* chat */
+.fab{position:fixed;right:20px;bottom:20px;z-index:40;display:flex;align-items:center;gap:8px;padding:11px 16px;border-radius:999px;border:0;background:var(--accent);color:var(--accent-ink);font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.22);cursor:pointer}
+.fab[hidden]{display:none}
+.fab .badge{background:var(--bad);color:#fff;border-radius:999px;font-size:11px;padding:1px 8px}
+.fab .badge.ok{background:var(--ok)}
+.chat{position:fixed;top:var(--tb,52px);right:0;bottom:0;width:440px;max-width:100%;z-index:45;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(105%);transition:transform .22s ease;box-shadow:-10px 0 30px rgba(0,0,0,.1);visibility:hidden}
+.chat.open{transform:none;visibility:visible}
+.chat-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border)}
+.av{width:32px;height:32px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-weight:800;flex:none}
+.pack{padding:8px 14px;border-bottom:1px solid var(--border);font-size:12.5px;background:var(--surface-2);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:94%;font-size:13.5px;line-height:1.5}
+.msg.user{align-self:flex-end;background:var(--accent);color:var(--accent-ink);padding:8px 12px;border-radius:14px 14px 4px 14px}
+.msg.ai{align-self:flex-start;background:var(--surface-2);padding:10px 12px;border-radius:14px 14px 14px 4px;width:94%}
+.msg .tight{margin:6px 0;padding-left:18px} .msg .tight li{margin:2px 0}
+.msg .cmp{border-top:1px solid var(--border);padding-top:10px;margin-top:10px}
+.msg .counts{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.steps{list-style:none;margin:8px 0;padding:0;display:grid;gap:4px;font-size:13px}
+.steps li{color:var(--muted)} .steps li.done{color:var(--text)} .steps li.cur{color:var(--accent);font-weight:600}
+.typing{width:auto!important;display:flex;gap:4px}
+.typing span{animation:blink 1s infinite;font-size:10px;color:var(--muted)}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:1}}
+.quick{display:flex;gap:6px;overflow-x:auto;padding:8px 14px 0;scrollbar-width:none}
+.quick::-webkit-scrollbar{display:none}
+.quick button{white-space:nowrap;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:4px 11px;font-size:12.5px;cursor:pointer}
+.quick button:hover{border-color:var(--accent);color:var(--accent)}
+.composer{display:flex;gap:8px;align-items:flex-end;padding:10px 14px 14px}
+.composer textarea{flex:1;resize:none;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface);max-height:120px;line-height:1.4}
+.attach{border:1px solid var(--border);background:var(--surface);border-radius:10px;width:38px;height:38px;cursor:pointer;font-size:16px;flex:none}
+.chat.over::after{content:"Drop your paper PDF here";position:absolute;inset:10px;border:2px dashed var(--accent);border-radius:12px;background:var(--accent-soft);display:grid;place-items:center;font-weight:700;color:var(--accent);pointer-events:none}
+
+/* admin */
+.adm-sh{display:flex;gap:10px;align-items:center;padding:12px 14px;background:var(--surface-2);border-top:1px solid var(--border)}
+.sh-title{flex:1;min-width:0;font-weight:700;font-size:14.5px;border:1px solid transparent;border-radius:6px;padding:3px 6px;background:transparent}
+.sh-title:hover{border-color:var(--border)} .sh-title:focus{outline:2px solid var(--accent);background:var(--surface)}
+.astd{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:10px;padding:10px 14px;border-top:1px solid var(--border);align-items:start}
+.astd:hover{background:var(--surface-2)}
+.astd .n{font-weight:700;color:var(--muted);padding-top:2px}
+.astd.addrow{background:var(--accent-soft)}
+.astd textarea{width:100%;border:1px solid var(--accent);border-radius:8px;padding:7px 9px;background:var(--surface);resize:vertical}
+.hint{font-size:11.5px;color:var(--muted);margin-top:3px}
+.sact{display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.astd:hover .sact,.refrow:hover .sact,.sact:focus-within,.sact.on{opacity:1}
+@media (hover:none){.sact{opacity:1}}
+.mtoggle{border:1px dashed var(--border);background:none;border-radius:4px;font-size:10.5px;font-weight:700;padding:1px 6px;color:var(--muted);cursor:pointer;margin-left:6px;letter-spacing:.03em}
+.mtoggle.on{border-style:solid;border-color:transparent;background:var(--bad-soft);color:var(--bad)}
+.addlink{display:block;width:100%;text-align:left;border:0;border-top:1px dashed var(--border);background:none;color:var(--accent);font-weight:600;padding:10px 14px 10px 54px;cursor:pointer;font-size:13px}
+.addlink:hover{background:var(--accent-soft)}
+.refrow{display:flex;gap:12px;align-items:flex-start;padding:12px 16px;border-top:1px solid var(--border)}
+.refrow .ic{font-size:20px;line-height:1}
+.panel-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:14px 16px;flex-wrap:wrap}
+
+/* modal */
+.modal-back{position:fixed;inset:0;z-index:60;background:rgba(10,14,20,.45);display:grid;place-items:center;padding:16px}
+.modal-back[hidden]{display:none}
+.modal{width:min(500px,100%);max-height:calc(100vh - 32px);display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(0,0,0,.3)}
+.modal.wide{width:min(860px,100%)}
+.modal-h{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal-h h2{font-size:17px}
+.modal-b{padding:16px 18px;overflow:auto;display:grid;gap:14px}
+.modal-f{display:flex;gap:8px;align-items:center;padding:12px 18px;border-top:1px solid var(--border);flex-wrap:wrap}
+.check{display:flex;gap:8px;align-items:flex-start;font-size:13.5px;cursor:pointer;padding:3px 0}
+.check input{margin-top:3px}
+.choose{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.choose label{position:relative;border:1px solid var(--border);border-radius:10px;padding:12px;cursor:pointer;display:grid;gap:4px}
+.choose label:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.choose label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.choose input{position:absolute;opacity:0}
+.refview{display:grid;grid-template-columns:minmax(0,220px) 1fr;gap:16px;align-items:start}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:8px;opacity:0;transition:.2s;pointer-events:none;z-index:70;max-width:calc(100% - 32px)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.actionable{pointer-events:auto}
+.toast button{border:0;background:none;color:inherit;font-weight:700;text-decoration:underline;cursor:pointer;margin-left:8px}
+
+@media (min-width:1100px){
+  body.chat-open .wrap{margin-right:440px}
+  body.chat-open .layout{grid-template-columns:1fr}
+  body.chat-open aside{display:none}
+}
+@media (max-width:1000px){
+  .layout{grid-template-columns:1fr}
+  aside{position:static;max-height:none;overflow:visible}
+}
+@media (max-width:720px){
+  .cn .nm{display:none} .cn{padding-right:9px}
+  .std{grid-template-columns:24px minmax(0,1fr)}
+  .std .yn{grid-column:2}
+  .astd{grid-template-columns:24px minmax(0,1fr)} .astd .sact{grid-column:2}
+  .chat{width:100%}
+  .cmp-pages{gap:6px}
+  .refview{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="in">
+    <a class="brand" href="#/" id="brand"><span class="logo">✓</span>Paper Standards Check</a>
+    <span class="spacer"></span>
+    <div class="modes" role="group" aria-label="Mode">
+      <button data-action="mode" data-mode="architect">Solution Architect</button>
+      <button data-action="mode" data-mode="admin">Admin</button>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle theme">◐</button>
+  </div>
+</header>
+<main class="wrap" id="view"></main>
+
+<button class="fab" id="fab" data-action="chatopen" hidden></button>
+<div class="chat" id="chat" role="complementary" aria-label="AI paper checker" aria-hidden="true">
+  <div class="chat-h">
+    <span class="av">✦</span>
+    <div style="flex:1;min-width:0"><b>AI paper checker</b> <span class="pill" style="font-size:10.5px">Mock AI</span>
+      <div class="muted" id="chatsub" style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div></div>
+    <button class="icon-btn" data-action="chatclose" aria-label="Close checker">✕</button>
+  </div>
+  <div class="pack" id="pack"></div>
+  <div class="msgs" id="msgs" aria-live="polite"></div>
+  <div class="quick" id="quick"></div>
+  <form class="composer" id="composer">
+    <input type="file" id="pdfs" accept="application/pdf,.pdf" multiple hidden>
+    <button type="button" class="attach" data-action="attach" title="Attach paper PDF" aria-label="Attach paper PDF">📎</button>
+    <textarea id="chatin" rows="1" placeholder="Ask about your paper, or drop the PDF here…" aria-label="Message the checker"></textarea>
+    <button class="btn primary" type="submit">Send</button>
+  </form>
+</div>
+<div class="modal-back" id="modal" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* ============================================================
+   Helpers
+   ============================================================ */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const rid = p => p + Math.random().toString(36).slice(2, 8);
+const clone = o => JSON.parse(JSON.stringify(o));
+const fmtDate = t => t ? new Date(t).toLocaleDateString(undefined, { day:'2-digit', month:'short', year:'numeric' }) : '—';
+const hashStr = str => [...String(str)].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7);
+const sizeLabel = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+const letter = i => String.fromCharCode(65 + i);
+
+function toast(msg, undo){
+  const t = $('#toast');
+  t.innerHTML = esc(msg) + (undo ? '<button type="button">Undo</button>' : '');
+  t.classList.toggle('actionable', !!undo); t.classList.add('on');
+  if (undo) t.querySelector('button').onclick = () => { t.classList.remove('on'); undo(); };
+  clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), undo ? 6000 : 2200);
+}
+
+/* ============================================================
+   Seed data — paper types (standards + references) and papers
+   ============================================================ */
+const REF_TYPES = { Policy:'📜', Sample:'📘', Template:'🧩', Guide:'🧭' };
+const ARCHITECT = 'Daniel Tan';
+
+function seedTypes(){
+  const mkRefs = list => list.map(([id, type, title, note]) => ({ id, type, title, url:'mock:' + id, note }));
+  // sections: [title, [[standard, mandatory, [reference ids]], …]]
+  const mkSections = (prefix, secs) => { let n = 0;
+    return secs.map(([title, items]) => ({ id:rid('sec'), title,
+      standards:items.map(([text, mandatory, refs]) => ({ id:prefix + (++n), text, mandatory:!!mandatory, refs:refs || [] })) })); };
+
+  const saas = { id:'saas', name:'SaaS', description:'Software-as-a-Service solutions hosted by a vendor or reseller.',
+    references:mkRefs([
+      ['r-sec',  'Policy',  'SaaS Security Policy v3',               'Baseline security requirements for every SaaS solution.'],
+      ['r-idp',  'Policy',  'Identity & Access Standard',             'Entra ID SSO, MFA, Conditional Access and PAM requirements.'],
+      ['r-casb', 'Sample',  'CASB reference architecture',            'Shows user AND administrator traffic both routed through CASB.'],
+      ['r-rbac', 'Template','RBAC matrix template',                   'Roles × permissions, with Business / User / System Admin separated.'],
+      ['r-log',  'Policy',  'Logging & SIEM Onboarding Standard',     'Audit log scope, retention and SIEM forwarding at go-live.'],
+      ['r-data', 'Policy',  'Data Classification & Residency Policy', 'How to classify data and where it may be stored.'],
+      ['r-paper','Sample',  'Approved SaaS paper — HR Payroll',       'A paper the committee approved first time. Use it as the benchmark.'],
+      ['r-exit', 'Template','Vendor exit plan template',              'Export format, timeline and deletion certificate.'],
+      ['r-bkp',  'Guide',   'Backup & DR responsibility guide',       'Who backs up, who restores, who owns recovery — named people.'],
+      ['r-raci', 'Sample',  'Support model RACI (L1/L2/L3)',          'Reseller vs principal accountability for each support level.'],
+    ]),
+    sections:mkSections('s', [
+      ['Identity & Access Management', [
+        ['Entra ID / Enterprise SSO integration defined', 1, ['r-idp']],
+        ['MFA enforced', 1, ['r-idp']],
+        ['CASB protection implemented for all user access', 1, ['r-casb','r-sec']],
+        ['CASB protection implemented for administrator access', 1, ['r-casb','r-sec']],
+        ['Conditional Access policy documented', 0, ['r-idp']],
+        ['PAM integration defined for privileged users', 1, ['r-idp']],
+        ['PAM access flow clearly documented (approval, credential injection, session flow)', 1, ['r-idp']],
+        ['RBAC matrix provided', 1, ['r-rbac']],
+        ['Segregation between Business Admin, User Admin, and System Admin', 1, ['r-rbac']] ]],
+      ['Security & Compliance', [
+        ['Security Architecture Review completed', 1, ['r-sec']],
+        ['CRAT / Security Assessment completed', 0, ['r-sec']],
+        ['Audit logs available', 1, ['r-log']],
+        ['Logs integrated with SIEM / Security Monitoring platform', 1, ['r-log']],
+        ['Encryption at rest documented', 0, ['r-sec']],
+        ['Encryption in transit documented', 0, ['r-sec']],
+        ['SCD controls applicable and assessed', 0, ['r-sec','r-paper']] ]],
+      ['Data Governance', [
+        ['Data classification identified', 0, ['r-data']],
+        ['Data residency identified', 0, ['r-data']],
+        ['Data segregation method explained (tenant/schema/database)', 1, ['r-data','r-paper']],
+        ['Logical separation from other customers validated', 1, ['r-paper']],
+        ['Data ownership defined', 0, ['r-data']],
+        ['Vendor exit and data extraction process documented', 1, ['r-exit']] ]],
+      ['Backup, Recovery & Resilience', [
+        ['Backup responsibility defined', 1, ['r-bkp']],
+        ['Recovery process documented', 1, ['r-bkp']],
+        ['Data export capability confirmed', 1, ['r-exit']],
+        ['Business continuity and disaster recovery validated', 0, ['r-bkp']],
+        ['Recovery ownership clearly assigned', 1, ['r-bkp']] ]],
+      ['Integration & Operations', [
+        ['All integrations identified and documented', 0, ['r-paper']],
+        ['API authentication mechanism documented', 0, ['r-paper']],
+        ['Monitoring and alerting defined', 0, ['r-log']],
+        ['Support model (L1/L2/L3) defined', 1, ['r-raci']],
+        ['Reseller vs Principal support ownership clarified', 1, ['r-raci']],
+        ['Subscription and support agreement reviewed', 0, ['r-raci']] ]],
+    ]) };
+
+  const cloud = { id:'cloud', name:'Cloud Platform', description:'Workloads built on IaaS / PaaS in the corporate cloud tenancy.',
+    references:mkRefs([
+      ['c-lz',  'Policy', 'Cloud Landing Zone Standard',           'Approved subscriptions, IaC pipeline and guardrails.'],
+      ['c-net', 'Sample', 'Hub-spoke reference architecture',      'Private endpoints, with WAF in front of anything public.'],
+      ['c-key', 'Policy', 'Encryption & Key Management Policy',    'When customer-managed keys are mandatory.'],
+      ['c-ok',  'Sample', 'Approved cloud paper — Customer Portal', 'Benchmark paper the committee approved.'],
+    ]),
+    sections:mkSections('c', [
+      ['Landing Zone & Identity', [
+        ['Workload deployed into an approved landing-zone subscription', 1, ['c-lz']],
+        ['Entra ID used for control-plane access; no local IAM users', 1, ['c-lz']],
+        ['Privileged roles via PIM with just-in-time elevation', 1, ['c-lz']],
+        ['All resources provisioned through Infrastructure as Code', 0, ['c-lz','c-ok']] ]],
+      ['Network & Data Protection', [
+        ['PaaS services use private endpoints; public exposure only behind WAF', 1, ['c-net']],
+        ['Network segmentation (hub-spoke / NSGs) documented', 0, ['c-net']],
+        ['Customer-managed keys for Confidential data', 1, ['c-key']],
+        ['Encryption in transit enforced (TLS 1.2+)', 0, ['c-key']] ]],
+      ['Operations & Resilience', [
+        ['Activity and resource logs forwarded to SIEM', 1, ['c-ok']],
+        ['Secrets held in Key Vault', 0, ['c-key']],
+        ['Backup policy applied and a restore tested', 1, ['c-ok']],
+        ['Zone / region DR design meets RTO / RPO', 0, ['c-net','c-ok']] ]],
+    ]) };
+
+  const infra = { id:'infra', name:'Infrastructure', description:'On-premises and data-centre infrastructure.',
+    references:mkRefs([
+      ['i-cis', 'Policy', 'Server Hardening Standard (CIS)', 'Baseline, EDR and patch cadence.'],
+      ['i-dc',  'Sample', 'DC network zoning diagram',        'Management VLAN separation and firewall zones.'],
+      ['i-bkp', 'Policy', 'Enterprise Backup Policy',         'Onboarding to the backup platform and restore testing.'],
+    ]),
+    sections:mkSections('i', [
+      ['Platform & Hardening', [
+        ['Hardware and OS within vendor support lifecycle', 1, ['i-cis']],
+        ['CIS hardening baseline applied', 1, ['i-cis']],
+        ['EDR / endpoint protection installed', 1, ['i-cis']] ]],
+      ['Access & Network', [
+        ['Privileged access brokered through PAM', 1, ['i-cis']],
+        ['Management interfaces on an isolated management VLAN', 0, ['i-dc']],
+        ['Firewall rules documented with least privilege', 0, ['i-dc']] ]],
+      ['Operations & Resilience', [
+        ['Logs forwarded to SIEM', 1, []],
+        ['Onboarded to the enterprise backup platform', 1, ['i-bkp']],
+        ['DR runbook documented and tested', 0, ['i-bkp']] ]],
+    ]) };
+  return [saas, cloud, infra];
+}
+
+/* Canned AI comparison for the SaaS sample paper:
+   standard → [page, verdict, region of the page, finding] */
+const SAAS_AI = {
+  s1:[3,'comply','diagram','SAML federation with Entra ID is shown in the logical architecture, as the Identity standard asks.'],
+  s2:[3,'comply','text','MFA is enforced through Entra Conditional Access.'],
+  s3:[6,'comply','diagram','User traffic goes through the CASB inline proxy, matching the CASB reference architecture.'],
+  s4:[6,'gap','diagram','Your diagram shows administrators connecting straight to the vendor console. The CASB reference architecture routes admin access through CASB too.'],
+  s5:[4,'comply','text','Conditional Access policy (compliant device + trusted location) is documented.'],
+  s6:[7,'gap','text','The paper says vendor admins share a break-glass account. The Identity standard requires PAM for every privileged user.'],
+  s7:[7,'none','diagram','No PAM access-flow diagram. The Identity standard expects approval → credential injection → session recording.'],
+  s8:[8,'comply','table','The RBAC matrix (14 roles × 62 permissions) follows the template.'],
+  s9:[8,'comply','table','Business, User and System Admin roles are separate in the matrix.'],
+  s10:[2,'comply','text','Security Architecture Review dated 12 Aug 2026 is referenced.'],
+  s11:[2,'comply','text','CRAT rating Medium, with 3 open findings and target dates.'],
+  s12:[9,'comply','text','Audit logs are kept for 365 days and can be exported.'],
+  s13:[9,'gap','text','SIEM log streaming is listed as an add-on that hasn’t been bought. The Logging standard requires SIEM onboarding at go-live.'],
+  s14:[10,'comply','text','AES-256 encryption at rest.'],
+  s15:[10,'comply','text','TLS 1.2+ on all endpoints.'],
+  s16:[10,'partial','table','SCD mapping is mentioned but the appendix is missing. The approved sample paper includes the full control table.'],
+  s17:[5,'comply','text','Data classified as Confidential.'],
+  s18:[5,'comply','text','Hosted in Singapore, with DR in Australia.'],
+  s19:[5,'partial','diagram','The tenant model is described in text only. The approved sample paper includes a tenant-isolation diagram.'],
+  s20:[11,'comply','text','An independent tenant-isolation pen test (Mar 2026) is cited.'],
+  s21:[11,'comply','text','The customer keeps ownership of its data.'],
+  s22:[12,'none','text','No exit or data-extraction section. Use the Vendor exit plan template.'],
+  s23:[11,'gap','text','The contract makes the customer responsible for backups, but the paper doesn’t say who will do it. The Backup guide needs a named owner.'],
+  s24:[11,'comply','text','Point-in-time restore within 30 days.'],
+  s25:[12,'comply','text','CSV / JSON export for 30 days after termination.'],
+  s26:[11,'comply','text','DR tested annually; RPO 4h / RTO 8h.'],
+  s27:[11,'partial','table','Restores are “via vendor support” with no named recovery owner, unlike the guide’s RACI.'],
+  s28:[4,'none','table','No integration inventory. The approved sample paper lists every interface in a table.'],
+  s29:[4,'comply','diagram','The integration API uses OAuth 2.0 client credentials.'],
+  s30:[13,'gap','text','Monitoring relies on the vendor status page only — no alerting on our side.'],
+  s31:[13,'comply','table','L1 by reseller, L2/L3 by the principal vendor.'],
+  s32:[13,'partial','table','Escalation between reseller and principal is “to be agreed”. The RACI sample names an owner for each level.'],
+  s33:[14,'comply','text','Agreement reviewed by Procurement on 02 Sep 2026.'],
+};
+
+function seed(){
+  const types = seedTypes(), [saas, cloud] = types, now = Date.now();
+  const allYes = (t, over = {}, skip = []) => {
+    const a = {};
+    t.sections.forEach(s => s.standards.forEach(x => { if (!skip.includes(x.id)) a[x.id] = { v:'yes', r:'' }; }));
+    return Object.assign(a, over);
+  };
+  const crmCheck = { ranAt:now - 3*864e5, kept:{}, docs:[{ name:'Customer 360 CRM — Solution Lab paper v2.pdf', size:2.1e6, pages:16 }], results:{} };
+  saas.sections.flatMap(s => s.standards).forEach((x, i) => crmCheck.results[x.id] =
+    { verdict:'comply', page:1 + i % 16, area:['text','diagram','table'][i % 3], text:'Covered, and consistent with the reference.', ref:x.refs[0] });
+  return {
+    mode:'architect', types,
+    papers:[
+      { id:'p-ppm', title:'Enterprise PPM SaaS', vendor:'ProjectPro Cloud (via reseller)', typeId:'saas', updatedAt:now - 864e5,
+        answers:allYes(saas, {
+          s4:{ v:'no', r:'Admin console is accessed directly — CASB admin onboarding planned for Q1.' },
+          s6:{ v:'no', r:'' },
+          s16:{ v:'na', r:'TBC' },
+          s23:{ v:'no', r:'Backup responsibility is unclear in the contract.' },
+        }, ['s7','s27','s30','s31','s32','s33']), check:null, chat:[] },
+      { id:'p-crm', title:'Customer 360 CRM', vendor:'Relata CRM', typeId:'saas', updatedAt:now - 3*864e5,
+        answers:allYes(saas), check:crmCheck, chat:[] },
+      { id:'p-dlk', title:'Enterprise Data Lake', vendor:'Azure Synapse & ADLS', typeId:'cloud', updatedAt:now - 2*864e5,
+        answers:allYes(cloud, { c9:{ v:'no', r:'Diagnostic settings not enabled yet — Platform team, by 30 Nov.' } }, ['c10','c11','c12']), check:null, chat:[] },
+    ],
+  };
+}
+
+/* ============================================================
+   State
+   ============================================================ */
+const STORE_KEY = 'tacs.simple.v1';
+let state;
+function load(){
+  try { const d = JSON.parse(localStorage.getItem(STORE_KEY) || 'null'); if (d?.types) return d; } catch {}
+  return seed();
+}
+function save(){ try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch {} }
+const findPaper = id => state.papers.find(p => p.id === id);
+const findType = id => state.types.find(t => t.id === id);
+const typeOf = p => findType(p.typeId);
+let ctx = { view:'home', filter:'all', keep:new Set(), collapsed:new Set(), chatOpen:false };
+const PAGE_IMGS = {};   // paperId → page images rendered from the uploaded PDF (this session only)
+
+/* ============================================================
+   Derived: standards list, AI vs answers, readiness
+   ============================================================ */
+function stdList(t){
+  let n = 0;
+  return t.sections.flatMap((sec, si) => sec.standards.map(s => ({ ...s, n:++n, sec, si })));
+}
+const refsOf = (t, s) => (s.refs || []).map(id => t.references.find(r => r.id === id)).filter(Boolean);
+const VERDICT = { comply:'Complies', partial:'Partially', gap:'Does not comply', none:'Not found in paper' };
+const aiAnswer = r => r.verdict === 'comply' || r.verdict === 'partial' ? 'yes' : 'no';
+const needsRemark = a => (a?.v === 'no' || a?.v === 'na') && !(a.r || '').trim();
+
+/* Where the AI's reading of the paper disagrees with the architect's answer */
+function aiIssue(p, s){
+  const r = p.check?.results?.[s.id];
+  if (!r || p.check.kept?.[s.id]) return null;
+  const v = p.answers[s.id]?.v;
+  if (v === 'yes' && r.verdict === 'gap')  return { level:'gap', msg:'Your paper doesn’t back up your “Yes”.' };
+  if (v === 'yes' && r.verdict === 'none') return { level:s.mandatory ? 'gap' : 'check', msg:'You answered “Yes”, but the AI couldn’t find it in your paper.' };
+  if (v === 'yes' && r.verdict === 'partial') return { level:'check', msg:'Only partly shown in your paper.' };
+  if (v === 'no' && r.verdict === 'comply') return { level:'check', msg:'The AI thinks your paper already covers this.' };
+  return null;
+}
+
+function readiness(p){
+  const t = typeOf(p), list = stdList(t);
+  const a = id => p.answers[id] || {};
+  const unanswered = list.filter(s => !a(s.id).v);
+  const noRemark = list.filter(s => needsRemark(a(s.id)));
+  const mand = list.filter(s => s.mandatory);
+  const mandNo = mand.filter(s => a(s.id).v === 'no');
+  const aiGaps = list.filter(s => aiIssue(p, s)?.level === 'gap');
+  const aiChecks = list.filter(s => aiIssue(p, s)?.level === 'check');
+  const gaps = [];
+  if (unanswered.length) gaps.push({ text:`${unanswered.length} standard${unanswered.length > 1 ? 's' : ''} not answered`, std:unanswered[0].id });
+  if (mandNo.length) gaps.push({ text:`Mandatory standard not met: #${mandNo.map(s => s.n).join(', #')}`, std:mandNo[0].id });
+  if (noRemark.length) gaps.push({ text:`Explain your “No” / “N/A” on #${noRemark.map(s => s.n).join(', #')}`, std:noRemark[0].id });
+  if (!p.check?.ranAt) gaps.push({ text:'Check your paper PDF with the AI checker', chat:true });
+  if (aiGaps.length) gaps.push({ text:`Your paper doesn’t support your answer on #${aiGaps.map(s => s.n).join(', #')}`, std:aiGaps[0].id });
+  const answered = list.length - unanswered.length;
+  return { t, list, answered, total:list.length, pct:Math.round(answered / Math.max(1, list.length) * 100),
+           mand:mand.length, mandMet:mand.filter(s => ['yes','na'].includes(a(s.id).v)).length,
+           gaps, aiGaps, aiChecks, ready:!gaps.length, started:answered > 0 || !!p.check?.ranAt };
+}
+function readyPill(R){
+  if (R.ready) return '<span class="pill ok">✓ Ready for committee</span>';
+  if (!R.started) return '<span class="pill">Not started</span>';
+  return `<span class="pill bad">${R.gaps.length} thing${R.gaps.length > 1 ? 's' : ''} to fix</span>`;
+}
+function secStatus(p, sec){
+  const done = sec.standards.filter(s => p.answers[s.id]?.v).length;
+  const warn = sec.standards.filter(s => (s.mandatory && p.answers[s.id]?.v === 'no') || needsRemark(p.answers[s.id]) || aiIssue(p, s)?.level === 'gap').length;
+  const complete = done === sec.standards.length && !warn;
+  return { done, total:sec.standards.length, warn, complete };
+}
+
+/* ============================================================
+   Page images: real PDF rendering via pdf.js, mock page fallback
+   ============================================================ */
+const AREAS = { text:{ l:8, t:22, w:84, h:20 }, diagram:{ l:6, t:41, w:88, h:30 }, table:{ l:6, t:72, w:88, h:20 } };
+
+function mockPage({ title, heading, page, kind, labels = [] }){
+  const h = hashStr(title + page + kind);
+  const band = kind === 'ref' ? '#2453d4' : '#4b5563';
+  let lines = '';
+  for (let i = 0; i < 5; i++) lines += `<rect x="10" y="${38 + i * 5}" width="${55 + (h >> i) % 45}" height="2.2" rx="1" fill="#cfd4dc"/>`;
+  const L = (labels.length ? labels : ['Users','Service','Data']).slice(0, 3);
+  const boxes = L.map((lb, i) => `<rect x="${12 + i * 35}" y="76" width="28" height="16" rx="2.5" fill="#eef2ff" stroke="#8aa0e6" stroke-width=".8"/>
+    <text x="${26 + i * 35}" y="85.5" font-size="4" text-anchor="middle" fill="#1f2a44">${esc(trunc(lb, 11))}</text>`).join('');
+  const arrows = L.slice(1).map((_, i) => `<path d="M${40 + i * 35} 84 h6" stroke="#8aa0e6" stroke-width="1"/><path d="M${46 + i * 35} 82 l1.6 2 l-1.6 2z" fill="#8aa0e6"/>`).join('');
+  let table = '';
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) table += `<rect x="${10 + c * 25}" y="${118 + r * 6}" width="24" height="5.4" fill="${r ? '#f3f4f6' : '#dfe4ec'}"/>`;
+  return `<svg viewBox="0 0 120 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${esc(title)}, page ${page}">
+    <rect width="120" height="160" fill="#fff"/><rect width="120" height="12" fill="${band}"/>
+    <text x="5" y="8" font-size="4.6" fill="#fff">${esc(trunc(title, 40))}</text>
+    <text x="10" y="30" font-size="6" font-weight="700" fill="#1a1f26">${esc(trunc(heading || '', 30))}</text>
+    ${lines}<rect x="8" y="68" width="104" height="44" rx="2" fill="#fafbff" stroke="#e3e7ef" stroke-width=".6"/>${boxes}${arrows}
+    <text x="10" y="106" font-size="3.6" fill="#8a94a3">Figure ${page}.1</text>${table}
+    <text x="110" y="155" font-size="4" fill="#9aa3ae" text-anchor="end">${page}</text></svg>`;
+}
+const diagramLabels = text => text.replace(/[^\w /]/g, ' ').split(/\s+/).filter(w => w.length > 3).slice(0, 3)
+  .map(w => w[0].toUpperCase() + w.slice(1));
+const hlBox = (cls, area) => { const a = AREAS[area] || AREAS.text;
+  return `<span class="hl ${cls}" style="left:${a.l}%;top:${a.t}%;width:${a.w}%;height:${a.h}%"></span>`; };
+
+function paperThumb(p, s, r){
+  const img = PAGE_IMGS[p.id]?.[r.page - 1];
+  const body = img ? `<img src="${img}" alt="Page ${r.page} of your paper">`
+    : mockPage({ title:p.title, heading:s.sec.title, page:r.page, kind:'paper', labels:diagramLabels(s.text) });
+  return `<figure class="pg"><div class="pgimg">${body}${hlBox(r.verdict, r.area)}</div><figcaption>Your paper · page ${r.page}</figcaption></figure>`;
+}
+function refThumb(ref, s, r){
+  if (!ref) return `<figure class="pg"><div class="pgimg" style="display:grid;place-items:center;color:#888;font-size:12px">No reference linked</div><figcaption>—</figcaption></figure>`;
+  return `<figure class="pg"><div class="pgimg">${mockPage({ title:ref.title, heading:ref.type, page:1 + hashStr(ref.id) % 6, kind:'ref', labels:diagramLabels(s.text) })}${hlBox('ref', r.area)}</div>
+    <figcaption>${REF_TYPES[ref.type] || '📄'} ${esc(ref.type)} · ${esc(ref.title)}</figcaption></figure>`;
+}
+
+let pdfjsP;
+function loadPdfJs(){
+  return pdfjsP ||= new Promise((res, rej) => {
+    const sc = document.createElement('script');
+    sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    sc.onload = () => { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(window.pdfjsLib); };
+    sc.onerror = () => rej(new Error('pdf.js unavailable'));
+    document.head.appendChild(sc);
+    setTimeout(() => rej(new Error('timeout')), 8000);
+  });
+}
+async function renderPdf(file){
+  try {
+    const lib = await loadPdfJs();
+    const pdf = await lib.getDocument({ data:await file.arrayBuffer() }).promise;
+    const imgs = [];
+    for (let i = 1; i <= Math.min(pdf.numPages, 40); i++) {
+      const pg = await pdf.getPage(i), vp = pg.getViewport({ scale:.6 });
+      const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height;
+      await pg.render({ canvasContext:c.getContext('2d'), viewport:vp }).promise;
+      imgs.push(c.toDataURL('image/jpeg', .72));
+    }
+    return { pages:pdf.numPages, imgs };
+  } catch { return null; }   // offline or unreadable: fall back to mock page images
+}
+
+/* ============================================================
+   Mock AI — "visual" comparison of paper pages vs references.
+   A real build would send page images + reference images to a
+   vision model and ask for a verdict per standard with citations.
+   ============================================================ */
+function runEngine(p){
+  const t = typeOf(p), list = stdList(t);
+  const pages = Math.max(1, p.check.docs.reduce((a, d) => a + (d.pages || 12), 0));
+  const results = {};
+  list.forEach(s => {
+    const known = p.typeId === 'saas' && SAAS_AI[s.id];
+    let page, verdict, area, text;
+    if (known) [page, verdict, area, text] = known;
+    else {
+      const h = hashStr(s.id + s.text + pages), k = h % 20;
+      verdict = k < 14 ? 'comply' : k < 17 ? 'partial' : k < 19 ? 'gap' : 'none';
+      page = 1 + h % pages; area = ['text','diagram','table'][h % 3];
+      text = { comply:'Covered clearly, and consistent with the reference.',
+               partial:'Mentioned, but with less detail than the reference shows.',
+               gap:'What your paper describes conflicts with the policy.',
+               none:'Nothing in your paper addresses this.' }[verdict];
+    }
+    const refs = refsOf(t, s);
+    const ref = refs.find(r => r.type === 'Sample') || refs[0];
+    results[s.id] = { verdict, page:((page - 1) % pages) + 1, area, text, ref:ref?.id };
+  });
+  return results;
+}
+function checkCounts(p){
+  const c = { comply:0, partial:0, gap:0, none:0 };
+  Object.values(p.check?.results || {}).forEach(r => c[r.verdict]++);
+  return c;
+}
+
+/* ============================================================
+   Views — Solution Architect
+   ============================================================ */
+function viewHome(){
+  const papers = [...state.papers].sort((a, b) => b.updatedAt - a.updatedAt);
+  return `
+  <div class="page-head">
+    <div><h1>My papers</h1><div class="sub">Check your Solution Lab paper against the standards for its type before you present it.</div></div>
+    <button class="btn primary" data-action="newpaper">+ New paper</button>
+  </div>
+  <div class="grid">
+    ${papers.map(p => { const R = readiness(p);
+      return `<button class="card tile" data-action="openpaper" data-id="${p.id}">
+        <div class="top"><div><b>${esc(p.title)}</b><div class="muted" style="font-size:12.5px">${esc(p.vendor || '')}</div></div><span class="ttag">${esc(R.t.name)}</span></div>
+        <div>${readyPill(R)}</div>
+        <div class="bar ${R.pct === 100 ? 'ok' : ''}"><i style="width:${R.pct}%"></i></div>
+        <div class="meta"><span><b>${R.answered}/${R.total}</b> answered</span><span><b>${R.mandMet}/${R.mand}</b> mandatory met</span><span>${p.check?.ranAt ? '✦ AI checked' : 'Not AI-checked'}</span></div>
+      </button>`; }).join('')}
+    <button class="card tile add" data-action="newpaper"><span class="plus">＋</span><b>New paper</b><span class="muted">Pick a paper type to get its standards</span></button>
+  </div>`;
+}
+
+function viewPaper(p){
+  const R = readiness(p), t = R.t;
+  return `
+  <div class="crumbs"><a href="#/">← My papers</a></div>
+  <div class="page-head">
+    <div style="flex:1;min-width:240px">
+      <input class="title-input" data-pfield="title" value="${esc(p.title)}" aria-label="Paper title">
+      <input class="sub-input" data-pfield="vendor" value="${esc(p.vendor || '')}" placeholder="Vendor / solution" aria-label="Vendor or solution">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <span class="ttag" title="Paper type">${esc(t.name)} standards</span>
+      <span id="headpill">${readyPill(R)}</span>
+      <button class="btn danger sm" data-action="delpaper">Delete</button>
+    </div>
+  </div>
+  <div class="secbar" id="secbar">${renderSecbar(p)}</div>
+  <div class="layout">
+    <div class="stack" id="form">${renderForm(p)}</div>
+    <aside id="aside">${renderAside(p)}</aside>
+  </div>`;
+}
+
+const FILTERS = [['all','All'],['todo','To do'],['attention','Needs attention'],['mandatory','Mandatory']];
+function matches(p, s, f){
+  const a = p.answers[s.id] || {};
+  if (f === 'todo') return !a.v;
+  if (f === 'mandatory') return s.mandatory;
+  if (f === 'attention') return a.v === 'no' || needsRemark(a) || !!aiIssue(p, s);
+  return true;
+}
+function renderSecbar(p){
+  const t = typeOf(p), list = stdList(t);
+  return `<nav class="chips" aria-label="Jump to section">${t.sections.map((sec, i) => { const st = secStatus(p, sec);
+      return `<button class="cn ${st.complete ? 'done' : st.warn ? 'warn' : ''}" data-action="jump" data-sec="${sec.id}" title="${esc(sec.title)}">
+        <span class="k">${letter(i)}</span><span class="nm">${esc(trunc(sec.title, 26))}</span><span class="st">${st.complete ? '✓' : `${st.done}/${st.total}`}</span></button>`; }).join('')}</nav>
+    <div class="seg" role="group" aria-label="Show">${FILTERS.map(([id, label]) =>
+      `<button data-action="filter" data-f="${id}" aria-pressed="${ctx.filter === id}">${label}<b>${list.filter(s => matches(p, s, id)).length}</b></button>`).join('')}</div>`;
+}
+
+function renderForm(p){
+  const t = typeOf(p);
+  return `<div class="legend"><span><b>Yes</b> my paper covers it</span><span><b>No</b> explain the gap &amp; plan</span><span><b>N/A</b> explain why</span><span><span class="mtag" style="margin:0">MANDATORY</span> can’t be “No”</span><span>📜📘 open the policy or sample</span></div>` +
+    t.sections.map((sec, i) => renderSection(p, t, sec, i)).join('');
+}
+function renderSection(p, t, sec, i){
+  const st = secStatus(p, sec), collapsed = ctx.collapsed.has(sec.id);
+  const rows = stdList(t).filter(s => s.sec.id === sec.id && (ctx.filter === 'all' || ctx.keep.has(s.id) || matches(p, s, ctx.filter)));
+  return `<section class="card seccard ${collapsed ? 'collapsed' : ''}" id="sec-${sec.id}">
+    <header class="sec-head ${st.complete ? 'done' : ''}" data-action="toggle" data-sec="${sec.id}">
+      <button class="chev" aria-expanded="${!collapsed}" aria-label="${collapsed ? 'Expand' : 'Collapse'} ${esc(sec.title)}">▾</button>
+      <span class="letter">${letter(i)}</span>
+      <div class="t"><h2>${letter(i)}. ${esc(sec.title)}</h2><div class="muted" style="font-size:12px">${sec.standards.length} standards · ${sec.standards.filter(s => s.mandatory).length} mandatory</div></div>
+      ${st.warn ? `<span class="pill bad">${st.warn} to fix</span>` : ''}
+      <span class="pill ${st.complete ? 'ok' : ''}">${st.complete ? '✓ Complete' : `${st.done} of ${st.total}`}</span>
+    </header>
+    <div class="sec-body">${rows.length ? rows.map(s => renderStd(p, t, s)).join('')
+      : `<div class="filter-note">✓ Nothing to show here for this filter. <button class="btn sm" data-action="filter" data-f="all">Show all</button></div>`}</div>
+  </section>`;
+}
+function renderStd(p, t, s){
+  const a = p.answers[s.id] || {}, refs = refsOf(t, s);
+  const ph = a.v === 'no' ? 'Required: what’s missing, who will fix it, and by when'
+           : a.v === 'na' ? 'Required: why this doesn’t apply to your solution'
+           : 'Where in your paper? e.g. “Section 4.2, figure 3” (optional)';
+  return `<div class="std ${a.v || ''} ${needsRemark(a) ? 'need' : ''}" id="std-${s.id}">
+    <div class="n">${s.n}</div>
+    <div>
+      <div class="lbl">${esc(s.text)}${s.mandatory ? '<span class="mtag">MANDATORY</span>' : ''}</div>
+      ${refs.length ? `<div class="refs">${refs.map(r => `<button class="ref" data-action="openref" data-ref="${r.id}" title="${esc(r.note || r.title)}"><span aria-hidden="true">${REF_TYPES[r.type] || '📄'}</span><span class="ty">${esc(r.type)}</span><span class="t">${esc(r.title)}</span></button>`).join('')}</div>` : ''}
+      <input class="remark" data-remark="${s.id}" value="${esc(a.r)}" placeholder="${ph}" aria-label="Remark for standard ${s.n}">
+      <div class="err">${a.v === 'na' ? 'Say why it doesn’t apply.' : 'Explain the gap so the committee knows the plan.'}</div>
+      ${aiLine(p, s)}
+    </div>
+    <div class="yn" role="group" aria-label="Does your paper meet standard ${s.n}?">
+      ${[['yes','y','Yes'],['no','x','No'],['na','na','N/A']].map(([v, c, l]) => `<button class="${c}" data-action="answer" data-std="${s.id}" data-v="${v}" aria-pressed="${a.v === v}">${l}</button>`).join('')}
+    </div>
+  </div>`;
+}
+function aiLine(p, s){
+  const r = p.check?.results?.[s.id];
+  if (!r) return '';
+  const issue = aiIssue(p, s), sug = aiAnswer(r);
+  return `<div class="ai ${r.verdict}">
+    <span class="msg"><span class="vd ${r.verdict}">✦ ${VERDICT[r.verdict]}</span> · page ${r.page} — ${esc(r.text)}
+      ${issue ? `<span class="issue ${issue.level}">${issue.level === 'gap' ? '⚠' : '•'} ${esc(issue.msg)}</span>` : ''}
+      ${p.check.kept?.[s.id] ? '<span class="muted" style="display:block">You kept your answer.</span>' : ''}</span>
+    <button class="btn sm" data-action="compare" data-std="${s.id}">Compare side by side</button>
+    ${p.answers[s.id]?.v !== sug ? `<button class="btn sm" data-action="apply" data-std="${s.id}">Use AI answer (${sug === 'yes' ? 'Yes' : 'No'})</button>` : ''}
+    ${issue ? `<button class="btn sm" data-action="keep" data-std="${s.id}">Keep mine</button>` : ''}
+  </div>`;
+}
+
+function renderAside(p){
+  const R = readiness(p), t = R.t, c = checkCounts(p);
+  return `
+    <div class="card ready ${R.ready ? 'ok' : 'no'}">
+      <div class="big">${R.ready ? '✓ Ready for committee' : 'Not ready yet'}</div>
+      <div class="muted" style="font-size:13px">${R.ready ? 'Your paper meets the standards for this paper type.' : `Fix ${R.gaps.length === 1 ? 'this' : `these ${R.gaps.length} things`} before you present:`}</div>
+      ${R.ready ? '' : `<ul class="gaps">${R.gaps.map(g => `<li><button data-action="${g.chat ? 'chatopen' : 'gotostd'}" data-std="${g.std || ''}">${esc(g.text)}</button></li>`).join('')}</ul>`}
+    </div>
+    <div class="card pad">
+      <h3>Progress</h3>
+      <div class="bar ${R.pct === 100 ? 'ok' : ''}"><i style="width:${R.pct}%"></i></div>
+      <div class="stats"><span><b>${R.answered}/${R.total}</b> answered</span><span><b>${R.mandMet}/${R.mand}</b> mandatory met</span></div>
+    </div>
+    <div class="card pad">
+      <h3>✦ AI paper check</h3>
+      ${p.check?.ranAt ? `<div class="muted" style="font-size:12.5px">${esc(p.check.docs.map(d => d.name).join(', '))} · ${fmtDate(p.check.ranAt)}</div>
+        <div class="stats"><span class="vd comply">${c.comply} comply</span><span class="vd partial">${c.partial} partial</span><span class="vd gap">${c.gap} don’t comply</span><span class="vd none">${c.none} not found</span></div>
+        ${R.aiChecks.length ? `<div class="muted" style="font-size:12.5px;margin-top:6px">${R.aiChecks.length} answer(s) worth a second look.</div>` : ''}
+        <div style="margin-top:10px"><button class="btn sm" data-action="chatopen">Open AI checker</button></div>`
+      : `<p class="muted" style="margin:0 0 10px;font-size:13px">Upload your paper PDF. The AI compares your pages with the policies and samples below and tells you, standard by standard, whether you comply.</p>
+        <button class="btn primary sm" data-action="chatopen">✦ Check my paper</button>`}
+    </div>
+    <div class="card pad">
+      <h3>References for ${esc(t.name)}</h3>
+      ${t.references.length ? `<ul class="reflist">${t.references.map(r => `<li><button data-action="openref" data-ref="${r.id}"><span aria-hidden="true">${REF_TYPES[r.type] || '📄'}</span><span>${esc(r.title)}<span class="ty">${esc(r.type)}${r.note ? ' · ' + esc(r.note) : ''}</span></span></button></li>`).join('')}</ul>` : '<p class="muted" style="margin:0">No references yet.</p>'}
+    </div>`;
+}
+
+/* ============================================================
+   Views — Admin
+   ============================================================ */
+function viewTypes(){
+  return `
+  <div class="page-head">
+    <div><h1>Paper types</h1><div class="sub">Each paper type has its own standards, plus the policies, samples and templates architects check against.</div></div>
+    <button class="btn primary" data-action="newtype">+ New paper type</button>
+  </div>
+  <div class="grid">
+    ${state.types.map(t => { const list = stdList(t), used = state.papers.filter(p => p.typeId === t.id).length;
+      return `<button class="card tile" data-action="opentype" data-id="${t.id}">
+        <div class="top"><b>${esc(t.name)}</b><span class="ttag">${used} paper${used === 1 ? '' : 's'}</span></div>
+        <p class="muted">${esc(t.description || 'No description')}</p>
+        <div class="meta"><span><b>${list.length}</b> standards</span><span><b>${list.filter(s => s.mandatory).length}</b> mandatory</span><span><b>${t.references.length}</b> references</span></div>
+      </button>`; }).join('')}
+    <button class="card tile add" data-action="newtype"><span class="plus">＋</span><b>New paper type</b><span class="muted">e.g. Data Platform, Network</span></button>
+  </div>`;
+}
+
+function viewType(t){
+  const used = state.papers.filter(p => p.typeId === t.id).length;
+  let n = 0;
+  const sections = t.sections.map((sec, si) => `
+    <div id="asec-${sec.id}">
+      <div class="adm-sh">
+        <span class="letter">${letter(si)}</span>
+        <input class="sh-title" data-sectitle="${sec.id}" value="${esc(sec.title)}" aria-label="Section ${letter(si)} title">
+        <span class="pill">${sec.standards.length}</span>
+        <button class="icon-btn" data-action="secmove" data-sec="${sec.id}" data-d="-1" ${si === 0 ? 'disabled' : ''} aria-label="Move section up" title="Move up">↑</button>
+        <button class="icon-btn" data-action="secmove" data-sec="${sec.id}" data-d="1" ${si === t.sections.length - 1 ? 'disabled' : ''} aria-label="Move section down" title="Move down">↓</button>
+        <button class="icon-btn danger" data-action="secdel" data-sec="${sec.id}" aria-label="Delete section" title="Delete section">🗑</button>
+      </div>
+      ${sec.standards.map((s, ki) => { n++; const refs = refsOf(t, s);
+        return `<div class="astd">
+          <span class="n">${n}</span>
+          <div><div>${esc(s.text)}<button class="mtoggle ${s.mandatory ? 'on' : ''}" data-action="mandatory" data-std="${s.id}" aria-pressed="${s.mandatory}" title="Click to toggle">${s.mandatory ? 'MANDATORY' : 'optional'}</button></div>
+            <div class="refs">${refs.map(r => `<span class="ref" style="cursor:default"><span aria-hidden="true">${REF_TYPES[r.type] || '📄'}</span><span class="t">${esc(r.title)}</span></span>`).join('')}
+              <button class="ref" data-action="stdedit" data-std="${s.id}" style="border-style:dashed;color:var(--accent)">${refs.length ? '✎ Edit links' : '＋ Link a reference'}</button></div></div>
+          <div class="sact">
+            <button class="icon-btn" data-action="stdedit" data-std="${s.id}" aria-label="Edit standard ${n}" title="Edit">✎</button>
+            <button class="icon-btn" data-action="stdmove" data-std="${s.id}" data-d="-1" ${ki === 0 ? 'disabled' : ''} aria-label="Move standard ${n} up" title="Move up">↑</button>
+            <button class="icon-btn" data-action="stdmove" data-std="${s.id}" data-d="1" ${ki === sec.standards.length - 1 ? 'disabled' : ''} aria-label="Move standard ${n} down" title="Move down">↓</button>
+            <button class="icon-btn danger" data-action="stddel" data-std="${s.id}" aria-label="Delete standard ${n}" title="Delete">🗑</button>
+          </div></div>`; }).join('')}
+      ${ctx.addTo === sec.id
+        ? `<div class="astd addrow"><span class="n">${n + 1}</span><div><textarea class="stdnew" data-sec="${sec.id}" rows="2" placeholder="Type a standard and press Enter to add the next one…" aria-label="New standard"></textarea>
+             <div class="hint">Enter adds it and starts the next one · Esc to finish</div></div>
+             <div class="sact on"><button class="btn sm" data-action="stdaddclose">Done</button></div></div>`
+        : `<button class="addlink" data-action="stdaddopen" data-sec="${sec.id}">＋ Add standard</button>`}
+    </div>`).join('');
+
+  return `
+  <div class="crumbs"><a href="#/admin">← Paper types</a></div>
+  <div class="page-head">
+    <div style="flex:1;min-width:240px">
+      <input class="title-input" data-tfield="name" value="${esc(t.name)}" aria-label="Paper type name">
+      <input class="sub-input" data-tfield="description" value="${esc(t.description)}" placeholder="When does this paper type apply?" aria-label="Description">
+    </div>
+    <button class="btn danger" data-action="deltype" ${used ? `disabled title="${used} paper(s) use this type"` : ''}>Delete type</button>
+  </div>
+  <div class="banner">Changes save automatically and apply straight away to every ${esc(t.name)} paper (${used} in progress).</div>
+  <div class="stack">
+    <div class="card">
+      <div class="panel-head"><div><h2>References</h2><div class="muted" style="font-size:13px">Policies, samples, templates and guides. Architects open them from each standard, and the AI compares papers against them.</div></div>
+        <button class="btn sm" data-action="refedit">＋ Add reference</button></div>
+      ${t.references.map(r => { const linked = stdList(t).filter(s => s.refs.includes(r.id)).length;
+        return `<div class="refrow"><span class="ic" aria-hidden="true">${REF_TYPES[r.type] || '📄'}</span>
+          <div style="flex:1;min-width:0"><b>${esc(r.title)}</b> <span class="ttag">${esc(r.type)}</span>
+            <div class="muted" style="font-size:12.5px">${esc(r.note || '')}</div>
+            <div style="font-size:12.5px"><button class="linkish" data-action="openref" data-ref="${r.id}">${esc(r.url.startsWith('mock:') ? 'Preview (placeholder document)' : r.url)}</button> <span class="muted">· linked to ${linked} standard${linked === 1 ? '' : 's'}</span></div></div>
+          <div class="sact"><button class="icon-btn" data-action="refedit" data-ref="${r.id}" aria-label="Edit ${esc(r.title)}" title="Edit">✎</button>
+            <button class="icon-btn danger" data-action="refdel" data-ref="${r.id}" aria-label="Delete ${esc(r.title)}" title="Delete">🗑</button></div></div>`; }).join('') || '<div class="empty">No references yet.</div>'}
+    </div>
+    <div class="card">
+      <div class="panel-head"><div><h2>Standards</h2><div class="muted" style="font-size:13px">${stdList(t).length} standards in ${t.sections.length} sections. Click “optional / MANDATORY” to switch.</div></div>
+        <button class="btn sm" data-action="secadd">＋ Add section</button></div>
+      ${sections || '<div class="empty">No sections yet.</div>'}
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   Modals
+   ============================================================ */
+function openModal(html, wide){
+  const m = $('#modal');
+  m.innerHTML = `<div class="modal card ${wide ? 'wide' : ''}" role="dialog" aria-modal="true">${html}</div>`;
+  m.hidden = false; ctx.modalReturn = document.activeElement;
+  setTimeout(() => m.querySelector('input:not([type=radio]):not([type=checkbox]),textarea,select,.modal-f .primary,.modal-f .btn')?.focus(), 30);
+}
+function closeModal(){ const m = $('#modal'); if (m.hidden) return; m.hidden = true; m.innerHTML = ''; ctx.modalReturn?.focus?.(); }
+const modalHead = title => `<div class="modal-h"><h2>${title}</h2><button class="icon-btn" data-action="mclose" aria-label="Close">✕</button></div>`;
+
+function newPaperModal(){
+  openModal(`${modalHead('New paper')}
+    <div class="modal-b">
+      <div class="field"><label for="nptitle">Paper title <span class="req">*</span></label><input id="nptitle" placeholder="e.g. Contract Management SaaS"></div>
+      <div class="field"><label>Paper type <span class="req">*</span></label>
+        <div class="choose">${state.types.map((t, i) => { const list = stdList(t);
+          return `<label><input type="radio" name="nptype" value="${t.id}" ${i === 0 ? 'checked' : ''}><b>${esc(t.name)}</b><span class="muted" style="font-size:12.5px">${esc(t.description)}</span>
+            <span class="muted" style="font-size:12px">${list.length} standards · ${list.filter(s => s.mandatory).length} mandatory</span></label>`; }).join('')}</div></div>
+    </div>
+    <div class="modal-f"><span class="spacer"></span><button class="btn" data-action="mclose">Cancel</button><button class="btn primary" data-action="createpaper">Create paper</button></div>`, true);
+}
+
+function refModal(t, ref){
+  if (!ref.url.startsWith('mock:')) { window.open(ref.url, '_blank', 'noopener'); return; }
+  const linked = stdList(t).filter(x => x.refs.includes(ref.id));
+  openModal(`${modalHead(`${REF_TYPES[ref.type] || '📄'} ${esc(ref.title)}`)}
+    <div class="modal-b"><div class="refview">
+      <div class="pgimg">${mockPage({ title:ref.title, heading:ref.type, page:1, kind:'ref', labels:diagramLabels(ref.note || ref.title) })}</div>
+      <div><span class="ttag">${esc(ref.type)}</span>
+        <p>${esc(ref.note || '')}</p>
+        ${linked.length ? `<h3>Used for</h3><ul style="padding-left:18px;margin:0;font-size:13px">${linked.map(x => `<li>#${x.n} ${esc(x.text)}</li>`).join('')}</ul>` : ''}
+        <p class="muted" style="font-size:12.5px">Placeholder in this prototype. In the real tool this opens the document on the intranet — admins set the link under <b>Paper types</b>.</p></div>
+    </div></div>
+    <div class="modal-f"><span class="spacer"></span><button class="btn" data-action="mclose">Close</button></div>`, true);
+}
+
+function compareModal(p, s){
+  const t = typeOf(p), r = p.check.results[s.id], ref = t.references.find(x => x.id === r.ref), sug = aiAnswer(r);
+  openModal(`${modalHead(`#${s.n} · ${esc(s.text)}`)}
+    <div class="modal-b">
+      <div><span class="vd ${r.verdict}" style="font-size:15px">✦ ${VERDICT[r.verdict]}</span> — ${esc(r.text)}</div>
+      <div class="cmp-pages">${paperThumb(p, s, r)}${refThumb(ref, s, r)}</div>
+      <div class="muted" style="font-size:12.5px">Solid outline: what the AI looked at in your paper. Dashed outline: the matching part of the ${ref ? esc(ref.type.toLowerCase()) : 'reference'}.</div>
+    </div>
+    <div class="modal-f">${ref ? `<button class="btn" data-action="openref" data-ref="${ref.id}">Open ${esc(ref.type.toLowerCase())}</button>` : ''}<span class="spacer"></span>
+      <button class="btn" data-action="gotostd" data-std="${s.id}">Go to standard</button>
+      ${p.answers[s.id]?.v !== sug ? `<button class="btn primary" data-action="apply" data-std="${s.id}">Use AI answer (${sug === 'yes' ? 'Yes' : 'No'})</button>` : ''}</div>`, true);
+}
+
+function stdModal(t, s){
+  openModal(`${modalHead('Edit standard')}
+    <div class="modal-b">
+      <div class="field"><label for="stext">Standard <span class="req">*</span></label><textarea id="stext" rows="3">${esc(s.text)}</textarea></div>
+      <label class="check"><input type="checkbox" id="smand" ${s.mandatory ? 'checked' : ''}> <span><b>Mandatory</b> — a paper can’t be ready for committee if this is “No”.</span></label>
+      <div class="field"><label>References architects should check</label>
+        ${t.references.length ? t.references.map(r => `<label class="check"><input type="checkbox" name="sref" value="${r.id}" ${s.refs.includes(r.id) ? 'checked' : ''}> <span>${REF_TYPES[r.type] || '📄'} ${esc(r.title)} <span class="muted">(${esc(r.type)})</span></span></label>`).join('')
+          : '<p class="muted" style="margin:0">No references yet — add them in the References card first.</p>'}</div>
+    </div>
+    <div class="modal-f"><span class="spacer"></span><button class="btn" data-action="mclose">Cancel</button><button class="btn primary" data-action="stdsave" data-std="${s.id}">Save</button></div>`);
+}
+
+function refEditModal(r){
+  openModal(`${modalHead(r ? 'Edit reference' : 'Add reference')}
+    <div class="modal-b">
+      <div class="field"><label for="rtype">Type</label><select id="rtype">${Object.keys(REF_TYPES).map(k => `<option ${r?.type === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+      <div class="field"><label for="rtitle">Title <span class="req">*</span></label><input id="rtitle" value="${esc(r?.title || '')}" placeholder="e.g. Encryption & Key Management Policy"></div>
+      <div class="field"><label for="rurl">Link ${r ? '' : '<span class="req">*</span>'}</label><input id="rurl" value="${esc(r && !r.url.startsWith('mock:') ? r.url : '')}" placeholder="https://intranet…/policy.pdf"></div>
+      <div class="field"><label for="rnote">What should the architect look for?</label><textarea id="rnote" rows="2" placeholder="Shown on hover, and used by the AI when comparing">${esc(r?.note || '')}</textarea></div>
+    </div>
+    <div class="modal-f"><span class="spacer"></span><button class="btn" data-action="mclose">Cancel</button><button class="btn primary" data-action="refsave" data-ref="${r?.id || ''}">${r ? 'Save' : 'Add reference'}</button></div>`);
+}
+
+function newTypeModal(){
+  openModal(`${modalHead('New paper type')}
+    <div class="modal-b">
+      <div class="field"><label for="ntname">Name <span class="req">*</span></label><input id="ntname" placeholder="e.g. Data Platform"></div>
+      <div class="field"><label for="ntdesc">When does it apply?</label><input id="ntdesc" placeholder="e.g. Analytics and data-lake workloads"></div>
+      <div class="field"><label>Start from</label>
+        <label class="check"><input type="radio" name="ntfrom" value="" checked> Blank</label>
+        ${state.types.map(t => `<label class="check"><input type="radio" name="ntfrom" value="${t.id}"> Copy of ${esc(t.name)}</label>`).join('')}</div>
+    </div>
+    <div class="modal-f"><span class="spacer"></span><button class="btn" data-action="mclose">Cancel</button><button class="btn primary" data-action="createtype">Create</button></div>`);
+}
+
+/* ============================================================
+   AI paper checker (chat)
+   ============================================================ */
+const chatPaper = () => ctx.view === 'paper' && findPaper(ctx.id);
+
+function updateChatShell(){
+  const p = chatPaper(), open = !!p && ctx.chatOpen;
+  $('#fab').hidden = !p || open;
+  $('#chat').classList.toggle('open', open);
+  $('#chat').setAttribute('aria-hidden', String(!open));
+  document.body.classList.toggle('chat-open', open);
+  if (!p) return;
+  const fix = readiness(p).aiGaps.length;
+  $('#fab').innerHTML = `<span>✦</span> AI paper checker ${!p.check?.ranAt ? '<span class="badge">Not checked</span>' : fix ? `<span class="badge">${fix} to fix</span>` : '<span class="badge ok">✓</span>'}`;
+  if (open) renderChat(p);
+}
+
+function renderChat(p){
+  const t = typeOf(p), docs = p.check?.docs || [];
+  $('#chatsub').textContent = `${p.title} · ${t.name} standards`;
+  $('#pack').innerHTML = docs.length
+    ? `📄 <b>${esc(docs.map(d => d.name).join(', '))}</b> <span class="muted">· ${docs.reduce((a, d) => a + (d.pages || 0), 0)} pages</span><span class="spacer"></span>${p.check.results ? '<button class="btn sm" data-action="recheck">Re-check</button>' : ''}`
+    : `<span class="muted">No paper uploaded yet — attach your Solution Lab paper as a PDF.</span>`;
+  const msgs = p.chat || [];
+  const lastReport = msgs.map(m => m.kind).lastIndexOf('report');
+  const box = $('#msgs');
+  const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 40;
+  box.innerHTML = greeting(t) + msgs.map((m, i) => renderMsg(p, m, i === lastReport)).join('') +
+    (ctx.running?.id === p.id ? progressBubble(p, t) : '') +
+    (ctx.typing ? '<div class="msg ai typing" aria-label="Checker is typing"><span>●</span><span>●</span><span>●</span></div>' : '');
+  const len = msgs.length + (ctx.typing ? 1 : 0) + (ctx.running ? 10 + ctx.running.step : 0);
+  if (atBottom || len !== ctx.chatLen) box.scrollTop = box.scrollHeight;
+  ctx.chatLen = len;
+  const chips = !docs.length ? ['Try with a sample paper PDF', 'Which policies apply to my paper?']
+    : ['What do I need to fix?', 'Compare #4', 'Which policies apply to my paper?', 'Summarise my paper'];
+  $('#quick').innerHTML = chips.map(c => `<button type="button" data-action="ask" data-q="${esc(c)}">${esc(c)}</button>`).join('');
+}
+
+function greeting(t){
+  return `<div class="msg ai">Hi ${ARCHITECT.split(' ')[0]} 👋 Upload your paper as a PDF (📎 or drag &amp; drop). I’ll read every page — text, diagrams and tables — compare it with the
+    <b>${t.references.length} ${esc(t.name)} policies &amp; samples</b>, and tell you for each of the ${stdList(t).length} standards whether your paper complies.</div>`;
+}
+function progressBubble(p, t){
+  const pages = (p.check?.docs || []).reduce((a, d) => a + (d.pages || 0), 0);
+  const steps = [pages ? `Rendering ${pages} pages` : 'Reading your PDF', 'Reading text, diagrams and tables', `Comparing with ${t.references.length} policies & samples`, `Checking ${stdList(t).length} standards`];
+  const i = ctx.running.step;
+  return `<div class="msg ai"><b>✦ Checking your paper…</b>
+    <ul class="steps">${steps.map((x, k) => `<li class="${k < i ? 'done' : k === i ? 'cur' : ''}">${k < i ? '✔' : k === i ? '◌' : '·'} ${x}</li>`).join('')}</ul>
+    <div class="bar"><i style="width:${i / steps.length * 100}%;transition:width .3s"></i></div></div>`;
+}
+
+function compareCard(p, s){
+  const r = p.check.results[s.id], t = typeOf(p), ref = t.references.find(x => x.id === r.ref);
+  const issue = aiIssue(p, s);
+  return `<div class="cmp">
+    <div class="cmp-h"><span class="vd ${r.verdict}">${VERDICT[r.verdict]}</span><b>#${s.n}</b><span>${esc(trunc(s.text, 70))}</span></div>
+    <div class="cmp-pages">${paperThumb(p, s, r)}${refThumb(ref, s, r)}</div>
+    <div>${esc(r.text)}${issue ? ` <b style="color:${issue.level === 'gap' ? 'var(--bad)' : 'var(--warn)'}">${esc(issue.msg)}</b>` : ''}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn sm" data-action="compare" data-std="${s.id}">Side by side</button>
+      ${p.answers[s.id]?.v !== aiAnswer(r) ? `<button class="btn sm primary" data-action="apply" data-std="${s.id}">Use AI answer</button>` : ''}
+      <button class="btn sm" data-action="gotostd" data-std="${s.id}">Go to #${s.n}</button></div></div>`;
+}
+
+function renderMsg(p, m, live){
+  if (m.role === 'user') return m.kind === 'files'
+    ? `<div class="msg user">${m.files.map(f => `<div>📄 ${esc(f.name)} <span style="opacity:.75">· ${sizeLabel(f.size)}</span></div>`).join('')}</div>`
+    : `<div class="msg user">${esc(m.text)}</div>`;
+  const t = typeOf(p), list = stdList(t);
+  let html = '';
+  if (m.kind === 'text') html = m.html;
+  else if (m.kind === 'report') {
+    if (!live || !p.check?.results) html = `Earlier check: ${esc(m.snap)}. <span class="muted">(replaced by a newer check)</span>`;
+    else {
+      const c = checkCounts(p);
+      const flagged = list.filter(s => aiIssue(p, s)).sort((a, b) => (aiIssue(p, a).level === 'gap' ? 0 : 1) - (aiIssue(p, b).level === 'gap' ? 0 : 1));
+      const shown = ctx.allFindings ? flagged : flagged.slice(0, 4);
+      html = `<b>Done.</b> I compared your paper with the ${esc(t.name)} references:
+        <div class="counts"><span class="pill ok">${c.comply} comply</span><span class="pill warn">${c.partial} partial</span><span class="pill bad">${c.gap} don’t comply</span><span class="pill">${c.none} not found</span></div>
+        ${flagged.length ? `<b>${flagged.length} answer${flagged.length > 1 ? 's' : ''} to look at:</b>${shown.map(s => compareCard(p, s)).join('')}
+          ${flagged.length > 4 ? `<div style="margin-top:8px"><button class="btn sm" data-action="morefindings">${ctx.allFindings ? 'Show fewer' : `Show all ${flagged.length}`}</button></div>` : ''}`
+          : 'Your answers match what’s in your paper. ✓'}
+        ${list.some(s => !p.answers[s.id]?.v) ? `<div style="margin-top:8px"><button class="btn sm" data-action="fillfromai">Fill my unanswered standards from this check</button></div>` : ''}`;
+    }
+  }
+  else if (m.kind === 'compare') { const s = list.find(x => x.id === m.std); html = s && p.check?.results?.[s.id] ? compareCard(p, s) : 'That standard no longer exists.'; }
+  else if (m.kind === 'gaps') { const R = readiness(p);
+    html = R.ready ? '✓ Nothing to fix — your paper is ready for committee.'
+      : `<b>To be ready for committee:</b><ol class="tight">${R.gaps.map(g => `<li>${g.std ? `<button class="linkish" data-action="gotostd" data-std="${g.std}">${esc(g.text)}</button>` : esc(g.text)}</li>`).join('')}</ol>`; }
+  else if (m.kind === 'refs') html = `<b>${esc(t.name)} references:</b><ul class="tight">${t.references.map(r => `<li><button class="linkish" data-action="openref" data-ref="${r.id}">${REF_TYPES[r.type] || '📄'} ${esc(r.title)}</button> <span class="muted">— ${esc(r.type)}</span></li>`).join('')}</ul>`;
+  else if (m.kind === 'summary') { const R = readiness(p), c = checkCounts(p);
+    html = `<b>${esc(p.title)}</b> — ${esc(t.name)} paper<ul class="tight">
+      <li>${R.answered}/${R.total} standards answered · ${R.mandMet}/${R.mand} mandatory met</li>
+      <li>${p.check?.ranAt ? `AI check: ${c.comply} comply, ${c.partial} partial, ${c.gap} don’t comply, ${c.none} not found` : 'Not AI-checked yet'}</li>
+      <li>${R.ready ? '✓ Ready for committee' : `${R.gaps.length} thing(s) to fix before committee`}</li></ul>`; }
+  return `<div class="msg ai">${html}</div>`;
+}
+
+function pushMsg(p, m){ (p.chat ||= []).push({ at:Date.now(), ...m }); p.updatedAt = Date.now(); save(); }
+function aiSay(p, m, delay = 450){
+  ctx.typing = true; if (chatPaper()?.id === p.id) renderChat(p);
+  setTimeout(() => { ctx.typing = false; pushMsg(p, { role:'ai', ...m }); if (chatPaper()?.id === p.id) renderChat(p); }, delay);
+}
+
+function handleAsk(p, q){
+  pushMsg(p, { role:'user', kind:'text', text:q }); renderChat(p);
+  const list = stdList(typeOf(p)), s = q.toLowerCase();
+  const num = s.match(/#\s*(\d{1,3})\b/) || s.match(/\b(?:standard|no\.?)\s*(\d{1,3})\b/) || s.match(/^\s*(\d{1,3})\s*$/);
+  if (/sample paper/.test(s)) return addPdfs(p, [{ name:`${p.title} — Solution Lab paper v0.9.pdf`, size:2.4e6, type:'application/pdf', mock:true }]);
+  if (num) {
+    const std = list.find(x => x.n === +num[1]);
+    if (!std) return aiSay(p, { kind:'text', html:`There’s no standard #${esc(num[1])} — this paper type has ${list.length}.` });
+    if (!p.check?.results) return aiSay(p, { kind:'text', html:'Upload your paper PDF first, then I can compare that standard.' });
+    return aiSay(p, { kind:'compare', std:std.id });
+  }
+  if (/fix|gap|ready|missing|wrong|block/.test(s)) return aiSay(p, { kind:'gaps' });
+  if (/polic|sample|template|guide|reference|link/.test(s)) return aiSay(p, { kind:'refs' });
+  if (/summar|overview|status/.test(s)) return aiSay(p, { kind:'summary' });
+  if (/check|scan|compare|run/.test(s)) {
+    if (!p.check?.docs?.length) return aiSay(p, { kind:'text', html:'Attach your paper PDF (📎) first, or <button class="linkish" data-action="ask" data-q="Try with a sample paper PDF">try a sample paper</button>.' });
+    return runCheck(p);
+  }
+  aiSay(p, { kind:'text', html:'I’m a prototype, so I understand a few things: a standard number (<i>“#4”</i>), <i>“what do I need to fix?”</i>, <i>“which policies apply?”</i> and <i>“summarise my paper”</i>.' });
+}
+
+async function addPdfs(p, files){
+  if (ctx.running) return toast('A check is already running');
+  const list = [...files];
+  const pdfs = list.filter(f => /\.pdf$/i.test(f.name) || f.type === 'application/pdf');
+  const skipped = list.filter(f => !pdfs.includes(f));
+  if (!pdfs.length) return aiSay(p, { kind:'text', html:`Only PDF files are supported — skipped ${skipped.map(f => esc(f.name)).join(', ')}.` });
+  pushMsg(p, { role:'user', kind:'files', files:pdfs.map(f => ({ name:f.name, size:f.size })) });
+  if (skipped.length) pushMsg(p, { role:'ai', kind:'text', html:`Skipped (not PDF): ${skipped.map(f => esc(f.name)).join(', ')}` });
+  p.check = { docs:[], results:null, kept:{}, ranAt:null };
+  ctx.running = { step:0, id:p.id }; renderChat(p);
+  let imgs = [];
+  for (const f of pdfs) {
+    const out = f.mock ? null : await renderPdf(f);
+    p.check.docs.push({ name:f.name, size:f.size, pages:out?.pages || 12 + hashStr(f.name) % 6 });
+    imgs = out && imgs ? imgs.concat(out.imgs) : null;   // only use real images if every file rendered
+  }
+  if (imgs?.length) PAGE_IMGS[p.id] = imgs; else delete PAGE_IMGS[p.id];
+  save();
+  runCheck(p, true);
+}
+
+function runCheck(p, continuing){
+  if (ctx.running && !continuing) return;
+  ctx.running = { step:0, id:p.id }; ctx.allFindings = false;
+  if (chatPaper()?.id === p.id) renderChat(p);
+  const tick = () => {
+    ctx.running.step++;
+    if (ctx.running.step < 4) { if (chatPaper()?.id === p.id) renderChat(p); return setTimeout(tick, 500); }
+    ctx.running = null;
+    p.check.results = runEngine(p); p.check.ranAt = Date.now(); p.check.kept = {};
+    const c = checkCounts(p);
+    pushMsg(p, { role:'ai', kind:'report', snap:`${c.comply} comply · ${c.partial} partial · ${c.gap} don’t comply · ${c.none} not found` });
+    refreshPaper(p);
+  };
+  setTimeout(tick, 500);
+}
+
+/* ============================================================
+   Rendering & routing
+   ============================================================ */
+function measure(){
+  const r = document.documentElement.style;
+  r.setProperty('--tb', $('.topbar').offsetHeight + 'px');
+  const sb = $('#secbar'); if (sb) r.setProperty('--sb', sb.offsetHeight + 'px');
+}
+const currentType = () => ctx.view === 'type' ? findType(ctx.id) : ctx.view === 'paper' ? typeOf(findPaper(ctx.id)) : null;
+
+function render(){
+  const hash = location.hash || '#/';
+  const parts = hash.slice(1).split('/').filter(Boolean);
+  const same = hash === ctx.lastHash, y = window.scrollY;
+  ctx.lastHash = hash;
+  let html;
+  if (parts[0] === 'p' && findPaper(parts[1])) {
+    if (ctx.id !== parts[1]) { ctx.keep = new Set(); ctx.filter = 'all'; ctx.collapsed = new Set(); }
+    ctx.view = 'paper'; ctx.id = parts[1]; html = viewPaper(findPaper(parts[1]));
+  } else if (parts[0] === 'admin' && parts[1] && findType(parts[1])) {
+    if (!findType(parts[1]).sections.some(s => s.id === ctx.addTo)) ctx.addTo = null;
+    ctx.view = 'type'; ctx.id = parts[1]; html = viewType(findType(parts[1]));
+  } else if (parts[0] === 'admin') { ctx.view = 'types'; ctx.id = null; html = viewTypes(); }
+  else { ctx.view = 'home'; ctx.id = null; html = viewHome(); }
+  const mode = ctx.view === 'type' || ctx.view === 'types' ? 'admin' : 'architect';
+  if (state.mode !== mode) { state.mode = mode; save(); }
+  $('#brand').href = mode === 'admin' ? '#/admin' : '#/';
+  $$('.modes button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === mode)));
+  $('#view').innerHTML = html;
+  measure(); window.scrollTo(0, same ? y : 0);
+  updateChatShell();
+}
+/* Refresh the paper page in place (keeps focus and scroll) */
+function refreshPaper(p, onlySection){
+  p.updatedAt = Date.now(); save();
+  if (chatPaper()?.id !== p.id) return;
+  const t = typeOf(p);
+  if (onlySection) { const i = t.sections.findIndex(x => x.id === onlySection); $(`#sec-${onlySection}`).outerHTML = renderSection(p, t, t.sections[i], i); }
+  else $('#form').innerHTML = renderForm(p);
+  refreshPaperChrome(p);
+}
+function refreshPaperChrome(p){
+  $('#secbar').innerHTML = renderSecbar(p);
+  $('#aside').innerHTML = renderAside(p);
+  $('#headpill').innerHTML = readyPill(readiness(p));
+  measure(); updateChatShell();
+}
+function go(hash){ if (location.hash === hash) render(); else location.hash = hash; }
+function gotoStd(p, id){
+  const s = stdList(typeOf(p)).find(x => x.id === id); if (!s) return;
+  let changed = ctx.collapsed.delete(s.sec.id);
+  if (ctx.filter !== 'all' && !ctx.keep.has(id)) { ctx.keep.add(id); changed = true; }
+  if (changed) refreshPaper(p);
+  if (ctx.chatOpen && matchMedia('(max-width:1099px)').matches) { ctx.chatOpen = false; updateChatShell(); }
+  requestAnimationFrame(() => { const row = $(`#std-${id}`); if (!row) return;
+    row.scrollIntoView({ behavior:'smooth', block:'center' }); row.classList.remove('flash'); void row.offsetWidth; row.classList.add('flash'); });
+}
+
+/* ============================================================
+   Actions
+   ============================================================ */
+const P = () => findPaper(ctx.id);
+const T = () => findType(ctx.id);
+function findStd(t, id){ for (const sec of t.sections) { const i = sec.standards.findIndex(s => s.id === id); if (i >= 0) return { sec, i, s:sec.standards[i] }; } }
+/* Admin edits save straight away; destructive ones offer Undo */
+function adminChange(undoMsg, mutate){
+  const t = T(), before = clone(t);
+  mutate(t); save(); render();
+  if (undoMsg) toast(undoMsg, () => { Object.assign(t, before); save(); render(); toast('Restored'); });
+}
+function commitNewStd(keepOpen){
+  const ta = $('.stdnew'); if (!ta) return;
+  const v = ta.value.trim(), t = T();
+  if (v) t.sections.find(s => s.id === ta.dataset.sec).standards.push({ id:rid('s'), text:v, mandatory:false, refs:[] });
+  if (!keepOpen) ctx.addTo = null;
+  save(); render(); if (keepOpen) $('.stdnew')?.focus();
+}
+function applyAnswer(p, id){
+  const r = p.check.results[id], ref = typeOf(p).references.find(x => x.id === r.ref);
+  const cite = `[Paper p.${r.page}${ref ? ` vs ${ref.title}` : ''}]`;
+  p.answers[id] = { v:aiAnswer(r), r:r.verdict === 'comply' ? cite : `${r.text} ${cite}` };
+}
+
+const actions = {
+  mode(el){ ctx.chatOpen = false; go(el.dataset.mode === 'admin' ? '#/admin' : '#/'); },
+  mclose: closeModal,
+  /* architect */
+  newpaper: newPaperModal,
+  createpaper(){
+    const title = $('#nptitle').value.trim();
+    if (!title) { $('#nptitle').focus(); return toast('Give your paper a title'); }
+    const p = { id:rid('p-'), title, vendor:'', typeId:$('input[name=nptype]:checked').value, answers:{}, check:null, chat:[], updatedAt:Date.now() };
+    state.papers.push(p); save(); closeModal(); go(`#/p/${p.id}`);
+  },
+  openpaper: el => go(`#/p/${el.dataset.id}`),
+  delpaper(){ const p = P(); if (!confirm(`Delete “${p.title}”?`)) return; state.papers = state.papers.filter(x => x !== p); save(); go('#/'); toast('Paper deleted'); },
+  answer(el){
+    const p = P(), id = el.dataset.std, a = p.answers[id] || { v:null, r:'' };
+    a.v = a.v === el.dataset.v ? null : el.dataset.v;   // click again to clear
+    p.answers[id] = a; ctx.keep.add(id);
+    refreshPaper(p, findStd(typeOf(p), id).sec.id);
+    if (needsRemark(a)) $(`[data-remark="${id}"]`)?.focus();
+  },
+  jump(el){
+    if (ctx.collapsed.delete(el.dataset.sec)) refreshPaper(P());
+    $(`#sec-${el.dataset.sec}`)?.scrollIntoView({ behavior:'smooth', block:'start' });
+  },
+  toggle(el){
+    const id = el.dataset.sec; ctx.collapsed.has(id) ? ctx.collapsed.delete(id) : ctx.collapsed.add(id);
+    $(`#sec-${id}`).classList.toggle('collapsed', ctx.collapsed.has(id));
+    $(`#sec-${id} .chev`).setAttribute('aria-expanded', String(!ctx.collapsed.has(id)));
+  },
+  filter(el){ ctx.filter = el.dataset.f; ctx.keep = new Set(); ctx.collapsed = new Set(); refreshPaper(P()); },
+  openref(el){ const t = currentType(); refModal(t, t.references.find(r => r.id === el.dataset.ref)); },
+  gotostd(el){ closeModal(); gotoStd(P(), el.dataset.std); },
+  compare(el){ const p = P(); compareModal(p, stdList(typeOf(p)).find(s => s.id === el.dataset.std)); },
+  apply(el){ const p = P(); applyAnswer(p, el.dataset.std); ctx.keep.add(el.dataset.std); closeModal(); refreshPaper(p); toast('Answer updated from the AI check'); },
+  keep(el){ const p = P(); p.check.kept[el.dataset.std] = true; refreshPaper(p); toast('Kept your answer'); },
+  fillfromai(){ const p = P(); let k = 0;
+    stdList(typeOf(p)).forEach(s => { if (!p.answers[s.id]?.v) { applyAnswer(p, s.id); ctx.keep.add(s.id); k++; } });
+    refreshPaper(p); toast(`Filled ${k} standard(s) — please review them`); },
+  /* chat */
+  chatopen(){ ctx.chatOpen = true; updateChatShell(); setTimeout(() => $('#chatin')?.focus(), 220); },
+  chatclose(){ ctx.chatOpen = false; updateChatShell(); },
+  attach(){ $('#pdfs').click(); },
+  ask(el){ const p = P(); ctx.chatOpen = true; updateChatShell(); handleAsk(p, el.dataset.q); },
+  recheck(){ runCheck(P()); },
+  morefindings(){ ctx.allFindings = !ctx.allFindings; renderChat(P()); },
+  /* admin */
+  opentype: el => go(`#/admin/${el.dataset.id}`),
+  newtype: newTypeModal,
+  createtype(){
+    const name = $('#ntname').value.trim();
+    if (!name) { $('#ntname').focus(); return toast('Name the paper type'); }
+    const from = findType($('input[name=ntfrom]:checked')?.value);
+    const t = from ? { ...clone(from), id:rid('t-'), name, description:$('#ntdesc').value.trim() }
+      : { id:rid('t-'), name, description:$('#ntdesc').value.trim(), references:[], sections:[{ id:rid('sec'), title:'General', standards:[] }] };
+    if (!from) ctx.addTo = t.sections[0].id;
+    state.types.push(t); save(); closeModal(); go(`#/admin/${t.id}`);
+    if (!from) setTimeout(() => $('.stdnew')?.focus(), 30);
+  },
+  deltype(){ const t = T(); if (!confirm(`Delete paper type “${t.name}”?`)) return; state.types = state.types.filter(x => x !== t); save(); go('#/admin'); toast('Paper type deleted'); },
+  secadd(){
+    adminChange(null, t => { const s = { id:rid('sec'), title:'New section', standards:[] }; t.sections.push(s); ctx.addTo = s.id; });
+    const i = $(`[data-sectitle="${ctx.addTo}"]`); i?.focus(); i?.select();
+  },
+  secmove(el){ adminChange(null, t => { const a = t.sections, i = a.findIndex(s => s.id === el.dataset.sec), j = i + +el.dataset.d; [a[i], a[j]] = [a[j], a[i]]; }); },
+  secdel(el){ const sec = T().sections.find(s => s.id === el.dataset.sec);
+    adminChange(`Section “${sec.title}” deleted`, t => { t.sections = t.sections.filter(s => s.id !== sec.id); }); },
+  stdaddopen(el){ ctx.addTo = el.dataset.sec; render(); $('.stdnew')?.focus(); },
+  stdaddclose(){ commitNewStd(false); },
+  stdedit(el){ const t = T(); stdModal(t, findStd(t, el.dataset.std).s); },
+  stdsave(el){
+    const text = $('#stext').value.trim();
+    if (!text) { $('#stext').focus(); return toast('A standard can’t be empty'); }
+    const data = { text, mandatory:$('#smand').checked, refs:$$('[name=sref]:checked').map(i => i.value) };
+    closeModal(); adminChange(null, t => Object.assign(findStd(t, el.dataset.std).s, data)); toast('Standard saved');
+  },
+  stdmove(el){ adminChange(null, t => { const { sec, i } = findStd(t, el.dataset.std), a = sec.standards, j = i + +el.dataset.d; [a[i], a[j]] = [a[j], a[i]]; }); },
+  stddel(el){ adminChange('Standard deleted', t => { const { sec, s } = findStd(t, el.dataset.std); sec.standards = sec.standards.filter(x => x !== s); }); },
+  mandatory(el){ adminChange(null, t => { const { s } = findStd(t, el.dataset.std); s.mandatory = !s.mandatory; }); },
+  refedit(el){ refEditModal(T().references.find(r => r.id === el.dataset.ref)); },
+  refsave(el){
+    const title = $('#rtitle').value.trim(), url = $('#rurl').value.trim();
+    const existing = T().references.find(r => r.id === el.dataset.ref);
+    if (!title) { $('#rtitle').focus(); return toast('Add a title'); }
+    if (!url && !existing) { $('#rurl').focus(); return toast('Add the link to the document'); }
+    if (url && !/^https?:\/\//i.test(url)) { $('#rurl').focus(); return toast('The link must start with http:// or https://'); }
+    const data = { type:$('#rtype').value, title, note:$('#rnote').value.trim(), ...(url ? { url } : {}) };
+    closeModal();
+    adminChange(null, t => { const r = t.references.find(x => x.id === el.dataset.ref); r ? Object.assign(r, data) : t.references.push({ id:rid('r-'), ...data }); });
+    toast('Reference saved');
+  },
+  refdel(el){ const r = T().references.find(x => x.id === el.dataset.ref);
+    adminChange(`Reference “${r.title}” deleted`, t => {
+      t.references = t.references.filter(x => x.id !== r.id);
+      t.sections.forEach(sec => sec.standards.forEach(s => s.refs = s.refs.filter(id => id !== r.id)));
+    }); },
+};
+
+/* ============================================================
+   Events
+   ============================================================ */
+document.addEventListener('click', e => {
+  if (e.target.id === 'modal') return closeModal();
+  const el = e.target.closest('[data-action]');
+  if (el && !el.disabled && actions[el.dataset.action]) actions[el.dataset.action](el);
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (ctx.view === 'paper') {
+    const p = P();
+    if (t.dataset.pfield) { p[t.dataset.pfield] = t.value; p.updatedAt = Date.now(); save(); updateChatShell(); }
+    else if (t.dataset.remark) {
+      const a = p.answers[t.dataset.remark] ||= { v:null, r:'' };
+      a.r = t.value; ctx.keep.add(t.dataset.remark);
+      t.closest('.std').classList.toggle('need', needsRemark(a));
+      p.updatedAt = Date.now(); save(); refreshPaperChrome(p);
+    }
+  } else if (ctx.view === 'type') {
+    const ty = T();
+    if (t.dataset.tfield) { ty[t.dataset.tfield] = t.value; save(); }
+    else if (t.dataset.sectitle) { ty.sections.find(s => s.id === t.dataset.sectitle).title = t.value; save(); }
+  }
+});
+document.addEventListener('change', e => {
+  if (e.target.id === 'pdfs') { addPdfs(P(), e.target.files); e.target.value = ''; }
+});
+document.addEventListener('keydown', e => {
+  const t = e.target;
+  if (t.classList?.contains('stdnew')) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commitNewStd(true); }
+    if (e.key === 'Escape') { e.preventDefault(); commitNewStd(false); }
+    return;
+  }
+  if (e.key === 'Escape') { if (!$('#modal').hidden) closeModal(); else if (ctx.chatOpen) actions.chatclose(); }
+});
+$('#composer').addEventListener('submit', e => {
+  e.preventDefault();
+  const q = $('#chatin').value.trim(); if (!q) return;
+  $('#chatin').value = ''; $('#chatin').style.height = '';
+  handleAsk(P(), q);
+});
+$('#chatin').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('#composer').requestSubmit(); } });
+$('#chatin').addEventListener('input', e => { e.target.style.height = ''; e.target.style.height = Math.min(120, e.target.scrollHeight) + 'px'; });
+['dragenter','dragover'].forEach(ev => $('#chat').addEventListener(ev, e => { e.preventDefault(); $('#chat').classList.add('over'); }));
+['dragleave','drop'].forEach(ev => $('#chat').addEventListener(ev, e => {
+  e.preventDefault();
+  if (ev === 'dragleave' && $('#chat').contains(e.relatedTarget)) return;
+  $('#chat').classList.remove('over');
+  if (ev === 'drop' && e.dataTransfer.files.length) addPdfs(P(), e.dataTransfer.files);
+}));
+$('#themeBtn').addEventListener('click', () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem('tacs.theme', next); } catch {}
+});
+try { const th = localStorage.getItem('tacs.theme'); if (th) document.documentElement.dataset.theme = th; } catch {}
+
+state = load();
+window.addEventListener('hashchange', render);
+window.addEventListener('resize', measure);
+if (state.mode === 'admin' && !location.hash.startsWith('#/admin')) location.hash = '#/admin';
+else render();
+</script>
+</body>
+</html>
