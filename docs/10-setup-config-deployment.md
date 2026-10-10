@@ -80,10 +80,12 @@ exactly which variable is wrong. No other file reads `process.env`.
 | `ENTRA_CLIENT_ID` | yes | GUID | |
 | `ENTRA_CLIENT_SECRET` | yes* | — | *or `ENTRA_CERT_THUMBPRINT` + `ENTRA_CERT_PRIVATE_KEY_PATH` in production |
 | `ENTRA_REDIRECT_URI` | yes | `http://localhost:3000/auth/callback` | |
-| `ROLE_ADMIN` / `ROLE_ARCHITECT` | no | `Admin` / `Architect` | App role values |
 | `ACCESS_REQUEST_TEXT` | no | "Ask the Architecture Office to add you…" | Shown on the 403 page |
-| `AWS_REGION` | yes | `ap-southeast-1` | |
-| `S3_BUCKET` | yes | `psc-local` | |
+| `ADMIN_BOOTSTRAP_USERNAME` / `ADMIN_BOOTSTRAP_PASSWORD` | no | — | Creates the first local administrator at startup when none exists (D-27). Temporary: must be changed at first sign-in. Remove after use. |
+| `COOKIE_SECURE` | no | `true` | Session cookie `Secure` flag. Keep `true` (Chrome / Edge accept it on `http://localhost`); set `false` only for local browsers that refuse it (D-29). |
+| `TRUST_PROXY` | no | *(empty)* | Number of proxies in front of the app (e.g. `1` behind the ALB), so `req.ip` and HTTPS detection work (D-29). |
+| `AWS_REGION` | yes (from M2) | `ap-southeast-1` | |
+| `S3_BUCKET` | yes (from M2) | `psc-local` | |
 | `S3_ENDPOINT` | local only | `http://localhost:9000` | Points the SDK at MinIO |
 | `S3_FORCE_PATH_STYLE` | local only | `true` | Needed for MinIO |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | local only | `minio` / `minio12345` | In AWS, use the task / instance IAM role instead |

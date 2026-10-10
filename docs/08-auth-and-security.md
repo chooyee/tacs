@@ -8,16 +8,16 @@
 |---------|-------|
 | Platform | Web |
 | Redirect URI | `https://<host>/auth/callback` (dev: `http://localhost:3000/auth/callback`) |
-| Front-channel logout URL | `https://<host>/auth/logged-out` |
+| Front-channel logout URL | *(none — dropped, D-29)* |
 | Client credential | Client secret (dev / test) or **certificate** (production, preferred) |
-| ID token claims | `oid`, `name`, `preferred_username`, `email`, `roles` |
-| **App roles** | `Admin` ("Manages paper types and standards"), `Architect` ("Prepares and checks papers") — both allowed for *Users/Groups* |
-| Assignment | *Enterprise application → Users and groups*: assign AD groups to the roles. Turn on **Assignment required**, so only assigned people can sign in. |
+| ID token claims | `oid`, `name`, `preferred_username`, `email` |
+| App roles | **Not used** (D-26). Roles are managed in the app on the Users page. |
+| Assignment | *Enterprise application → Users and groups*: assign the AD groups allowed to use the app. Turn on **Assignment required**, so only assigned people can sign in. |
 | API permissions | `openid`, `profile`, `email` (delegated). No Graph calls needed. |
 
-> We use **App Roles**, not group claims. With App Roles the token contains
-> just `["Admin"]` instead of a long list of group GUIDs, which avoids the
-> "groups overage" problem.
+> Roles live in the app database (D-26): everyone who signs in is an
+> **Architect**; an Admin promotes people on `/admin/users`. The very first
+> Admin is a **local administrator** (D-27, §1.4).
 
 ### 1.2 Flow (authorization code + PKCE, using `@azure/msal-node`)
 
@@ -38,7 +38,7 @@ sequenceDiagram
   A->>A: check state
   A->>E: acquireTokenByCode(code, verifier)
   E-->>A: ID token (validated by MSAL: signature, issuer, audience, nonce, expiry)
-  A->>A: upsert users row; session.user = {id, oid, name, email, roles}
+  A->>A: check nonce; upsert users row (new users: role architect); session.user = {kind:'entra', id}
   A->>A: regenerate session ID (prevents session fixation)
   A-->>B: 302 returnTo (only relative paths allowed)
 ```
@@ -47,15 +47,43 @@ Rules:
 
 1. **Validate `returnTo`**: accept only paths that start with `/` and not `//`
    (prevents open redirects).
-2. Keep only what we need in the session: `user.id`, `oid`, `name`, `email`,
-   `roles`. **Do not** store access or refresh tokens — we don't call other APIs.
+2. Keep only what we need in the session: `{ kind, id }` (plus
+   `passwordChangedAt` for local admins). **Do not** store access or refresh
+   tokens — we don't call other APIs.
 3. Session lifetime: 8 hours absolute, 60 minutes idle (rolling). After
    expiry, page requests redirect to sign-in and API requests return 401 (the
    front end shows "Sign in again").
-4. Roles are refreshed at every sign-in. Role changes in Entra take effect at
-   the next sign-in (≤ 8 h). Tell admins this in the runbook.
-5. Logout: destroy the session, clear the cookie, redirect to
+4. `requireAuth` re-reads the user (name, email, role, status) from the
+   database on **every request** and builds `req.user`, so role changes and
+   *Disabled* apply immediately (D-26, D-28).
+5. Logout (`POST /auth/logout`): destroy the session, clear the cookie, redirect to
    `https://login.microsoftonline.com/<tenant>/oauth2/v2.0/logout?post_logout_redirect_uri=<host>/auth/logged-out`.
+   `/auth/logged-out` is a plain "You're signed out" page.
+
+### 1.4 Local administrators (D-27)
+
+- Table `local_admins` (05 · §3.1a). Passwords hashed with **scrypt** and a
+  random salt (`src/utils/password.js`), compared in constant time.
+- First account: `ADMIN_BOOTSTRAP_USERNAME` + `ADMIN_BOOTSTRAP_PASSWORD` at
+  startup when no local admin exists (the password is temporary and must be
+  changed at first sign-in), or `npm run admin -- create <username>`, which
+  prints a temporary password on the terminal (never in the logs).
+  `npm run admin -- reset <username>` / `list` for recovery.
+- Sign-in at `/auth/local` (form with CSRF token). 5 wrong passwords lock the
+  account for 15 minutes; unknown usernames take the same time as known ones.
+  Success regenerates the session ID.
+- A session stores `passwordChangedAt`; a password reset therefore signs out
+  all existing sessions of that account.
+- Local admins have only the **Admin** role: admin areas, no papers.
+
+`req.user` shape (built by `requireAuth`):
+
+| Field | Entra user | Local admin |
+|-------|-----------|-------------|
+| `kind` | `'entra'` | `'local'` |
+| `id` | `users.id` | `local_admins.id` |
+| `name`, `email` | from `users` | username, `null` |
+| `roles` | `['Architect']` or `['Architect','Admin']` | `['Admin']` |
 
 ### 1.3 Middleware
 
@@ -84,8 +112,10 @@ const requireRole = (...roles) => (req, res, next) =>
 module.exports = { requireRole };
 ```
 
-Architect pages and APIs use `requireRole('Architect', 'Admin')` (admins can
-also prepare papers). Admin areas use `requireRole('Admin')`.
+Architect pages and APIs use `requireRole('Architect')` — Entra admins also
+have the `Architect` role, local admins do not (they cannot own papers).
+Admin areas use `requireRole('Admin')`. A *Disabled* user is stopped earlier,
+in `requireAuth`, with the 403 "Access not granted" page (`ACCESS_NOT_GRANTED`).
 
 ## 2. Authorisation (who may touch what)
 

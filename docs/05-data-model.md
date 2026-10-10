@@ -46,11 +46,27 @@ erDiagram
 | entra_oid | text unique not null | Entra object ID (`oid` claim). **Never** use email as the key. |
 | email | text | `preferred_username` / `email` claim. |
 | display_name | text | |
+| role | text not null default `'architect'` | in (`architect`,`admin`). Set by admins (D-26), never from the token. |
+| status | text not null default `'active'` | in (`active`,`disabled`) (D-28). |
 | last_login_at | timestamptz | |
-| created_at | timestamptz | |
+| created_at, updated_at | timestamptz | |
 
-Roles are **not stored**. They are read from the token at sign-in and kept
-in the session, so Entra stays the single source of truth.
+Roles are stored here (D-26) and re-read on every request, so a change by an
+admin applies immediately.
+
+### 3.1a `local_admins` (D-27)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| username | text unique not null | 3–40 lowercase letters, digits, `.`, `-`, `_`. |
+| password_hash | text not null | `scrypt$N$r$p$salt$hash` (`utils/password.js`). |
+| must_change_password | boolean not null default true | Temporary passwords must be changed at first sign-in. |
+| password_changed_at | timestamptz not null | A reset signs out existing sessions (compared with the session). |
+| failed_attempts | integer not null default 0 | Reset on success. |
+| locked_until | timestamptz | Set after 5 failures (15 min). |
+| created_by | text | `bootstrap`, `cli` or a username. |
+| last_login_at, created_at | timestamptz | |
 
 ### 3.2 `paper_types`
 
@@ -206,8 +222,9 @@ Partial unique index: one active check per paper —
 | Column | Type | Notes |
 |--------|------|-------|
 | id | bigserial PK | |
-| user_id | uuid FK → users | |
-| action | text | e.g. `standard.update`, `reference.delete` |
+| user_id | uuid FK → users | Nullable: set when an Entra admin acted. |
+| local_admin_id | uuid FK → local_admins | Nullable: set when a local admin acted. Exactly one of the two is set (check constraint). |
+| action | text | e.g. `standard.update`, `reference.delete`, `user.update` |
 | entity_type, entity_id | text, uuid | |
 | before, after | jsonb | |
 | created_at | timestamptz | |

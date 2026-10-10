@@ -22,10 +22,14 @@ There are two kinds of routes:
 
 | Method | Path | Role | Controller | View |
 |--------|------|------|-----------|------|
-| GET | `/` | any | redirect → `/papers` (or `/admin/types` if the session's last mode was admin) | — |
+| GET | `/` | any | redirect → `/papers` (local admins → `/admin/users`; from M2: `/admin/types` if the session's last mode was admin) | — |
 | GET | `/auth/login` | public | `auth.login` (redirect to Entra) | — |
 | GET | `/auth/callback` | public | `auth.callback` | — |
 | POST | `/auth/logout` | signed in | `auth.logout` | — |
+| GET | `/auth/logged-out` | public | `auth.loggedOut` | `pages/auth/loggedOut` |
+| GET, POST | `/auth/local` | public | `auth.localForm`, `auth.localLogin` (D-27) | `pages/auth/local` |
+| GET, POST | `/auth/local/password` | local admin who must change the password | `auth.passwordForm`, `auth.changePassword` | `pages/auth/password` |
+| GET | `/admin/users` | Admin | `admin/user.index` (FR-ACC-09) | `pages/admin/users` |
 | GET | `/papers` | Architect | `paper.index` (`?tab=all&q=&typeId=&page=` for All papers) | `pages/papers/index` |
 | GET | `/papers/:paperId` | Architect (anyone; read-only unless owner) | `paper.show` | `pages/papers/show` |
 | GET | `/admin/types` | Admin | `admin/paperType.index` | `pages/admin/types` |
@@ -106,6 +110,12 @@ available (FR-RDY-05). It is never a gap.
 | GET | `/files/references/:referenceId` | Any signed-in user | Same headers, with the reference's MIME type. |
 
 ## 4. Admin API (role `Admin`)
+
+### Users (FR-ACC-09)
+
+| Method | Path | Body | Notes |
+|--------|------|------|-------|
+| PATCH | `/api/admin/users/:userId` | `{ role?: 'architect'\|'admin', status?: 'active'\|'disabled' }` | Returns the updated user. 409 `CANNOT_CHANGE_SELF` for your own account. Audit-logged as `user.update`. |
 
 ### Paper types
 

@@ -20,8 +20,8 @@ Record agreed changes in `docs/13` (new D-xx) and update the affected doc.
 
 ## Stack (fixed)
 Node 22 · Express · EJS · vanilla JS (ES modules in `public/js`, no bundler) · Basecoat UI + Tailwind CLI ·
-PostgreSQL via `pg` (plain SQL, no ORM) · AWS S3 (MinIO locally) · `@azure/msal-node` (Entra OIDC, App Roles
-`Admin`/`Architect`) · AI via official SDKs only (`@google/genai` local, Bedrock in UAT/prod) — **no LangChain or
+PostgreSQL via `pg` (plain SQL, no ORM) · AWS S3 (MinIO locally) · `@azure/msal-node` (Entra OIDC; roles
+`architect`/`admin` stored in the app + local admins, D-26/D-27) · AI via official SDKs only (`@google/genai` local, Bedrock in UAT/prod) — **no LangChain or
 other AI frameworks** · prompts as Markdown in `src/ai/prompts/` · `pino` · `zod` · `node:test` + `supertest`.
 
 ## Code rules

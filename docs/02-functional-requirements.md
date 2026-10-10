@@ -21,13 +21,15 @@ Contents:
 
 | ID | Priority | Requirement |
 |----|----------|-------------|
-| FR-ACC-01 | MUST | Every page except `/auth/*` and `/health` requires sign-in with Microsoft Entra ID (OIDC). Unauthenticated users are redirected to sign in, then returned to the page they asked for. |
-| FR-ACC-02 | MUST | Roles come from Entra **App Roles** in the ID token (`roles` claim): `Architect` and/or `Admin`. |
-| FR-ACC-03 | MUST | Users with neither role see a friendly **403 "Access not granted"** page explaining how to request access (text configurable). |
+| FR-ACC-01 | MUST | Every page except `/auth/*` and `/health` requires sign-in with Microsoft Entra ID (OIDC) — or, for local administrators, the local sign-in (FR-ACC-10). Unauthenticated users are redirected to sign in, then returned to the page they asked for. |
+| FR-ACC-02 | MUST | Roles are stored in the app (`users.role`, D-26): every Entra user is an **Architect** from their first sign-in; an Admin can make them an **Admin**. An Admin can also prepare papers. Role changes apply on the user's next request. |
+| FR-ACC-03 | MUST | **Disabled** users (D-28) see a friendly **403 "Access not granted"** page explaining how to request access (text configurable). |
 | FR-ACC-04 | MUST | `/admin/**` pages and `/api/admin/**` endpoints require the `Admin` role. |
-| FR-ACC-05 | MUST | The top-bar **mode switch** (Solution Architect / Admin) is shown only to users with the `Admin` role. The active mode follows the URL (`/admin…` = Admin mode). |
-| FR-ACC-06 | MUST | On first sign-in, a `users` row is created from the token (object ID `oid`, name, email). Later sign-ins update name, email and `last_login_at`. |
-| FR-ACC-07 | MUST | **Sign out** ends the app session and redirects to Entra's logout endpoint. |
+| FR-ACC-05 | MUST | The top-bar **mode switch** (Solution Architect / Admin) is shown only to Entra users with the `Admin` role (local administrators only have Admin mode). The active mode follows the URL (`/admin…` = Admin mode). |
+| FR-ACC-06 | MUST | On first sign-in, a `users` row is created from the token (object ID `oid`, name, email) with role `architect`. Later sign-ins update name, email and `last_login_at` (never the role). |
+| FR-ACC-07 | MUST | **Sign out** ends the app session and redirects to Entra's logout endpoint (local administrators go to the signed-out page). |
+| FR-ACC-09 | MUST | **Users** admin page (`/admin/users`): lists every user who has signed in (name, email, role, status, last sign-in). An Admin can change another user's role (Architect / Admin) and status (Active / Disabled); not their own. Every change is written to the admin audit log. |
+| FR-ACC-10 | MUST | **Local administrators** (D-27) sign in at `/auth/local` with username + password. Wrong passwords: 5 attempts, then the account is locked for 15 minutes. A temporary password must be changed at first sign-in (min. 12 characters, not the username). |
 | FR-ACC-08 | MUST | **Every signed-in user** (role `Architect` or `Admin`) can **view** every non-deleted paper, read-only. Only the **owner** can change it (title, answers, uploads, AI actions, chat, delete). A change attempted by a non-owner returns **403** and is logged at `warn`. |
 
 **Acceptance (FR-ACC-08):** *Given* user A owns paper P, *when* user B opens
