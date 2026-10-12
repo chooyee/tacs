@@ -18,6 +18,19 @@ const TOOLBARS = {
   ],
 };
 
+const PICKER_NAMES = { 2: 'Heading 2', 3: 'Heading 3', '': 'Normal text' };
+
+/** Quill's heading picker has no accessible names; add them (WCAG 4.1.2, docs/03 §5). */
+function nameToolbar(el) {
+  const toolbar = el.previousElementSibling;
+  if (!toolbar?.classList.contains('ql-toolbar')) return;
+  for (const label of toolbar.querySelectorAll('.ql-picker-label')) label.setAttribute('aria-label', 'Text style');
+  for (const item of toolbar.querySelectorAll('.ql-picker-item')) {
+    item.setAttribute('aria-label', PICKER_NAMES[item.dataset.value ?? ''] ?? 'Text style');
+  }
+  for (const select of toolbar.querySelectorAll('select')) select.setAttribute('aria-hidden', 'true');
+}
+
 /**
  * Turn an empty <div class="rich-editor basic|full" data-html data-placeholder> into an editor.
  * @param {HTMLElement} el
@@ -45,5 +58,6 @@ export function createRichEditor(el) {
     },
   };
   editor.setHtml(el.dataset.html ?? '');
+  nameToolbar(el);
   return editor;
 }

@@ -215,7 +215,10 @@ export function setupChecker(store) {
         const ul = el('ul', 'grid gap-1');
         for (const r of c.references) {
           const li = el('li');
-          li.append(button(`${store.icons[r.type] ?? '📄'} ${r.title}`, 'view-reference', { data: { referenceId: r.id }, variant: 'ghost' }));
+          const b = button(` ${r.title}`, 'view-reference', { data: { referenceId: r.id }, variant: 'ghost' });
+          b.prepend(el('span', '', store.icons[r.type] ?? '📄'));
+          b.firstChild.setAttribute('aria-hidden', 'true'); // decorative (docs/03 §5 rule 9)
+          li.append(b);
           ul.append(li);
         }
         return bubble('assistant', el('b', '', fill(s.refsTitle, { type: ai.paperTypeName })), ul);

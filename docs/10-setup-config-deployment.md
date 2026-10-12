@@ -51,7 +51,8 @@ Postgres only (D-29). Files go to a real AWS dev S3 bucket (D-30): set `AWS_REGI
 | `test` | `node --test tests/` |
 | `test:coverage` | `node --test --experimental-test-coverage tests/` |
 | `lint` / `format` | ESLint / Prettier |
-| `ai:smoke` | Live AI test with fixtures (07 · §10) |
+| `ai:smoke` | Live AI test: `npm run ai:smoke -- --paper=test.pdf [--type=SaaS] [--provider=gemini\|bedrock\|fake]` prints a verdict table; nothing is saved (07 · §10) |
+| `retention:run` | Runs the retention job once, now (FR-RET-01); takes the same lock as the worker |
 
 ## 2. Configuration (environment variables)
 
@@ -148,13 +149,58 @@ flowchart LR
   audit` → build image → deploy to dev automatically → manual approval for uat
   / prod.
 
-## 6. Operational runbook (starter)
+## 6. Operational runbook
+
+Who reads this: whoever runs the app in dev, UAT or production. Logs are JSON on stdout (CloudWatch);
+every request line has a `requestId`, which users also see as "ref xxxxxxxx" in error toasts.
+
+### 6.1 Releasing a version
+
+1. CI is green: `npm run lint`, `npm test`, `npm audit` (no high / critical in production dependencies).
+2. Run the migrations as a one-off task: `npm run db:migrate`. They are additive (expand → migrate →
+   contract), so the running version keeps working.
+3. Deploy the new image; the load balancer waits for `GET /health/ready` (DB + S3) on each task.
+4. After a prompt or model change: `npm run ai:smoke -- --paper=<test paper> --provider=bedrock` in UAT
+   and have the product owner review the verdict table (07 · §10). Never edit a prompt version in place.
+5. Rollback = deploy the previous image. No database restore is needed for additive migrations.
+
+### 6.2 What to watch (alarms)
+
+| Log message / signal | Meaning | Alarm |
+|----------------------|---------|-------|
+| `level=50` (error) rate | Unexpected errors | > 5 per 5 min |
+| `Check failed` | An AI check failed; `code` says why (`AI_TIMEOUT`, `AI_RATE_LIMITED`, `AI_UNAVAILABLE`, `AI_BAD_REQUEST`, `AI_INVALID_RESPONSE`, `CHECK_TIMEOUT`, `FILE_MISSING`) | > 3 per 15 min |
+| `Check timed out and was marked failed` | A check ran longer than `CHECK_TIMEOUT_MS` (an instance died or the AI hung) | any |
+| `Could not claim a check` | The worker cannot reach the database | any |
+| `Retention job finished` | Daily, with counts per category and `errors` | missing for > 26 h, or `errors` > 0 |
+| `Retention: could not delete an item` | One PDF / paper / reference could not be deleted; retried tomorrow | 3 days in a row |
+| ALB 5xx, `/health/ready` failing | DB or S3 unreachable | any |
+| `AI batch done` (`ms`, `inputTokens`, `outputTokens`) | Cost and speed per AI request | dashboard only |
+
+### 6.3 Common situations
 
 | Situation | What to do |
 |-----------|-----------|
-| Users can't sign in | Check Entra app (secret / cert expiry, redirect URI), user assignment, logs for `auth.callback` errors. |
-| User says "no access" | Assign them the `Architect` or `Admin` app role; they must sign out and in again. |
-| Checks stay "running" | Look for `Check failed` / timeouts in logs; check the AI provider status page and quota; stuck jobs auto-fail after `CHECK_TIMEOUT_MS`. |
-| AI quality complaints | Collect the paper + check ID; run `ai:smoke` with that paper; adjust the prompt (new version) — never edit an old one in place. |
-| Switch AI provider | Non-production only: set `AI_PROVIDER` + credentials, redeploy. Production must stay on Bedrock (D-13). Existing results stay. |
-| "My PDF disappeared" | Expected after 7 days (FR-RET). The user uploads it again. |
+| Users can't sign in | Check the Entra app (secret / certificate expiry, redirect URI) and the logs for `auth.callback` errors. Local admins can still sign in at `/auth/local`. |
+| User says "no access" | An admin opens **Admin → Users** and gives them the Architect or Admin role (D-26); it applies on their next request. |
+| Checks stay "running" | The worker fails a check after `CHECK_TIMEOUT_MS` (10 min) and tells the user in the chat. Look for `Check failed` and the AI provider's status page / quota. Users press **Try again**. |
+| "A check is already running" | Only one active check per paper (FR-AI-05). It ends by itself (done, failed, or the timeout above). |
+| Users hit "many checks / messages" (429) | Limits: `RATE_LIMIT_CHECKS_PER_HOUR` (10) per user; 20 chat messages or quick questions per user per 10 minutes. Raise the check limit in config if needed. |
+| AI quality complaints | Collect the paper (test copy) and the check ID; run `ai:smoke` with it; change the prompt as a new version. The check stores provider, model and prompt version (FR-AI-16). |
+| Switch AI provider | Non-production only: set `AI_PROVIDER` + credentials, restart. Production must stay on Bedrock (D-13, enforced at start-up). Existing results stay. |
+| "My PDF disappeared" | Expected 7 days after upload (FR-RET). Results stay; the user uploads again to see pages and re-check. |
+| Disk / memory pressure | Uploads are held in memory (≤ 3 × 20 MB per request), one upload per user at a time per instance. Scale out instead of raising limits. |
+| Retention did not run | It runs once a day at `RETENTION_RUN_AT` on one instance. Run it by hand: `npm run retention:run` (safe any time). |
+| Need to find one request | Ask the user for the "ref" from the error toast and search the logs for that `requestId`. Logs never contain remarks, chat text, prompts or file content (09 · §1.4). |
+
+### 6.4 Performance (measured 2026-10-12, M5)
+
+One instance, local Postgres, the test schema, a paper type with **100 standards** (NFR-PERF-01/02):
+
+| Load | Paper page (100 standards) p95 | Answer save p95 | Home page p95 |
+|------|------|------|------|
+| 50 users, about 1 s between requests | **90 ms** | — | — |
+| 50 users, no pause (stress) | 768 ms (76 pages/s) | **264 ms** | **286 ms** |
+
+Targets are 500 ms (pages) and 300 ms (saves). Under stress one Node process is CPU-bound rendering
+the page (about 270 KB of HTML for 100 standards). Production runs 2+ instances (NFR-REL-02).

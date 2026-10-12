@@ -58,12 +58,13 @@ function compute(input) {
  * Everything about one paper's state: standards (display order), answers, the latest completed check
  * with its results, and the readiness computed from them.
  * @param {{id: string, paperTypeId: string}} paper
+ * @param {{standards?: object[]}} [opts]  the type's standards, when the caller already has them
  * @returns {Promise<{standards: object[], ruleStandards: object[], answers: object, latest: object|null,
  *   resultRows: object[], results: object, kept: object, readiness: object}>}
  */
-async function forPaper(paper) {
+async function forPaper(paper, opts = {}) {
   const [standards, answerRows, latest] = await Promise.all([
-    standardModel.listForType(paper.paperTypeId),
+    opts.standards ?? standardModel.listForType(paper.paperTypeId),
     answerModel.listForPapers([paper.id]),
     checkModel.findLatestDone(paper.id),
   ]);

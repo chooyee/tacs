@@ -9,14 +9,19 @@ const { query, toCamel } = require('../utils/db');
  */
 
 /**
- * A paper's messages, oldest first.
+ * A paper's newest messages (at most `limit`), oldest first.
  * @param {string} paperId
+ * @param {{limit?: number}} [opts]
  * @returns {Promise<Array<{id, role, kind, content, createdAt}>>}
  */
-async function listForPaper(paperId) {
+async function listForPaper(paperId, { limit = 200 } = {}) {
+  // The newest `limit` messages, returned oldest first.
   const { rows } = await query(
-    `select id, role, kind, content, created_at from chat_messages where paper_id = $1 order by created_at, id`,
-    [paperId],
+    `select * from (
+       select id, role, kind, content, created_at from chat_messages where paper_id = $1
+        order by created_at desc, id desc limit $2) newest
+      order by created_at, id`,
+    [paperId, limit],
   );
   return rows.map(toCamel);
 }
@@ -35,7 +40,7 @@ async function insert({ paperId, role, kind, content }) {
 }
 
 /**
- * How many typed messages a user sent since `since`, over all their papers (chat rate limit,
+ * How many typed messages and quick actions a user sent since `since`, over all their papers (chat rate limit,
  * FR-CHAT-05, NFR-SEC-08). Counted in the database so several app instances share the limit.
  * @param {string} ownerId
  * @param {Date} since
@@ -44,7 +49,8 @@ async function insert({ paperId, role, kind, content }) {
 async function countUserMessagesSince(ownerId, since) {
   const { rows } = await query(
     `select count(*)::int as n from chat_messages m join papers p on p.id = m.paper_id
-      where p.owner_id = $1 and m.role = 'user' and m.kind = 'text' and m.created_at > $2`,
+      where p.owner_id = $1 and m.created_at > $2
+        and ((m.role = 'user' and m.kind = 'text') or m.content ? 'quick')`,
     [ownerId, since],
   );
   return rows[0].n;

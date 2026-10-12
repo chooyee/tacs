@@ -199,6 +199,7 @@ async function getPaperPage({ user, paperId }) {
     sections: sectionViews,
     references,
     readiness,
+    state, // for the controller (the AI view is built from it); not passed to the template
     // The small state the page script needs; the controller adds the AI check data (check.service).
     client: {
       paperId: paper.id,

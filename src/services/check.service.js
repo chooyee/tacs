@@ -31,6 +31,8 @@ const {
 } = require('../utils/errors');
 
 const TOTAL_STEPS = 4;
+// Stop starting new AI batches this long before the stuck-check sweep would fail the check.
+const DEADLINE_MARGIN_MS = 60_000;
 const MAX_FILES = 3;
 // Priority when a standard links more references than one request can carry (docs/07 §5).
 const TYPE_PRIORITY = { Sample: 0, Policy: 1, Template: 2, Guide: 3 };
@@ -71,6 +73,30 @@ async function assertCanStart(paperId, user) {
       code: 'RATE_LIMITED',
     });
   }
+}
+
+// Uploads being read right now, per user, on this instance: one at a time keeps memory bounded.
+const uploadsInProgress = new Set();
+
+/**
+ * Checks done BEFORE the upload body is read into memory (owner, running check, rate limit, one
+ * upload per user at a time), so nobody can make the server buffer 60 MB for a request that will be
+ * refused anyway. Returns a function that releases the user's upload slot.
+ * @param {{user: object, paperId: string}} params
+ * @returns {Promise<() => void>}
+ * @throws {NotOwnerError|ConflictError|AppError}
+ */
+async function beforeUpload({ user, paperId }) {
+  await paperService.getOwnedPaperOrThrow(paperId, user);
+  await assertCanStart(paperId, user);
+  if (uploadsInProgress.has(user.id)) {
+    throw new AppError('Your previous upload is still being sent. Wait for it to finish.', {
+      status: 429,
+      code: 'UPLOAD_IN_PROGRESS',
+    });
+  }
+  uploadsInProgress.add(user.id);
+  return () => uploadsInProgress.delete(user.id);
 }
 
 /**
@@ -453,6 +479,9 @@ async function runCheck(claimed, parentLog) {
     for (const section of sections) {
       const own = standards.filter((s) => s.sectionId === section.id);
       for (const batch of batchesFor(own, refById, maxRefs, log)) {
+        if (Date.now() - started > config.checks.timeoutMs - DEADLINE_MARGIN_MS) {
+          throw new AppError('The check ran out of time.', { code: 'CHECK_TIMEOUT' });
+        }
         batchNo += 1;
         for (const id of batch.referenceIds) {
           if (!refBytes.has(id)) refBytes.set(id, await readFile(refById.get(id).s3Key));
@@ -549,6 +578,11 @@ async function runCheck(claimed, parentLog) {
     });
     log.info({ provider: provider.name, model, ms: Date.now() - started, ...usage, ...counts }, 'Check done');
   } catch (err) {
+    if (err.code === 'CHECK_ABANDONED') {
+      // The sweep already failed this check and told the user; drop the late results quietly.
+      log.warn({ ms: Date.now() - started }, 'Check finished after it was marked failed; results dropped');
+      return;
+    }
     const code = FRIENDLY_FAILURES[err.code] ? err.code : 'INTERNAL_ERROR';
     log.error({ err, code, provider: provider.name, ms: Date.now() - started }, 'Check failed');
     await checkModel.fail(claimed.id, { code, message: friendlyFailure(code), provider: provider.name, model: provider.model }).catch((e) =>
@@ -588,6 +622,7 @@ async function getActive(paperId) {
 
 module.exports = {
   TOTAL_STEPS,
+  beforeUpload,
   friendlyFailure,
   uploadAndCheck,
   recheck,

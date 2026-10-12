@@ -20,7 +20,8 @@
     "format": "prettier --write .",
     "seed": "node db/seed/seed.js",
     "test:e2e": "npm run build && node --env-file=tests/test.env --env-file-if-exists=tests/test.local.env --test --test-concurrency=1 \"tests/e2e/**/*.e2e.js\"",
-    "ai:smoke": "node scripts/aiSmoke.js"
+    "ai:smoke": "node scripts/aiSmoke.js",
+    "retention:run": "node scripts/runRetention.js"
   },
   "dependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1149.0",

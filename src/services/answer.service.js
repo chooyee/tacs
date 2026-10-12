@@ -31,10 +31,11 @@ async function writeAnswer({ paper, standardId, value, remark }) {
  * The paper's readiness and one section's status after a change.
  * @param {object} paper
  * @param {string|null} sectionId
+ * @param {object[]} [standards]  the type's standards, when already loaded
  * @returns {Promise<{readiness: object, sectionStatus: object|null}>}
  */
-async function stateAfterChange(paper, sectionId) {
-  const state = await readinessService.forPaper(paper);
+async function stateAfterChange(paper, sectionId, standards) {
+  const state = await readinessService.forPaper(paper, { standards });
   const inSection = state.ruleStandards.filter((s) => s.sectionId === sectionId);
   return {
     readiness: state.readiness,
@@ -60,7 +61,7 @@ async function saveAnswer({ user, paperId, standardId, value, remark, log }) {
   const answer = await writeAnswer({ paper, standardId, value, remark });
   // Never log the remark (docs/09: no user text in logs).
   log.info({ paperId, standardId, value, hasRemark: Boolean(remark.trim()) }, 'Answer saved');
-  return { answer, ...(await stateAfterChange(paper, standard.sectionId)) };
+  return { answer, ...(await stateAfterChange(paper, standard.sectionId, standards)) };
 }
 
 module.exports = { writeAnswer, stateAfterChange, saveAnswer };

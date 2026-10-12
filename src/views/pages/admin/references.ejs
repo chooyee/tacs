@@ -19,7 +19,7 @@
   </label>
   <div class="seg" role="group" aria-label="<%= t.adminType.type %>">
     <button type="button" aria-pressed="true" data-type=""><%= t.library.allTypes %></button>
-    <% for (const type of t.referenceTypes) { %><button type="button" aria-pressed="false" data-type="<%= type %>"><%= t.referenceIcons[type] %> <%= type %></button><% } %>
+    <% for (const type of t.referenceTypes) { %><button type="button" aria-pressed="false" data-type="<%= type %>"><span aria-hidden="true"><%= t.referenceIcons[type] %></span> <%= type %></button><% } %>
   </div>
 </div>
 

@@ -7,6 +7,7 @@
 const paperService = require('../services/paper.service');
 const answerService = require('../services/answer.service');
 const checkService = require('../services/check.service');
+const readinessService = require('../services/readiness.service');
 const config = require('../config');
 
 /** GET /papers — My papers, or All papers with `?tab=all&q=&typeId=&page=` (FR-PAP-01, FR-PAP-07). */
@@ -31,11 +32,11 @@ async function index(req, res) {
 /** GET /papers/:paperId — the paper page; read-only unless you own it (FR-PAP-08). */
 async function show(req, res) {
   const { paperId } = req.params;
-  const [vm, latest, active] = await Promise.all([
+  const [{ state, ...vm }, active] = await Promise.all([
     paperService.getPaperPage({ user: req.user, paperId }),
-    checkService.getLatest({ paperId }),
     checkService.getActive(paperId),
   ]);
+  const latest = checkService.latestView(state);
   // What the AI checker needs (FR-AI-01…18); the page script renders the AI lines from it.
   vm.client.ai = {
     latest,
@@ -82,8 +83,8 @@ async function remove(req, res) {
 
 /** GET /api/papers/:paperId/readiness */
 async function readiness(req, res) {
-  const vm = await paperService.getPaperPage({ user: req.user, paperId: req.params.paperId });
-  res.json({ data: vm.readiness });
+  const paper = await paperService.getPaperOrThrow(req.params.paperId);
+  res.json({ data: (await readinessService.forPaper(paper)).readiness });
 }
 
 /** PUT /api/papers/:paperId/answers/:standardId */

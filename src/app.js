@@ -5,6 +5,7 @@
  * a port or start background work itself.
  */
 const path = require('node:path');
+const ejs = require('ejs');
 const express = require('express');
 const config = require('./config');
 const { ConfigError } = require('./utils/errors');
@@ -36,6 +37,13 @@ function createApp({ sessionStore = createSessionStore(), testAuth } = {}) {
   if (config.trustProxy !== undefined) app.set('trust proxy', config.trustProxy);
   app.set('view engine', 'ejs');
   app.set('views', path.join(__dirname, 'views'));
+  // EJS with rmWhitespace: template indentation is dropped from the HTML (line breaks stay, so
+  // inline spacing is unchanged) — the paper page of a 100-standard type gets much smaller
+  // (NFR-PERF-01). EJS 7 ignores Express's 'view options', so the options are passed here; compiled
+  // templates are cached when Express's 'view cache' is on (production).
+  app.engine('ejs', (file, data, cb) =>
+    ejs.renderFile(file, data, { rmWhitespace: true, cache: app.enabled('view cache') }, cb),
+  );
 
   // Static files first: no logging, no session for CSS / JS (docs/10 §3).
   // `no-cache` = the browser keeps the file but asks every time (ETag → 304 when unchanged). Needed

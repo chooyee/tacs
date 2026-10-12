@@ -32,6 +32,20 @@ async function say(paperId, kind, content) {
   return chatModel.insert({ paperId, role: 'assistant', kind, content });
 }
 
+/**
+ * 20 messages per user per 10 minutes, typed or quick (FR-CHAT-05, NFR-SEC-08).
+ * @throws {AppError} 429 RATE_LIMITED
+ */
+async function assertChatLimit(user) {
+  const since = new Date(Date.now() - CHAT_WINDOW_MS);
+  if ((await chatModel.countUserMessagesSince(user.id, since)) >= CHAT_LIMIT) {
+    throw new AppError('You have sent many messages in the last few minutes. Please wait a little.', {
+      status: 429,
+      code: 'RATE_LIMITED',
+    });
+  }
+}
+
 /** "4", "#4", "standard 4" → 4 (FR-CHAT-03); null for anything else. */
 function standardNumberIn(text) {
   const match = /^\s*(?:#\s*|standard\s+|std\s+)?(\d{1,4})\s*\??\s*$/i.exec(text) ?? /#\s*(\d{1,4})\b/.exec(text);
@@ -45,22 +59,24 @@ function standardNumberIn(text) {
  */
 async function quickAction({ user, paperId, action, standardId, log }) {
   const paper = await paperService.getOwnedPaperOrThrow(paperId, user);
+  await assertChatLimit(user);
   const state = await readinessService.forPaper(paper);
   let reply;
   if (action === 'gaps') {
-    reply = await say(paperId, 'gaps', { ready: state.readiness.ready, gaps: state.readiness.gaps });
+    reply = await say(paperId, 'gaps', { quick: true, ready: state.readiness.ready, gaps: state.readiness.gaps });
   } else if (action === 'refs') {
     const refs = await referenceModel.listUsedByType(paper.paperTypeId);
-    reply = await say(paperId, 'refs', { references: refs.map((r) => ({ id: r.id, type: r.type, title: r.title, note: r.note })) });
+    reply = await say(paperId, 'refs', { quick: true, references: refs.map((r) => ({ id: r.id, type: r.type, title: r.title, note: r.note })) });
   } else if (action === 'summary') {
     const view = checkService.latestView(state);
     reply = await say(paperId, 'summary', {
+      quick: true,
       readiness: { answered: state.readiness.answered, total: state.readiness.total, ready: state.readiness.ready, gaps: state.readiness.gaps.length },
       counts: view?.counts ?? null,
     });
   } else {
     const target = standardId ?? state.readiness.gaps.find((g) => g.standardId)?.standardId ?? state.standards[0]?.id;
-    reply = await say(paperId, 'compare', { standardId: target });
+    reply = await say(paperId, 'compare', { quick: true, standardId: target });
   }
   log.info({ paperId, action }, 'Chat quick action');
   return { messages: [reply] };
@@ -93,13 +109,7 @@ function contextMarkdown(paper, state) {
  */
 async function postMessage({ user, paperId, text, log }) {
   const paper = await paperService.getOwnedPaperOrThrow(paperId, user);
-  const since = new Date(Date.now() - CHAT_WINDOW_MS);
-  if ((await chatModel.countUserMessagesSince(user.id, since)) >= CHAT_LIMIT) {
-    throw new AppError('You have sent many messages in the last few minutes. Please wait a little.', {
-      status: 429,
-      code: 'RATE_LIMITED',
-    });
-  }
+  await assertChatLimit(user);
   const question = await chatModel.insert({ paperId, role: 'user', kind: 'text', content: { text } });
   const state = await readinessService.forPaper(paper);
 

@@ -21,9 +21,10 @@
   --foreground: #1a1f26;
   --ok: #17794a;
   --ok-soft: #e1f3e9;
-  --warn: #a05f00;
+  --warn: #925700; /* 5:1 on --warn-soft (was #a05f00, 4.46:1) */
   --warn-soft: #fcf0da;
   --bad: #c2352a;
+  --on-status: #ffffff; /* text on a filled ok / bad colour */
   --bad-soft: #fbe6e4;
   --shadow: 0 1px 2px rgb(16 24 40 / 5%), 0 1px 3px rgb(16 24 40 / 7%);
   --topbar-h: 57px;
@@ -44,6 +45,7 @@
   --warn: #e5a54b;
   --warn-soft: #38290f;
   --bad: #ff7b72;
+  --on-status: #0e1116;
   --bad-soft: #3a1714;
   --shadow: none;
 }
@@ -891,12 +893,12 @@
     @apply grid size-[18px] flex-none place-items-center rounded-full border-[1.5px] text-[11px] font-extrabold;
   }
   .ready-list li.done .ready-dot {
-    @apply text-white;
+    color: var(--on-status);
     background: var(--ok);
     border-color: var(--ok);
   }
   .ready-list li.problem .ready-dot {
-    @apply text-white;
+    color: var(--on-status);
     background: var(--bad);
     border-color: var(--bad);
   }
@@ -1160,11 +1162,11 @@
     @apply border-l;
   }
   .yn button[data-value='yes'][aria-pressed='true'] {
-    color: #fff;
+    color: var(--on-status);
     background: var(--ok);
   }
   .yn button[data-value='no'][aria-pressed='true'] {
-    color: #fff;
+    color: var(--on-status);
     background: var(--bad);
   }
   .yn button[data-value='na'][aria-pressed='true'] {
@@ -1293,7 +1295,7 @@
     background: rgb(255 255 255 / 22%);
   }
   .checker-badge[data-kind='fix'] {
-    color: #fff;
+    color: var(--on-status);
     background: var(--bad);
   }
   body.checker-open .checker-fab {

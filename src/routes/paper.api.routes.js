@@ -21,7 +21,15 @@ router.get('/:paperId/readiness', validate(v.paperId), asyncHandler(papers.readi
 router.put('/:paperId/answers/:standardId', validate(v.saveAnswer), asyncHandler(papers.saveAnswer));
 
 // AI checks and results (FR-AI). Multipart: the upload middleware runs before validation.
-router.post('/:paperId/checks', paperFilesUpload, validate(v.upload), asyncHandler(checks.upload));
+// The pre-check runs before multer, so a refused upload is never read into memory.
+router.post(
+  '/:paperId/checks',
+  validate(v.paperId),
+  asyncHandler(checks.precheckUpload),
+  paperFilesUpload,
+  validate(v.upload),
+  asyncHandler(checks.upload),
+);
 router.post('/:paperId/checks/rerun', validate(v.paperId), asyncHandler(checks.rerun));
 router.get('/:paperId/checks/latest', validate(v.paperId), asyncHandler(checks.latest));
 router.post('/:paperId/results/apply-unanswered', validate(v.paperId), asyncHandler(checks.applyUnanswered));

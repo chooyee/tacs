@@ -1,7 +1,7 @@
 'use strict';
 
 const { query, toCamel } = require('../utils/db');
-const { ConflictError } = require('../utils/errors');
+const { AppError, ConflictError } = require('../utils/errors');
 
 /**
  * Paper PDFs, AI checks (the background job queue) and their results (docs/05 §3.9–3.12).
@@ -197,12 +197,31 @@ async function setStep(checkId, step) {
 }
 
 /**
- * Save the results and mark the check done, in the caller's transaction.
+ * Mark the check done and save its results, in the caller's transaction. Only a check that is still
+ * "running" can finish: if the timeout sweep already marked it failed (and the user may have started
+ * a new one), this throws and the caller's transaction rolls back, so no stale results are saved.
  * @param {string} checkId
  * @param {{provider, model, promptVersion, snapshot, inputTokens, outputTokens}} meta
  * @param {Array<object>} results  rows for check_results (IDs already mapped from the AI's keys)
  */
 async function complete(checkId, meta, results) {
+  const { rowCount } = await query(
+    `update checks set status = 'done', step = 4, finished_at = now(), provider = $2, model = $3,
+            prompt_version = $4, standards_snapshot = $5, input_tokens = $6, output_tokens = $7
+      where id = $1 and status = 'running'`,
+    [
+      checkId,
+      meta.provider,
+      meta.model,
+      meta.promptVersion,
+      JSON.stringify(meta.snapshot),
+      meta.inputTokens,
+      meta.outputTokens,
+    ],
+  );
+  if (rowCount !== 1) {
+    throw new AppError('The check is no longer running.', { code: 'CHECK_ABANDONED' });
+  }
   for (const r of results) {
     await query(
       `insert into check_results (check_id, standard_id, verdict, page, document_id, area, bbox, finding,
@@ -223,20 +242,6 @@ async function complete(checkId, meta, results) {
       ],
     );
   }
-  await query(
-    `update checks set status = 'done', step = 4, finished_at = now(), provider = $2, model = $3,
-            prompt_version = $4, standards_snapshot = $5, input_tokens = $6, output_tokens = $7
-      where id = $1`,
-    [
-      checkId,
-      meta.provider,
-      meta.model,
-      meta.promptVersion,
-      JSON.stringify(meta.snapshot),
-      meta.inputTokens,
-      meta.outputTokens,
-    ],
-  );
 }
 
 /**

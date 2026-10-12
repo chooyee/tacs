@@ -12,6 +12,16 @@ const { contentDisposition } = require('./reference.controller');
 
 const ctx = (req) => ({ user: req.user, paperId: req.params.paperId, log: req.log });
 
+/**
+ * Runs before the upload middleware: refuse early, and hold one upload slot per user until the
+ * response is sent (see checkService.beforeUpload).
+ */
+async function precheckUpload(req, res, next) {
+  const release = await checkService.beforeUpload({ user: req.user, paperId: req.params.paperId });
+  res.on('close', release);
+  next();
+}
+
 /** POST /api/papers/:paperId/checks — multipart files[] (1–3 PDFs) */
 async function upload(req, res) {
   res.status(202).json({ data: await checkService.uploadAndCheck({ ...ctx(req), files: req.files }) });
@@ -74,4 +84,4 @@ async function document(req, res) {
   await pipeline(stream, res);
 }
 
-module.exports = { upload, rerun, status, latest, apply, keep, applyUnanswered, chat, chatPost, chatQuick, document };
+module.exports = { precheckUpload, upload, rerun, status, latest, apply, keep, applyUnanswered, chat, chatPost, chatQuick, document };

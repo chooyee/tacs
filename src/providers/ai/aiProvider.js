@@ -133,7 +133,8 @@ function compareValues(input) {
   });
   return {
     paperTypeName: cell(input.paperTypeName),
-    paperFileList: input.paperFiles.map((f) => `${f.key} = "${f.name}"`).join(', '),
+    // Cleaned: a file name is user input and must not be able to add instructions to the prompt.
+    paperFileList: input.paperFiles.map((f) => `${f.key} = "${safeName(f.name)}"`).join(', '),
     referenceList: input.references.length
       ? input.references.map((r) => `${r.key} = ${r.type} "${cell(r.title)}"`).join(', ')
       : 'none',
