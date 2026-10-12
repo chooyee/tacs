@@ -34,7 +34,9 @@ There are two kinds of routes:
 | GET | `/papers` | Architect | `paper.index` (`?tab=all&q=&typeId=&page=` for All papers) | `pages/papers/index` |
 | GET | `/papers/:paperId` | Architect (anyone; read-only unless owner) | `paper.show` | `pages/papers/show` |
 | GET | `/admin/types` | Admin | `admin/paperType.index` | `pages/admin/types` |
+| GET | `/admin` | Admin | redirect → `/admin/types` (D-32) | — |
 | GET | `/admin/types/:typeId` | Admin | `admin/paperType.show` | `pages/admin/type` |
+| GET | `/admin/types/:typeId/cards/:card` | Admin | `admin/paperType.card` — `references` or `standards` card as an HTML fragment, re-fetched after each change (D-34) | `partials/admin/<card>Card` |
 | GET | `/health`, `/health/ready` | public | health | JSON |
 
 ## 3. Architect API
@@ -109,6 +111,7 @@ available (FR-RDY-05). It is never a gap.
 |--------|------|-----|-------|
 | GET | `/files/documents/:documentId` | Any signed-in user (until the PDF expires after 7 days → 404 `DOCUMENT_EXPIRED`) | `Content-Type: application/pdf`, `Content-Disposition: inline`, `Cache-Control: private, max-age=300`. |
 | GET | `/files/references/:referenceId` | Any signed-in user | Same headers, with the reference's MIME type. |
+| GET | `/api/references/:referenceId` | Any signed-in user | Reference viewer data (FR-REF-02): `{ id, type, title, note, url, mimeType, pageCount, fileUrl, usedFor: [{id, number, text}] }`. |
 
 ## 4. Admin API (role `Admin`)
 
@@ -155,7 +158,8 @@ available (FR-RDY-05). It is never a gap.
 | DELETE | `/api/admin/references/:referenceId` | — | Soft delete; links hidden. |
 | POST | `/api/admin/references/:referenceId/restore` | — | Undo (links come back). |
 
-Every admin write is logged as an `info` line with the user ID (NFR-SEC-13). There is no audit table (D-33).
+Responses: creates → `201 { data }`; edits → `200 { data }`; move, delete and restore → `204`. Reference responses never include the S3 key.
+PATCH a standard returns `warnings` (FR-ADM-21, more than 4 references). Every admin write is logged as an `info` line with the user ID (NFR-SEC-13). There is no audit table (D-33).
 
 ## 5. Front-end API helper (example)
 

@@ -32,7 +32,7 @@ leave them out.
 
 | Prototype element | Basecoat / HTML | Notes |
 |-------------------|-----------------|-------|
-| Buttons (`.btn`, `.primary`, `.sm`, `.danger`) | `btn`, `btn-primary`, `btn-sm`, `btn-destructive`, `btn-ghost`, `btn-icon` | Icon-only buttons need `aria-label`. |
+| Buttons (`.btn`, `.primary`, `.sm`, `.danger`) | `btn` + `data-variant` (`primary` default, `outline`, `ghost`, `destructive`) + `data-size` (`sm`, `icon`, `icon-sm`) — Basecoat 1.0, D-34 | Icon-only buttons need `aria-label`. |
 | Cards / tiles | `card` | Clickable tiles are real `<a>` elements (paper / type links), not `div`s. |
 | Pills, tags | `badge` + variants | Readiness, verdicts, MANDATORY, type tag. |
 | Modals (new paper, compare, reference viewer, edit standard, edit reference, new type) | Basecoat **Dialog** (native `<dialog>`) | Esc closes; focus returns to the trigger. |

@@ -23,8 +23,9 @@ Prerequisites: Node.js 22, PostgreSQL 16+ (installed locally, or `docker compose
 
    ```bash
    npm install
-   cp .env.example .env      # fill in the Entra values (see below)
+   cp .env.example .env      # fill in the Entra and S3 values (see below)
    npm run db:migrate
+   npm run seed              # SaaS / Cloud Platform / Infrastructure paper types with placeholder PDFs
    ```
 
 3. **Run**: `npm run dev` → http://localhost:3000 (app restarts on changes, CSS rebuilds on changes).
@@ -37,6 +38,14 @@ Prerequisites: Node.js 22, PostgreSQL 16+ (installed locally, or `docker compose
    - Everyone else signs in with Microsoft and starts as an **Architect**.
    - The local administrator makes people **Admin** on **Users** (`/admin/users`); later sign-ins
      are at http://localhost:3000/auth/local. Lost the password? `npm run admin -- reset <username>`.
+
+## File storage (S3)
+
+Files (reference documents, later paper PDFs) go to an AWS S3 bucket, also locally (D-30): set
+`AWS_REGION`, `S3_BUCKET`, `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` (a dev IAM user with
+`s3:GetObject`, `PutObject`, `DeleteObject`, `ListBucket` on the bucket) and, if the bucket is shared,
+`S3_KEY_PREFIX=tacs/`. `/health/ready` reports `storage: fail` when the bucket can't be reached.
+Tests never touch S3: they use in-memory storage.
 
 ## Entra ID app registration (dev)
 
@@ -54,6 +63,7 @@ in `.env`.
 | `npm run build` | Builds `public/css/app.css` and copies vendor JS to `public/vendor/` |
 | `npm start` | Production start (`node src/server.js`) |
 | `npm run db:migrate` | Applies new files from `db/migrations/` |
+| `npm run seed` | Loads the prototype's paper types + placeholder PDFs (skips existing; not in production) |
 | `npm run admin -- create\|reset <username>` / `list` | Local administrator accounts |
 | `npm test` | Unit + integration tests (needs the `psc_test` database) |
 | `npm run lint` / `npm run format` | ESLint / Prettier |

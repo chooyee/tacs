@@ -20,9 +20,9 @@ git clone <repo-url> paper-standards-check
 cd paper-standards-check
 npm install
 cp .env.example .env          # then fill in the values marked TODO
-docker compose up -d          # only if you use Docker for Postgres (MinIO is added in M2)
+docker compose up -d          # only if you use Docker for Postgres
 npm run db:migrate            # creates the tables
-npm run seed                  # (from M2) loads SaaS / Cloud / Infra paper types + placeholder reference files
+npm run seed                  # loads SaaS / Cloud / Infra paper types + placeholder reference PDFs (D-31)
 npm run dev                   # starts the app (node --watch) + Tailwind watch on http://localhost:3000
 ```
 
@@ -32,25 +32,12 @@ in with your company account — you are an **Architect**. To become an Admin, s
 as the local administrator at http://localhost:3000/auth/local and change your role on
 **Users** (D-26).
 
-### 1.3 `docker-compose.yml` (local only)
+### 1.3 `docker-compose.yml` (local only, optional)
 
-```yaml
-services:
-  db:
-    image: postgres:16
-    environment: { POSTGRES_USER: psc, POSTGRES_PASSWORD: psc, POSTGRES_DB: psc }
-    ports: ["5432:5432"]
-    volumes: [dbdata:/var/lib/postgresql/data]
-  minio:                       # S3-compatible storage for local development
-    image: minio/minio
-    command: server /data --console-address ":9001"
-    environment: { MINIO_ROOT_USER: minio, MINIO_ROOT_PASSWORD: minio12345 }
-    ports: ["9000:9000", "9001:9001"]
-    volumes: [s3data:/data]
-volumes: { dbdata: {}, s3data: {} }
-```
-
-`npm run seed` also creates the bucket `psc-local` in MinIO.
+Postgres only (D-29). Files go to a real AWS dev S3 bucket (D-30): set `AWS_REGION`, `S3_BUCKET`,
+`S3_KEY_PREFIX` (e.g. `tacs/` when the bucket is shared) and the dev IAM user's
+`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` in `.env`. The keys need `s3:GetObject`,
+`PutObject`, `DeleteObject` and `ListBucket` (for the `/health/ready` check) on that bucket.
 
 ### 1.4 npm scripts
 
@@ -60,7 +47,7 @@ volumes: { dbdata: {}, s3data: {} }
 | `build` | Builds CSS (`tailwindcss -i src/styles/app.css -o public/css/app.css --minify`), copies `readinessRules.js` and the pdf.js files into `public/` |
 | `start` | `node src/server.js` (production) |
 | `db:migrate` | `node db/migrate.js` |
-| `seed` | Seeds DB + MinIO (refuses to run when `NODE_ENV=production`) |
+| `seed` | Seeds DB + S3 with the prototype's paper types and generated placeholder PDFs; skips existing types; refuses to run when `NODE_ENV=production` (D-31) |
 | `test` | `node --test tests/` |
 | `test:coverage` | `node --test --experimental-test-coverage tests/` |
 | `lint` / `format` | ESLint / Prettier |
@@ -93,7 +80,7 @@ exactly which variable is wrong. No other file reads `process.env`.
 | `S3_BUCKET` | yes (from M2) | `psc-local` | |
 | `S3_KEY_PREFIX` | no | *(empty)*, e.g. `tacs/` | Prefix for every object key, so a bucket can be shared (D-30) |
 | `S3_ENDPOINT` | no | `http://localhost:9000` | Only for an S3-compatible server such as MinIO |
-| `S3_FORCE_PATH_STYLE` | local only | `true` | Needed for MinIO |
+| `S3_FORCE_PATH_STYLE` | no | `false` | Only for MinIO-style servers |
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | local only | dev IAM user keys | Local development against the dev bucket (D-30). In AWS, leave empty: the task / instance IAM role is used |
 | `AI_PROVIDER` … `AI_MAX_RETRIES` | see 07 · §8 | | |
 | `UPLOAD_MAX_PAPER_MB` | no | `20` | Per paper PDF |

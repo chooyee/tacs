@@ -137,7 +137,7 @@ in `requireAuth`, with the 403 "Access not granted" page (`ACCESS_NOT_GRANTED`).
 | ID | Requirement |
 |----|-------------|
 | NFR-SEC-01 | HTTPS only in all non-local environments. HSTS through `helmet`. |
-| NFR-SEC-02 | `helmet` with a **Content Security Policy**: `default-src 'self'`; `script-src 'self'` (no inline scripts — page data goes in `<script type="application/json" id="page-data">` and is read with `JSON.parse`); `img-src 'self' data: blob:`; `worker-src 'self' blob:` (pdf.js worker); `frame-ancestors 'none'`. |
+| NFR-SEC-02 | `helmet` with a **Content Security Policy**: `default-src 'self'`; `script-src 'self'` (no inline scripts — page data goes in `data-*` attributes and is read with `JSON.parse`, D-34); `img-src 'self' data: blob:`; `worker-src 'self' blob:` (pdf.js worker); `frame-ancestors 'none'`. |
 | NFR-SEC-03 | Session cookie: `HttpOnly`, `Secure`, `SameSite=Lax`, name `psc.sid`. Secret from `SESSION_SECRET` (≥ 32 random bytes). |
 | NFR-SEC-04 | CSRF protection on every state-changing request (synchroniser token stored in the session, sent as `X-CSRF-Token` or the `_csrf` form field). |
 | NFR-SEC-05 | **Output encoding**: EJS `<%= %>` only. `<%- %>` (unescaped) is allowed **only** for including partials — a lint rule / code review check. The front end inserts user or AI text with `textContent`, or HTML through `escapeHtml()`. |
