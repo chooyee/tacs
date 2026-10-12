@@ -169,12 +169,16 @@ describe('admin editor in the browser', { skip }, () => {
     await openSaas();
   });
 
-  test('the jump bar lists References and every section, and jumps there', async () => {
+  test('D-42: the References card is under the Standards card; the jump bar lists the sections, then References', async () => {
     await openSaas();
     const chips = await page.$$eval('#jump-chips .chip', (c) => c.map((x) => x.dataset.target));
     const sections = await page.$$eval('.admin-section', (s) => s.length);
     assert.equal(chips.length, sections + 1);
-    assert.equal(chips[0], 'references-card');
+    assert.equal(chips.at(-1), 'references-card');
+    assert.ok(
+      await page.evaluate(() => document.querySelector('#standards-card').compareDocumentPosition(document.querySelector('#references-card')) & Node.DOCUMENT_POSITION_FOLLOWING),
+      'References comes after Standards',
+    );
     // A middle section: the last one may sit too low on the page to reach the top.
     await page.click('#jump-chips .chip:nth-child(3)');
     await settle(page, 800);

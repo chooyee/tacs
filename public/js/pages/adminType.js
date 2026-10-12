@@ -118,7 +118,8 @@ const chips = $('#jump-chips');
 let observer;
 
 function buildJumpBar() {
-  const targets = [$('#references-card'), ...$$('.admin-section')].filter(Boolean);
+  // Same order as the page: the sections, then the references used here (D-42).
+  const targets = [...$$('.admin-section'), $('#references-card')].filter(Boolean);
   chips.replaceChildren(
     ...targets.map((target) => {
       const chip = Object.assign(document.createElement('button'), { type: 'button', className: 'chip' });

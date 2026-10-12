@@ -191,7 +191,7 @@ Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02.
 - Header: inline name (large) + inline description; **Delete type** (disabled
   with a tooltip if in use).
 - Info banner (FR-ADM-10).
-- **References** card (FR-ADM-11/12): row actions appear on hover / focus
+- **References** card (FR-ADM-11/12), **under the Standards card** (D-42): row actions appear on hover / focus
   (always visible on touch devices).
 - **Standards** card: section header rows (letter, inline title, count, ↑ ↓
   🗑), standard rows (number, text, MANDATORY / optional toggle tag, reference

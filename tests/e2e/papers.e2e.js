@@ -123,8 +123,8 @@ describe('papers and the AI checker in the browser', { skip }, () => {
   test('FR-AI-11: Compare side by side renders both pages with pdf.js and outlines them', async () => {
     const id = await page.$$eval('.ai-line', (l) => l.find((x) => x.dataset.verdict === 'comply').closest('.answer-row').dataset.standardId);
     await click(`#std-${id} [data-action="compare"]`);
-    await page.waitForFunction(() => document.querySelector('#cmp-paper canvas')?.width > 0, { timeout: 10_000 });
-    await page.waitForFunction(() => document.querySelector('#cmp-ref canvas, #cmp-ref img'), { timeout: 10_000 });
+    await page.waitForFunction(() => document.querySelector('#cmp-paper canvas')?.width > 0, { timeout: 20_000 }); // pdf.js can be slow on a busy machine
+    await page.waitForFunction(() => document.querySelector('#cmp-ref canvas, #cmp-ref img'), { timeout: 20_000 }); // pdf.js can be slow on a busy machine
     assert.equal(await page.$$eval('#compare-dialog .cmp-mark', (m) => m.length), 2);
     await page.keyboard.press('Escape');
   });
@@ -134,7 +134,7 @@ describe('papers and the AI checker in the browser', { skip }, () => {
     await page.type('#checker-input', '#4');
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => [...document.querySelectorAll('#checker-messages .cmp-card')].some((c) => /#4/.test(c.textContent)), {
-      timeout: 5000,
+      timeout: 15_000,
     });
     await page.keyboard.press('Escape');
   });

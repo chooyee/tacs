@@ -53,8 +53,9 @@
   </nav>
 
   <div class="grid gap-4">
-    <%- include('../../partials/admin/referencesCard') %>
+    <%# Standards first; the references they use come under them (D-42). %>
     <%- include('../../partials/admin/standardsCard') %>
+    <%- include('../../partials/admin/referencesCard') %>
   </div>
 </div>
 
