@@ -6,6 +6,7 @@ const router = require('express').Router();
 router.use('/setup', require('./setup.routes'));
 router.use('/auth', require('./auth.routes'));
 router.use('/api/admin', require('./admin.api.routes'));
+router.use('/', require('./reference.routes'));
 router.use('/', require('./page.routes'));
 
 module.exports = router;

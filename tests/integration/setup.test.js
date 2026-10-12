@@ -85,7 +85,7 @@ describe('first-start setup of the first local administrator (D-27, FR-ACC-10)',
 
     const results = await Promise.all([submit(first, 'root'), submit(second, 'other')]);
     const locations = results.map((r) => r.headers.location).sort();
-    assert.deepEqual(locations, ['/admin/users', '/auth/local']);
+    assert.deepEqual(locations, ['/admin/types', '/auth/local']);
 
     const { rows } = await db.query('select username, created_by, must_change_password from local_admins');
     assert.equal(rows.length, 1);
@@ -93,7 +93,7 @@ describe('first-start setup of the first local administrator (D-27, FR-ACC-10)',
     assert.equal(rows[0].must_change_password, false); // they chose the password themselves
 
     // The winner is signed in straight away.
-    const winner = results[0].headers.location === '/admin/users' ? first : second;
+    const winner = results[0].headers.location === '/admin/types' ? first : second;
     const users = await winner.agent.get('/admin/users').expect(200);
     assert.match(users.text, new RegExp(rows[0].username));
   });

@@ -5,9 +5,15 @@
  * real view model.
  */
 
-/** GET / — the start page depends on who you are (docs/06 §2). */
+/**
+ * GET / — the start page depends on who you are (docs/06 §2, D-32): architects go to their papers;
+ * admins go back to the mode they used last; local admins (no papers) go to the paper types.
+ */
 function home(req, res) {
-  res.redirect(req.user.roles.includes('Architect') ? '/papers' : '/admin/users');
+  const isArchitect = req.user.roles.includes('Architect');
+  const isAdmin = req.user.roles.includes('Admin');
+  const adminMode = isAdmin && (!isArchitect || req.session.lastMode === 'admin');
+  res.redirect(adminMode ? '/admin/types' : '/papers');
 }
 
 /** GET /papers — "My papers" (empty until M3). `?tab=all` selects the All papers tab. */

@@ -35,7 +35,7 @@ async function create(req, res) {
   await regenerateSession(req);
   req.session.user = authService.sessionRecordFor('local', result.admin);
   await saveSession(req);
-  return res.redirect(303, '/admin/users');
+  return res.redirect(303, '/admin/types');
 }
 
 module.exports = { form, create };

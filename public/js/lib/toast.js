@@ -3,14 +3,16 @@
 import { $ } from './dom.js';
 
 const DEFAULT_MS = 2200;
+const WITH_ACTION_MS = 6000; // Undo stays 6 s (docs/03 §1.2)
 const ERROR_MS = 6000;
 
 /**
  * Show a short message at the bottom of the screen.
  * @param {string} message
- * @param {{error?: boolean, ref?: string}} [opts]  ref = request ID, shown so support can find the log line
+ * @param {{error?: boolean, ref?: string, action?: {label: string, onClick: () => void}}} [opts]
+ *   ref = request ID, shown so support can find the log line; action = e.g. Undo
  */
-export function toast(message, { error = false, ref } = {}) {
+export function toast(message, { error = false, ref, action } = {}) {
   const toaster = $('#toaster');
   if (!toaster) return;
 
@@ -31,8 +33,25 @@ export function toast(message, { error = false, ref } = {}) {
     section.append(small);
   }
   content.append(section);
+
+  const remove = () => el.remove();
+  if (action) {
+    const footer = document.createElement('footer');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn';
+    button.dataset.variant = 'outline';
+    button.dataset.size = 'sm';
+    button.textContent = action.label;
+    button.addEventListener('click', () => {
+      remove();
+      action.onClick();
+    });
+    footer.append(button);
+    content.append(footer);
+  }
   el.append(content);
   toaster.append(el);
 
-  setTimeout(() => el.remove(), error ? ERROR_MS : DEFAULT_MS);
+  setTimeout(remove, error ? ERROR_MS : action ? WITH_ACTION_MS : DEFAULT_MS);
 }

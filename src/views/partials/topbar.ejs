@@ -10,15 +10,15 @@
     <% if (nav.showModeSwitch) { %>
     <nav class="modes" aria-label="<%= t.topbar.modeLabel %>">
       <a href="/papers" <% if (nav.mode === 'architect') { %>aria-current="page"<% } %>><%= t.topbar.modeArchitect %></a>
-      <a href="/admin/users" <% if (nav.mode === 'admin') { %>aria-current="page"<% } %>><%= t.topbar.modeAdmin %></a>
+      <a href="/admin/types" <% if (nav.mode === 'admin') { %>aria-current="page"<% } %>><%= t.topbar.modeAdmin %></a>
     </nav>
     <% } %>
 
-    <button type="button" class="btn-icon-ghost" id="theme-toggle" aria-label="<%= t.topbar.toggleTheme %>" title="<%= t.topbar.toggleTheme %>">◐</button>
+    <button type="button" class="btn" data-variant="ghost" data-size="icon" id="theme-toggle" aria-label="<%= t.topbar.toggleTheme %>" title="<%= t.topbar.toggleTheme %>">◐</button>
 
     <% if (nav.user) { %>
     <div id="user-menu" class="dropdown-menu">
-      <button type="button" id="user-menu-trigger" class="btn-icon-outline rounded-full" aria-haspopup="menu"
+      <button type="button" id="user-menu-trigger" class="btn rounded-full" data-variant="outline" data-size="icon" aria-haspopup="menu"
               aria-controls="user-menu-menu" aria-expanded="false" aria-label="<%= t.topbar.userMenu %>">
         <span class="text-xs font-semibold"><%= nav.user.initials %></span>
       </button>

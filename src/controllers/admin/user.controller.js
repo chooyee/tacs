@@ -9,6 +9,7 @@ async function index(req, res) {
     page: 'pages/admin/users',
     title: res.locals.t.adminUsers.heading,
     pageScript: 'adminUsers',
+    adminTab: 'users',
     ...vm,
   });
 }

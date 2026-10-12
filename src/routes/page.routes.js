@@ -2,19 +2,27 @@
 
 const router = require('express').Router();
 const { asyncHandler } = require('../utils/asyncHandler');
+const { validate } = require('../utils/validate');
 const { requireAuth } = require('../middleware/requireAuth');
 const { requireRole } = require('../middleware/requireRole');
+const { rememberMode } = require('../middleware/rememberMode');
 const pages = require('../controllers/page.controller');
 const adminUsers = require('../controllers/admin/user.controller');
+const paperTypes = require('../controllers/admin/paperType.controller');
 const { redirectToSetupWhileNoAdmin } = require('../middleware/setupGate');
+const v = require('../validators/admin.validators');
 
 // HTML pages (docs/06 §2). Everything here needs sign-in (FR-ACC-01).
 // On first start (no administrator yet) the start page is /setup, like Keycloak's welcome page.
 router.get('/', redirectToSetupWhileNoAdmin, requireAuth, pages.home);
-router.get('/papers', requireAuth, requireRole('Architect'), pages.papers);
+router.get('/papers', requireAuth, requireRole('Architect'), rememberMode('architect'), pages.papers);
 
-// Admin pages (FR-ACC-04)
-router.get('/admin', requireAuth, requireRole('Admin'), (_req, res) => res.redirect('/admin/users'));
-router.get('/admin/users', requireAuth, requireRole('Admin'), asyncHandler(adminUsers.index));
+// Admin pages (FR-ACC-04, D-32)
+const admin = [requireAuth, requireRole('Admin'), rememberMode('admin')];
+router.get('/admin', ...admin, (_req, res) => res.redirect('/admin/types'));
+router.get('/admin/users', ...admin, asyncHandler(adminUsers.index));
+router.get('/admin/types', ...admin, asyncHandler(paperTypes.index));
+router.get('/admin/types/:typeId', ...admin, validate(v.typeId), asyncHandler(paperTypes.show));
+router.get('/admin/types/:typeId/cards/:card', ...admin, validate(v.card), asyncHandler(paperTypes.card));
 
 module.exports = router;

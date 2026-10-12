@@ -1,0 +1,5 @@
+<%# Admin mode tabs (D-32), links so the URL is shareable. `adminTab` = 'types' | 'users'. %>
+<nav class="tabs-nav mb-5" aria-label="<%= t.adminTabs.label %>">
+  <a href="/admin/types" <% if (adminTab === 'types') { %>aria-current="page"<% } %>><%= t.adminTabs.types %></a>
+  <a href="/admin/users" <% if (adminTab === 'users') { %>aria-current="page"<% } %>><%= t.adminTabs.users %></a>
+</nav>

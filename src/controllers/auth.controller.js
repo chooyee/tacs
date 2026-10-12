@@ -67,7 +67,7 @@ function localForm(req, res) {
 /** POST /auth/local */
 async function localLogin(req, res) {
   const { username, password } = req.body;
-  const returnTo = authService.safeReturnTo(req.body.returnTo, '/admin/users');
+  const returnTo = authService.safeReturnTo(req.body.returnTo, '/admin/types');
   const result = await authService.signInLocalAdmin({ username, password, log: req.log });
   if (!result.ok) {
     return renderAuthPage(

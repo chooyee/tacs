@@ -62,4 +62,108 @@
   .empty-state {
     @apply px-4 py-8 text-center text-muted-foreground;
   }
+
+  /* Status colours as utilities (docs/03 §1.1). */
+  .text-warn {
+    color: var(--warn);
+  }
+
+  /* Card grid (paper types, later papers): auto-fill, min 290 px (docs/03 §3.1). */
+  .tile-grid {
+    @apply grid gap-4;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  }
+  .tile {
+    @apply flex flex-col gap-2 p-4 text-left text-foreground no-underline transition-colors hover:border-primary;
+  }
+  .tile-add {
+    @apply items-center justify-center border-dashed text-center;
+  }
+  .tile-meta {
+    @apply mt-auto flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground;
+  }
+  .card-head {
+    @apply flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3;
+  }
+
+  /* Editor rows: actions show on hover / focus, always on touch screens (docs/03 §3.7). */
+  .admin-row {
+    @apply flex items-start gap-3 border-b px-4 py-2.5 last:border-b-0;
+  }
+  .row-actions {
+    @apply flex shrink-0 gap-0.5 opacity-0 transition-opacity;
+  }
+  .admin-row:hover .row-actions,
+  .admin-row:focus-within .row-actions {
+    @apply opacity-100;
+  }
+  @media (hover: none) {
+    .row-actions {
+      @apply opacity-100;
+    }
+  }
+  .btn.danger:hover {
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .linkish {
+    @apply cursor-pointer border-0 bg-transparent p-0 font-semibold text-primary hover:underline;
+  }
+
+  /* Sections and standards */
+  .admin-section {
+    @apply border-b last:border-b-0;
+  }
+  .section-head {
+    @apply flex items-center gap-2 bg-muted/50 px-4 py-2;
+  }
+  .section-letter {
+    @apply grid size-6 shrink-0 place-items-center rounded-md bg-primary text-xs font-bold text-primary-foreground;
+  }
+  .section-title,
+  .title-input,
+  .sub-input {
+    @apply min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 hover:border-border focus:border-ring focus:outline-none;
+  }
+  .section-title {
+    @apply flex-1 font-semibold;
+  }
+  .title-input {
+    @apply w-full text-[22px] font-semibold;
+  }
+  .sub-input {
+    @apply w-full text-muted-foreground;
+  }
+  .std-number {
+    @apply w-6 shrink-0 pt-0.5 text-right text-sm font-semibold text-muted-foreground;
+  }
+  .mandatory-toggle {
+    @apply ml-1.5 cursor-pointer rounded border px-1.5 align-[1px] text-[10.5px] font-bold tracking-wide text-muted-foreground;
+  }
+  .mandatory-toggle[aria-pressed='true'] {
+    color: var(--bad);
+    background: var(--bad-soft);
+    border-color: transparent;
+  }
+  .ref-chips {
+    @apply mt-1 flex flex-wrap gap-1.5;
+  }
+  .ref-chip {
+    @apply inline-flex cursor-pointer items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs hover:border-primary;
+  }
+  .ref-chip-add {
+    @apply border-dashed text-primary;
+  }
+  .add-slot {
+    @apply px-4 py-2 pl-[52px];
+  }
+  .add-link {
+    @apply cursor-pointer border-0 bg-transparent p-0 text-sm font-semibold text-primary hover:underline;
+  }
+
+  /* Reference viewer: pages fit the column */
+  .viewer-preview canvas,
+  .viewer-preview img {
+    @apply mx-auto h-auto max-w-full rounded border;
+  }
 }

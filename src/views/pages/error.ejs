@@ -4,5 +4,5 @@
   <% if (locals.requestId) { %>
   <p class="mt-2 text-xs text-muted-foreground"><%= t.errors.reference %>: <code><%= requestId.slice(0, 8) %></code></p>
   <% } %>
-  <a class="btn mt-6" href="/"><%= t.errors.goHome %></a>
+  <a class="btn mt-6" data-variant="outline" href="/"><%= t.errors.goHome %></a>
 </section>

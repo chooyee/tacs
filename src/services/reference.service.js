@@ -50,6 +50,26 @@ async function getReferenceOrThrow(id, opts) {
 }
 
 /**
+ * The fields a browser may see. Never the S3 key: files are only reachable through the app
+ * (FR-REF-04).
+ * @param {object} ref  a reference_docs row
+ * @returns {object}
+ */
+function publicReference(ref) {
+  return {
+    id: ref.id,
+    type: ref.type,
+    title: ref.title,
+    note: ref.note,
+    url: ref.url,
+    fileName: ref.fileName,
+    mimeType: ref.mimeType,
+    sizeBytes: ref.sizeBytes,
+    pageCount: ref.pageCount,
+  };
+}
+
+/**
  * Check an upload and put it in S3. Returns the columns to store.
  * @returns {Promise<{s3Key, fileName, mimeType, sizeBytes, pageCount}>}
  */
@@ -184,6 +204,7 @@ async function getViewer(referenceId) {
 
 module.exports = {
   referenceKey,
+  publicReference,
   displayName,
   addReference,
   updateReference,

@@ -64,7 +64,7 @@ describe('Entra sign-in end to end (FR-ACC-01, FR-ACC-06, D-26)', () => {
     const papers = await agent.get('/papers').expect(200);
     assert.match(papers.text, /My papers/);
     assert.match(papers.text, /DT/); // initials in the user menu
-    assert.doesNotMatch(papers.text, /href="\/admin\/users"/); // FR-ACC-05: no mode switch for architects
+    assert.doesNotMatch(papers.text, /href="\/admin\/types"/); // FR-ACC-05: no mode switch for architects
   });
 
   test('FR-ACC-06: a later sign-in updates name and email but never the role', async () => {
@@ -133,7 +133,7 @@ describe('roles and disabled users (FR-ACC-03, FR-ACC-04, FR-ACC-05, D-28)', () 
     const admin = await createUser({ role: 'admin', name: 'Ada Admin' });
     const agent = request.agent(app).set('X-Test-User', admin.id);
     const papers = await agent.get('/papers').expect(200);
-    assert.match(papers.text, /href="\/admin\/users"/);
+    assert.match(papers.text, /href="\/admin\/types"/); // D-32: the mode switch opens paper types
     const users = await agent.get('/admin/users').expect(200);
     assert.match(users.text, /Ada Admin/);
   });
@@ -273,14 +273,14 @@ describe('local administrators (FR-ACC-10, D-27)', () => {
       .type('form')
       .send({ _csrf: token, password: 'a brand new password', confirm: 'a brand new password' })
       .expect(303);
-    assert.equal(done.headers.location, '/admin/users');
+    assert.equal(done.headers.location, '/admin/types');
 
     const users = await agent.get('/admin/users').expect(200);
     assert.match(users.text, /Local administrator/);
     assert.doesNotMatch(users.text, /href="\/papers"[^>]*aria-current/); // no mode switch
     await agent.get('/papers').set('Accept', 'text/html').expect(403); // D-27: no papers
     const home = await agent.get('/').expect(302);
-    assert.equal(home.headers.location, '/admin/users');
+    assert.equal(home.headers.location, '/admin/types');
   });
 
   test('a local admin can promote a user', async () => {
@@ -291,7 +291,7 @@ describe('local administrators (FR-ACC-10, D-27)', () => {
     });
     const agent = request.agent(app);
     const res = await signIn(agent, 'promoter', LOCAL_PASSWORD);
-    assert.equal(res.headers.location, '/admin/users');
+    assert.equal(res.headers.location, '/admin/types');
 
     const target = await createUser();
     const token = await csrfFrom(agent, '/admin/users'); // from the top bar's sign-out form

@@ -27,7 +27,7 @@ function buildNav(req) {
   );
   return {
     mode,
-    homeHref: mode === 'admin' ? '/admin/users' : '/papers',
+    homeHref: mode === 'admin' ? '/admin/types' : '/papers',
     // Local admins only have Admin mode; Entra admins can switch.
     showModeSwitch: Boolean(user && !isLocal && user.roles.includes('Admin')),
     user: user && {

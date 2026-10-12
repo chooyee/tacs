@@ -1,4 +1,5 @@
 <%# Users page (FR-ACC-09). Changes are saved by public/js/pages/adminUsers.js via PATCH /api/admin/users/:id. %>
+<%- include('../../partials/admin/tabs') %>
 <div class="mb-4">
   <h1 class="text-[22px] font-semibold leading-tight"><%= t.adminUsers.heading %></h1>
   <p class="mt-1 text-muted-foreground"><%= t.adminUsers.subtitle %></p>
@@ -21,7 +22,7 @@
     <tbody>
       <% for (const u of users) { %>
       <tr data-user-id="<%= u.id %>">
-        <td class="font-medium"><%= u.name %><% if (u.isSelf) { %> <span class="badge-secondary"><%= t.adminUsers.you %></span><% } %></td>
+        <td class="font-medium"><%= u.name %><% if (u.isSelf) { %> <span class="badge" data-variant="secondary"><%= t.adminUsers.you %></span><% } %></td>
         <td class="text-muted-foreground"><%= u.email || '—' %></td>
         <td>
           <select class="select" data-field="role" aria-label="<%= t.adminUsers.colRole %>: <%= u.name %>" <% if (u.isSelf) { %>disabled<% } %>>
