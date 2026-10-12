@@ -18,7 +18,8 @@
     "test:coverage": "node --env-file=tests/test.env --env-file-if-exists=tests/test.local.env --test --test-concurrency=1 --experimental-test-coverage \"tests/**/*.test.js\"",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "seed": "node db/seed/seed.js"
+    "seed": "node db/seed/seed.js",
+    "test:e2e": "npm run build && node --env-file=tests/test.env --env-file-if-exists=tests/test.local.env --test --test-concurrency=1 \"tests/e2e/**/*.e2e.js\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1149.0",
@@ -45,6 +46,7 @@
     "pdfjs-dist": "^6.4.299",
     "pino-pretty": "^13.2.0",
     "prettier": "^3.9.10",
+    "puppeteer-core": "^25.13.0",
     "supertest": "^7.3.1",
     "tailwindcss": "^4.3.3"
   }
