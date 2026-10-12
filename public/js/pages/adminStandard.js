@@ -1,12 +1,11 @@
-// Full-screen standard form (D-38): add / edit a standard, search and tick library references, and
-// upload a new reference without leaving the page. Linked standards are read-only except their
+// Full-screen standard form (D-38): add / edit a standard, search and tick library references.
+// "New reference" opens the References module in a new tab; what is saved there is ticked here. Linked standards are read-only except their
 // section (position stays local) and offer "Duplicate here".
 import { api } from '../lib/api.js';
 import { $ } from '../lib/dom.js';
-import { openDialog, closeDialog, setupDialogs, setFormError } from '../lib/dialog.js';
+import { setupDialogs } from '../lib/dialog.js';
 import { toast } from '../lib/toast.js';
 import { createRichEditor } from '../lib/richEditor.js';
-import { setupReferenceFields } from '../lib/referenceForm.js';
 import { openReferenceViewer, setupReferenceViewer } from '../lib/referenceViewer.js';
 
 const page = $('#standard-page');
@@ -121,36 +120,23 @@ $('#ref-results')?.addEventListener('change', (event) => {
 });
 $('#ref-search')?.addEventListener('input', renderResults);
 
-/* ---------- New reference: upload into the library and tick it (D-38) ---------- */
+/* ---------- New reference: made in the References module, ticked here (D-38) ---------- */
 
-const newDialog = $('#new-reference-dialog');
-const newForm = $('#new-reference-form');
-const newFields = newForm ? setupReferenceFields(newForm, 'nr') : null;
-
-newForm?.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  const problem = newFields.validate(true);
-  if (problem) return setFormError(newDialog, problem);
-  const submit = newForm.querySelector('[type=submit]');
-  submit.disabled = true;
-  try {
-    const ref = await api('/api/admin/references', { method: 'POST', body: newFields.toFormData() });
-    const icon = $(`#new-reference-form input[name="type"][value="${ref.type}"]`)
-      .closest('.choice')
-      .querySelector('.emoji').textContent;
-    const option = { id: ref.id, type: ref.type, title: ref.title, note: ref.note ?? '', icon };
+const icons = JSON.parse(page.dataset.icons);
+const channel = new BroadcastChannel('psc-references');
+channel.addEventListener('message', ({ data }) => {
+  if (data?.type !== 'reference-created' || isLinked) return;
+  const ref = data.reference;
+  if (!byId.has(ref.id)) {
+    const option = { id: ref.id, type: ref.type, title: ref.title, note: ref.note ?? '', icon: icons[ref.type] ?? '' };
     options.unshift(option);
     byId.set(ref.id, option);
-    selected.add(ref.id);
-    markDirty();
-    renderSelected();
-    renderResults();
-    closeDialog(newDialog);
-  } catch (err) {
-    setFormError(newDialog, err.details?.[0]?.message ?? err.message);
-  } finally {
-    submit.disabled = false;
   }
+  selected.add(ref.id);
+  markDirty();
+  renderSelected();
+  renderResults();
+  toast(t.linked.replace('{title}', ref.title));
 });
 
 /* ---------- Save ---------- */
@@ -226,11 +212,6 @@ page.addEventListener('click', async (event) => {
     renderSelected();
     renderResults();
   }
-  if (action === 'new-reference') {
-    newFields.reset();
-    setFormError(newDialog, '');
-    openDialog(newDialog);
-  }
   if (action === 'duplicate') {
     try {
       await api(`/api/admin/standards/${standardId}/duplicate`, { method: 'POST' });
@@ -241,11 +222,6 @@ page.addEventListener('click', async (event) => {
       toast(err.message, { error: true, ref: err.requestId });
     }
   }
-});
-// The "Preview" inside the upload dialog's file field (edit pages only) is outside #standard-page.
-document.addEventListener('click', (event) => {
-  const button = event.target.closest('dialog [data-action="view-reference"]');
-  if (button) openReferenceViewer(button.dataset.referenceId);
 });
 
 renderSelected();

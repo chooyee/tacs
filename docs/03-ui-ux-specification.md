@@ -203,7 +203,7 @@ Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02.
   title; "Last edited … by …" under each standard and the type name. No "Edit links" chip.
 - (D-38) **Standard form** (`/admin/standards/:id`, `/admin/types/:id/standards/new`): two columns —
   section, title, description editor, Mandatory | References (selected chips, search, results, "New
-  reference" upload). Sticky Save / Cancel bar; warns before leaving with unsaved changes. Linked
+  reference" opens the References page in a new tab and ticks what is saved there). Sticky Save / Cancel bar; warns before leaving with unsaved changes. Linked
   standards show a "Linked from <type>" banner with Open the source / Duplicate here.
 - (D-38) **Import** dialog: source paper type → tree of sections / standards with checkboxes →
   "same-named new sections" or "into section …".

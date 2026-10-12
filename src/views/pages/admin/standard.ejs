@@ -1,5 +1,6 @@
 <%# Full-screen standard form (D-38): add or edit a standard. Linked standards (imported live from
-    another type) are read-only here, with "Open the source" and "Duplicate here".
+    another type) are read-only here, with "Open the source" and "Duplicate here". "New reference"
+    opens the References module in a new tab; what is saved there is ticked here.
     Behaviour: public/js/pages/adminStandard.js. %>
 <%- include('../../partials/admin/tabs') %>
 <% const isLinked = Boolean(standard && standard.sourceStandardId); %>
@@ -7,7 +8,8 @@
      data-linked="<%= isLinked %>"
      data-options="<%= JSON.stringify(referenceOptions.map((r) => ({ id: r.id, type: r.type, title: r.title, note: r.note || '', icon: t.referenceIcons[r.type] }))) %>"
      data-selected="<%= JSON.stringify(standard ? standard.referenceIds : []) %>"
-     data-strings="<%= JSON.stringify({ selected: t.standardForm.selected('{n}'), noneSelected: t.standardForm.noneSelected, noMatch: t.standardForm.noMatch, saved: t.standardForm.saved, duplicated: t.standardForm.duplicated, remove: t.adminType.delete, chooseFile: t.adminType.chooseFile }) %>">
+     data-icons="<%= JSON.stringify(t.referenceIcons) %>"
+     data-strings="<%= JSON.stringify({ selected: t.standardForm.selected('{n}'), noneSelected: t.standardForm.noneSelected, noMatch: t.standardForm.noMatch, saved: t.standardForm.saved, duplicated: t.standardForm.duplicated, remove: t.adminType.delete, linked: t.standardForm.newReferenceLinked('{title}') }) %>">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="/admin/types"><%= t.adminTypes.heading %></a>
     <%- include('../../partials/icon', { name: 'chevronRight', cls: 'size-3.5' }) %>
@@ -73,7 +75,7 @@
             <p class="panel-sub"><%= t.standardForm.referencesHelp %></p>
           </div>
           <% if (!isLinked) { %>
-          <button type="button" class="btn flex-none" data-variant="outline" data-size="sm" data-action="new-reference"><%- include('../../partials/icon', { name: 'upload' }) %> <%= t.standardForm.newReference %></button>
+          <a class="btn flex-none" data-variant="outline" data-size="sm" href="/admin/references/new?for=standard" target="psc-new-reference" data-action="new-reference" title="<%= t.standardForm.newReferenceHint %>"><%- include('../../partials/icon', { name: 'upload' }) %> <%= t.standardForm.newReference %></a>
           <% } %>
         </div>
         <div class="selected-refs" id="selected-refs" aria-live="polite"></div>
@@ -98,22 +100,4 @@
   </form>
 </div>
 
-<%# Upload a new reference without leaving the form (D-38): added to the library and ticked here. %>
-<dialog class="dialog" id="new-reference-dialog" aria-labelledby="nr-title">
-  <form id="new-reference-form" class="dlg wide-md" novalidate>
-    <div class="dlg-head">
-      <h2 id="nr-title"><%= t.standardForm.newReferenceTitle %></h2>
-      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('../../partials/icon', { name: 'close' }) %></button>
-    </div>
-    <div class="dlg-body">
-      <p class="help"><%= t.standardForm.newReferenceHelp %></p>
-      <%- include('../../partials/admin/referenceFields', { p: 'nr', ref: null }) %>
-      <p class="form-error" role="alert" hidden></p>
-    </div>
-    <div class="dlg-foot">
-      <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.standardForm.cancel %></button>
-      <button type="submit" class="btn"><%- include('../../partials/icon', { name: 'upload' }) %> <%= t.standardForm.upload %></button>
-    </div>
-  </form>
-</dialog>
 <%- include('../../partials/referenceViewer') %>

@@ -1,7 +1,7 @@
 <%# Full-screen add / edit of a library reference (D-37). Behaviour: public/js/pages/adminReference.js. %>
 <%- include('../../partials/admin/tabs') %>
-<div id="reference-page" data-reference-id="<%= reference ? reference.id : '' %>"
-     data-strings="<%= JSON.stringify({ saved: t.library.saved, chooseFile: t.adminType.chooseFile }) %>">
+<div id="reference-page" data-reference-id="<%= reference ? reference.id : '' %>" data-for-standard="<%= forStandard %>"
+     data-strings="<%= JSON.stringify({ saved: t.library.saved, chooseFile: t.adminType.chooseFile, linkedClose: t.library.linkedClose }) %>">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="/admin/references"><%= t.library.back %></a>
     <%- include('../../partials/icon', { name: 'chevronRight', cls: 'size-3.5' }) %>
@@ -14,6 +14,9 @@
     </div>
   </div>
 
+  <% if (forStandard) { %>
+  <div class="banner mb-4"><%- include('../../partials/icon', { name: 'link' }) %><span><%= t.library.forStandard %></span></div>
+  <% } %>
   <form id="reference-form" class="form-page" novalidate>
     <div class="form-main panel">
       <div class="form-section">

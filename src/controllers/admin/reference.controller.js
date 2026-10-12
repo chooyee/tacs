@@ -31,6 +31,8 @@ async function edit(req, res) {
     usesRichEditor: true,
     reference,
     usedFor,
+    // Opened from the standard form's "New reference" (D-38): link it there after saving.
+    forStandard: !reference && req.query.for === 'standard',
   });
 }
 

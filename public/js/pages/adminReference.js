@@ -43,6 +43,16 @@ form.addEventListener('submit', async (event) => {
       body: fields.toFormData(),
     });
     dirty = false;
+    if (page.dataset.forStandard === 'true') {
+      // D-38: the standard form that opened this tab ticks the new reference (same-origin message).
+      const channel = new BroadcastChannel('psc-references');
+      channel.postMessage({ type: 'reference-created', reference: saved });
+      channel.close();
+      toast(t.linkedClose);
+      window.close(); // works for a tab opened by the standard form; otherwise we stay and go on below
+      setTimeout(() => window.location.assign(saved.url), 1500);
+      return;
+    }
     toast(t.saved);
     // Reload so "Last edited by" and the file details show the saved state.
     window.location.assign(referenceId ? window.location.pathname : saved.url);
