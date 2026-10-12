@@ -1,21 +1,21 @@
 <%# Paper types (docs/03 §3.6, FR-ADM-01/02). The dialog is driven by public/js/pages/adminTypes.js. %>
 <%- include('../../partials/admin/tabs') %>
-<div class="mb-4 flex flex-wrap items-start justify-between gap-3">
+<div class="page-head">
   <div>
-    <h1 class="text-[22px] font-semibold leading-tight"><%= t.adminTypes.heading %></h1>
-    <p class="mt-1 text-muted-foreground"><%= t.adminTypes.subtitle %></p>
+    <h1 class="page-title"><%= t.adminTypes.heading %></h1>
+    <p class="page-sub"><%= t.adminTypes.subtitle %></p>
   </div>
-  <button type="button" class="btn" data-variant="primary" data-action="new-type">+ <%= t.adminTypes.newType %></button>
+  <button type="button" class="btn" data-action="new-type"><%- include('../../partials/icon', { name: 'plus' }) %> <%= t.adminTypes.newType %></button>
 </div>
 
 <div class="tile-grid">
   <% for (const type of types) { %>
-  <a class="panel tile" href="/admin/types/<%= type.id %>">
-    <div class="flex items-start justify-between gap-2">
-      <b><%= type.name %></b>
+  <a class="tile" href="/admin/types/<%= type.id %>">
+    <div class="tile-top">
+      <span class="tile-name"><%= type.name %></span>
       <span class="ttag"><%= t.adminTypes.papers(type.papersCount) %></span>
     </div>
-    <p class="text-sm text-muted-foreground"><%= type.description || t.adminTypes.noDescription %></p>
+    <p class="tile-desc"><%= type.description || t.adminTypes.noDescription %></p>
     <div class="tile-meta">
       <span><b><%= type.standardsCount %></b> <%= t.adminTypes.standards %></span>
       <span><b><%= type.mandatoryCount %></b> <%= t.adminTypes.mandatory %></span>
@@ -23,42 +23,53 @@
     </div>
   </a>
   <% } %>
-  <button type="button" class="panel tile tile-add" data-action="new-type">
-    <span class="text-2xl" aria-hidden="true">＋</span>
+  <button type="button" class="tile tile-add" data-action="new-type">
+    <span class="plus" aria-hidden="true">＋</span>
     <b><%= t.adminTypes.newType %></b>
-    <span class="text-sm text-muted-foreground"><%= t.adminTypes.newTypeHint %></span>
+    <span class="text-[13px] text-muted-foreground"><%= t.adminTypes.newTypeHint %></span>
   </button>
 </div>
 
 <dialog class="dialog" id="new-type-dialog" aria-labelledby="new-type-title">
-  <div class="w-full sm:max-w-md">
-    <header><h2 id="new-type-title"><%= t.adminTypes.dialogTitle %></h2></header>
-    <form id="new-type-form" class="form grid gap-4" novalidate>
-      <section class="grid gap-4">
+  <form id="new-type-form" class="dlg" novalidate>
+    <div class="dlg-head">
+      <h2 id="new-type-title"><%= t.adminTypes.dialogTitle %></h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('../../partials/icon', { name: 'close' }) %></button>
+    </div>
+    <div class="dlg-body">
+      <div class="field">
+        <label for="nt-name"><%= t.adminTypes.name %> <span class="req">*</span></label>
+        <input class="input" type="text" id="nt-name" name="name" maxlength="80" required placeholder="<%= t.adminTypes.namePlaceholder %>">
+      </div>
+      <div class="field">
+        <label for="nt-description"><%= t.adminTypes.description %></label>
+        <textarea class="textarea" id="nt-description" name="description" maxlength="300" rows="2" placeholder="<%= t.adminTypes.descriptionPlaceholder %>"></textarea>
+      </div>
+      <fieldset class="field">
+        <legend class="label mb-1.5"><%= t.adminTypes.startFrom %></legend>
         <div class="grid gap-2">
-          <label for="nt-name"><%= t.adminTypes.name %> <span class="text-destructive">*</span></label>
-          <input class="input" type="text" id="nt-name" name="name" maxlength="80" required placeholder="<%= t.adminTypes.namePlaceholder %>">
+          <label class="check-card start-option">
+            <input class="input" type="radio" name="copyFromTypeId" value="" checked>
+            <span><b><%= t.adminTypes.blankTitle %></b><br><span class="text-[13px] text-muted-foreground"><%= t.adminTypes.blankHelp %></span></span>
+          </label>
+          <% if (types.length) { %>
+          <label class="check-card start-option">
+            <input class="input" type="radio" name="copyFromTypeId" value="copy">
+            <span class="grid flex-1 gap-1.5">
+              <span><b><%= t.adminTypes.copyTitle %></b><br><span class="text-[13px] text-muted-foreground"><%= t.adminTypes.copyHelp %></span></span>
+              <select class="select w-full" id="nt-copy" aria-label="<%= t.adminTypes.copyTitle %>">
+                <% for (const type of types) { %><option value="<%= type.id %>"><%= type.name %></option><% } %>
+              </select>
+            </span>
+          </label>
+          <% } %>
         </div>
-        <div class="grid gap-2">
-          <label for="nt-description"><%= t.adminTypes.description %></label>
-          <textarea class="textarea" id="nt-description" name="description" maxlength="300" rows="2" placeholder="<%= t.adminTypes.descriptionPlaceholder %>"></textarea>
-        </div>
-        <div class="grid gap-2">
-          <label for="nt-copy"><%= t.adminTypes.startFrom %></label>
-          <select class="select w-full" id="nt-copy" name="copyFromTypeId">
-            <option value=""><%= t.adminTypes.blank %></option>
-            <% for (const type of types) { %>
-            <option value="<%= type.id %>"><%= t.adminTypes.copyOf(type.name) %></option>
-            <% } %>
-          </select>
-        </div>
-        <p class="form-error text-sm text-destructive" role="alert" hidden></p>
-      </section>
-      <footer class="gap-2">
-        <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.adminTypes.cancel %></button>
-        <button type="submit" class="btn" data-variant="primary"><%= t.adminTypes.create %></button>
-      </footer>
-    </form>
-    <button type="button" aria-label="<%= t.viewer.close %>" data-action="close-dialog" class="top-3 right-3">✕</button>
-  </div>
+      </fieldset>
+      <p class="form-error" role="alert" hidden></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.adminTypes.cancel %></button>
+      <button type="submit" class="btn"><%= t.adminTypes.create %></button>
+    </div>
+  </form>
 </dialog>

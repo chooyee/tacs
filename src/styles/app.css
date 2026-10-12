@@ -1,22 +1,32 @@
-/* Built by the Tailwind CLI into public/css/app.css (docs/10 §3). */
+/* Built by the Tailwind CLI into public/css/app.css (docs/10 §3).
+   Visual reference: tacs-prototype.html (docs/03). Basecoat provides buttons, inputs, dialogs and
+   toasts; the classes below are the app's own layout components, named after what they are. */
 @import 'tailwindcss';
 @import 'basecoat-css';
 
-/* Where Tailwind looks for class names. */
 @source '../views';
 @source '../../public/js';
 
-/* Colours from the prototype, applied through Basecoat's theme variables (docs/03 §1.1).
-   The page is light grey with white cards and borders, like tacs-prototype.html. */
+/* ---------- Tokens (prototype palette, through Basecoat's theme variables) ---------- */
 :root {
   --primary: #2453d4;
   --primary-foreground: #ffffff;
   --ring: #2453d4;
   --accent-soft: #e6edfc;
   --page: #f4f6f9;
+  --card: #ffffff;
   --border: #d9dee6;
   --muted: #eef1f5;
   --muted-foreground: #5b6573;
+  --foreground: #1a1f26;
+  --ok: #17794a;
+  --ok-soft: #e1f3e9;
+  --warn: #a05f00;
+  --warn-soft: #fcf0da;
+  --bad: #c2352a;
+  --bad-soft: #fbe6e4;
+  --shadow: 0 1px 2px rgb(16 24 40 / 5%), 0 1px 3px rgb(16 24 40 / 7%);
+  --topbar-h: 57px;
 }
 .dark {
   --primary: #7096ff;
@@ -28,190 +38,540 @@
   --border: #2b323c;
   --muted: #1e232b;
   --muted-foreground: #9aa4b2;
-}
-
-/* Prototype base: 14 px text on a grey page. */
-@layer base {
-  body {
-    font-size: 14px;
-    line-height: 1.5;
-    background: var(--page);
-  }
-}
-
-/* Status colours: the only additions to Basecoat's palette (docs/03 §1.1). */
-:root {
-  --ok: #17794a;
-  --ok-soft: #e1f3e9;
-  --warn: #a05f00;
-  --warn-soft: #fcf0da;
-  --bad: #c2352a;
-  --bad-soft: #fbe6e4;
-}
-.dark {
+  --foreground: #e6e9ee;
   --ok: #4cc38a;
   --ok-soft: #12301f;
   --warn: #e5a54b;
   --warn-soft: #38290f;
   --bad: #ff7b72;
   --bad-soft: #3a1714;
+  --shadow: none;
+}
+
+@layer base {
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+    background: var(--page);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+  .icon {
+    width: 16px;
+    height: 16px;
+    flex: none;
+  }
 }
 
 @layer components {
-  /* Mode switch (FR-ACC-05): a pill-shaped toggle group of links. */
+  /* ---------- Top bar ---------- */
+  .topbar {
+    @apply sticky top-0 z-30 border-b bg-card;
+  }
+  .topbar-in {
+    @apply mx-auto flex h-14 max-w-[1240px] items-center gap-3 px-4;
+  }
+  .brand {
+    @apply flex min-w-0 items-center gap-2 font-bold text-foreground no-underline;
+  }
+  .brand-logo {
+    @apply grid size-7 flex-none place-items-center rounded-lg bg-primary text-primary-foreground;
+  }
+  @media (max-width: 520px) {
+    .brand-name {
+      @apply sr-only;
+    }
+  }
   .modes {
-    @apply inline-flex rounded-full border bg-muted p-0.5;
+    @apply inline-flex flex-none rounded-full border bg-muted p-0.5;
   }
   .modes a {
-    @apply rounded-full px-3 py-1 text-[13px] text-muted-foreground no-underline;
+    @apply rounded-full px-3 py-1 text-[13px] whitespace-nowrap text-muted-foreground no-underline;
   }
   .modes a[aria-current='page'] {
-    @apply bg-background font-semibold text-foreground shadow-sm;
+    @apply bg-card font-semibold text-foreground;
+    box-shadow: var(--shadow);
+  }
+  @media (max-width: 420px) {
+    .modes a {
+      @apply px-2;
+    }
+  }
+  .avatar-btn {
+    @apply grid size-8 cursor-pointer place-items-center rounded-full border bg-card text-xs font-bold hover:border-primary;
   }
 
-  /* Tabs rendered as links, so the URL is shareable (docs/03 §3.1). */
-  .tabs-nav {
-    @apply flex gap-1 border-b;
+  /* ---------- Page scaffolding ---------- */
+  .page {
+    @apply mx-auto max-w-[1240px] px-4 pt-6 pb-24;
   }
-  .tabs-nav a {
-    @apply -mb-px border-b-2 border-transparent px-3 py-2 text-sm text-muted-foreground no-underline;
+  .page-head {
+    @apply mb-5 flex flex-wrap items-start justify-between gap-3;
   }
-  .tabs-nav a[aria-current='page'] {
+  .page-title {
+    @apply text-[22px] leading-tight font-bold;
+  }
+  .page-sub {
+    @apply mt-1 text-muted-foreground;
+  }
+  .crumbs {
+    @apply mb-2 flex items-center gap-1.5 text-[13px] text-muted-foreground;
+  }
+  .crumbs a {
+    @apply text-primary no-underline hover:underline;
+  }
+  .subnav {
+    @apply mb-5 flex gap-1 border-b;
+  }
+  .subnav a {
+    @apply -mb-px flex items-center gap-1.5 border-b-2 border-transparent px-3 py-2 text-[13.5px] text-muted-foreground no-underline hover:text-foreground;
+  }
+  .subnav a[aria-current='page'] {
     @apply border-primary font-semibold text-foreground;
   }
-
-  .empty-state {
-    @apply px-4 py-8 text-center text-muted-foreground;
-  }
-
-  /* ---- Prototype look (tacs-prototype.html is the visual reference, docs/03) ---- */
-
-  /* A plain white container with a border, like the prototype's .card. Basecoat's .card adds
-     padding, gaps and header layout that our list cards do not want. */
-  .panel {
-    @apply overflow-hidden rounded-[10px] border bg-card text-card-foreground shadow-xs;
-  }
-  /* Small square tag: reference type, "2 papers" (prototype .ttag). */
-  .ttag {
-    @apply inline-block rounded border bg-muted px-1.5 align-[1px] text-[11px] font-bold whitespace-nowrap text-muted-foreground;
-  }
-  /* Rounded count, e.g. standards in a section (prototype .pill). */
-  .count-pill {
-    @apply inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground;
-  }
-  /* Info banner (prototype .banner): accent-soft background. */
-  .banner {
-    @apply rounded-lg px-3.5 py-2.5 text-[13.5px];
-    background: var(--accent-soft);
-  }
-  /* Links in page content use the accent colour (prototype a { color: var(--accent) }). */
-  main a:not(.btn):not(.tile) {
+  main a:not(.btn):not(.tile):not([class]) {
     @apply text-primary hover:underline;
   }
 
-  /* Status colours as utilities (docs/03 §1.1). */
+  /* ---------- Containers ---------- */
+  .panel {
+    @apply overflow-hidden rounded-[10px] border bg-card;
+    box-shadow: var(--shadow);
+  }
+  .panel-head {
+    @apply flex flex-wrap items-start justify-between gap-3 px-4 py-3.5;
+  }
+  .panel-title {
+    @apply text-[15px] font-semibold;
+  }
+  .panel-sub {
+    @apply text-[13px] text-muted-foreground;
+  }
+  .empty {
+    @apply px-4 py-10 text-center text-muted-foreground;
+  }
+  .banner {
+    @apply flex items-start gap-2 rounded-lg px-3.5 py-2.5 text-[13.5px];
+    background: var(--accent-soft);
+  }
+  .banner .icon {
+    @apply mt-0.5 text-primary;
+  }
+
+  /* ---------- Small parts ---------- */
+  .ttag {
+    @apply inline-block rounded border bg-muted px-1.5 align-[1px] text-[11px] font-bold whitespace-nowrap text-muted-foreground;
+  }
+  .count {
+    @apply inline-flex min-w-6 items-center justify-center rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground tabular-nums;
+  }
+  .icon-btn {
+    @apply inline-grid size-8 flex-none cursor-pointer place-items-center rounded-md border-0 bg-transparent text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent;
+  }
+  .icon-btn.danger:hover {
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .link-btn {
+    @apply inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 font-semibold text-primary hover:underline;
+  }
+  .text-danger {
+    color: var(--bad);
+  }
   .text-warn {
     color: var(--warn);
   }
 
-  /* Card grid (paper types, later papers): auto-fill, min 290 px (docs/03 §3.1). */
+  /* Autosave status: one place, always visible (docs/03 §4 "Saving… / Saved"). */
+  .save-state {
+    @apply inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium whitespace-nowrap text-muted-foreground;
+  }
+  .save-state[data-state='idle'] {
+    @apply hidden;
+  }
+  .save-state[data-state='saving'] {
+    @apply bg-muted;
+  }
+  .save-state[data-state='saved'] {
+    color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .save-state[data-state='error'] {
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+
+  /* ---------- Tiles (paper types, later papers) ---------- */
   .tile-grid {
-    @apply grid gap-4;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    @apply grid gap-3.5;
+    grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr));
   }
   .tile {
-    @apply flex flex-col gap-2 p-4 text-left text-foreground no-underline transition-colors hover:border-primary;
+    @apply flex flex-col gap-2.5 rounded-[10px] border bg-card p-4 text-left text-foreground no-underline transition;
+    box-shadow: var(--shadow);
   }
-  .tile-add {
-    @apply items-center justify-center border-dashed text-center;
+  .tile:hover {
+    @apply border-primary;
+    box-shadow: 0 4px 14px rgb(36 83 212 / 12%);
+  }
+  .tile-top {
+    @apply flex items-start justify-between gap-2;
+  }
+  .tile-name {
+    @apply text-[15px] font-bold;
+  }
+  .tile-desc {
+    @apply text-[13px] text-muted-foreground;
   }
   .tile-meta {
-    @apply mt-auto flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground;
+    @apply mt-auto flex flex-wrap gap-x-3 gap-y-1 text-[12.5px] text-muted-foreground;
   }
-  .card-head {
-    @apply flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3;
+  .tile-meta b {
+    @apply text-foreground;
   }
-
-  /* Editor rows: actions show on hover / focus, always on touch screens (docs/03 §3.7). */
-  .admin-row {
-    @apply flex items-start gap-3 border-b px-4 py-3 last:border-b-0 hover:bg-muted/50;
+  .tile-add {
+    @apply min-h-[150px] cursor-pointer items-center justify-center border-dashed bg-transparent text-center shadow-none;
   }
-  .row-actions {
-    @apply flex shrink-0 gap-0.5 opacity-0 transition-opacity;
-  }
-  .admin-row:hover .row-actions,
-  .admin-row:focus-within .row-actions {
-    @apply opacity-100;
-  }
-  @media (hover: none) {
-    .row-actions {
-      @apply opacity-100;
-    }
-  }
-  .btn.danger:hover {
-    color: var(--bad);
-    background: var(--bad-soft);
-  }
-  .linkish {
-    @apply cursor-pointer border-0 bg-transparent p-0 font-semibold text-primary hover:underline;
+  .tile-add .plus {
+    @apply text-[28px] leading-none text-primary;
   }
 
-  /* Sections and standards */
-  .admin-section {
-    @apply border-b last:border-b-0;
+  /* ---------- Editor header ---------- */
+  .editor-head {
+    @apply mb-4 flex flex-wrap items-start gap-3;
   }
-  .section-head {
-    @apply flex items-center gap-2 border-b bg-muted px-4 py-2.5;
+  .editor-title {
+    @apply min-w-0 flex-[1_1_320px];
   }
-  .section-letter {
-    @apply grid size-7 shrink-0 place-items-center rounded-md text-[13px] font-bold text-primary;
-    background: var(--accent-soft);
-  }
-  .section-title,
   .title-input,
   .sub-input {
-    @apply min-w-0 rounded-md border border-transparent bg-transparent px-1.5 py-0.5 hover:border-border focus:border-ring focus:outline-none;
+    @apply -ml-[7px] w-[calc(100%+7px)] rounded-lg border border-transparent bg-transparent px-1.5 py-0.5 hover:border-border focus:bg-card focus:outline-2 focus:outline-ring;
   }
-  .section-title {
-    @apply flex-1 text-[15px] font-bold;
-  }
-  /* Negative margin: the text lines up with the page edge; the padding only shows on hover / focus. */
   .title-input {
-    @apply -mx-1.5 w-[calc(100%+0.75rem)] text-[22px] font-bold;
+    @apply text-[22px] font-bold;
   }
   .sub-input {
-    @apply -mx-1.5 w-[calc(100%+0.75rem)] text-muted-foreground;
+    @apply resize-none text-muted-foreground;
+    field-sizing: content;
+    min-height: 1.5em;
+  }
+  .editor-actions {
+    @apply flex flex-none items-center gap-2;
+  }
+
+  /* Sticky jump bar: one chip per section (same pattern as the paper page, docs/03 §3.2). */
+  .jumpbar {
+    @apply sticky z-20 -mx-4 mb-4 flex items-center gap-2 border-b px-4 py-2.5;
+    top: var(--topbar-h);
+    background: var(--page);
+  }
+  .chips {
+    @apply flex min-w-0 flex-1 gap-1.5 overflow-x-auto p-0.5;
+    scrollbar-width: none;
+  }
+  .chip {
+    @apply inline-flex flex-none cursor-pointer items-center gap-1.5 rounded-full border bg-card py-1 pr-3 pl-1 text-[13px] whitespace-nowrap text-foreground hover:border-primary;
+  }
+  .chip[aria-current='true'] {
+    @apply border-primary;
+    background: var(--accent-soft);
+  }
+  .chip-key {
+    @apply grid h-[22px] min-w-[22px] place-items-center rounded-full bg-muted px-1.5 text-[11.5px] font-bold;
+  }
+  .chip-count {
+    @apply text-xs text-muted-foreground tabular-nums;
+  }
+  @media (max-width: 720px) {
+    .chip-name {
+      @apply hidden;
+    }
+    .chip {
+      @apply pr-2;
+    }
+  }
+  .scroll-target {
+    scroll-margin-top: calc(var(--topbar-h) + 64px);
+  }
+
+  /* ---------- Reference rows (compact) ---------- */
+  .ref-row {
+    @apply flex items-center gap-3 border-t px-4 py-2.5 hover:bg-muted/60;
+  }
+  .ref-icon {
+    @apply grid size-9 flex-none place-items-center rounded-lg bg-muted text-lg leading-none;
+  }
+  .ref-main {
+    @apply min-w-0 flex-1;
+  }
+  .ref-title {
+    @apply truncate font-semibold;
+  }
+  .ref-note {
+    @apply truncate text-[13px] text-muted-foreground;
+  }
+  .ref-linked {
+    @apply hidden flex-none text-[12.5px] whitespace-nowrap text-muted-foreground sm:block;
+  }
+
+  /* ---------- Sections and standards ---------- */
+  .section-head {
+    @apply flex items-center gap-2.5 border-t bg-muted px-4 py-2.5;
+  }
+  .section-letter {
+    @apply grid size-8 flex-none place-items-center rounded-[9px] font-extrabold text-primary;
+    background: var(--accent-soft);
+  }
+  .section-title {
+    @apply min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[14.5px] font-bold hover:border-border focus:bg-card focus:outline-2 focus:outline-ring;
+  }
+  .std-row {
+    @apply grid items-start gap-2.5 border-t px-4 py-2.5 hover:bg-muted/60;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
   }
   .std-number {
-    @apply w-6 shrink-0 pt-0.5 text-right text-sm font-semibold text-muted-foreground;
+    @apply pt-1 text-right font-bold text-muted-foreground tabular-nums;
   }
-  .mandatory-toggle {
-    @apply ml-1.5 cursor-pointer rounded border px-1.5 align-[1px] text-[10.5px] font-bold tracking-wide text-muted-foreground;
+  .std-text {
+    @apply pt-1 font-medium;
   }
-  .mandatory-toggle[aria-pressed='true'] {
+  .row-actions {
+    @apply flex flex-none items-center gap-0.5 text-muted-foreground/70;
+  }
+  .std-row:hover .row-actions,
+  .ref-row:hover .row-actions,
+  .row-actions:focus-within {
+    @apply text-muted-foreground;
+  }
+  @media (max-width: 720px) {
+    .std-row {
+      grid-template-columns: 24px minmax(0, 1fr);
+    }
+    .std-row .row-actions {
+      @apply col-start-2;
+    }
+  }
+  .mtoggle {
+    @apply ml-1.5 cursor-pointer rounded border border-dashed bg-transparent px-1.5 align-[1px] text-[10.5px] font-bold tracking-wide text-muted-foreground hover:border-primary;
+  }
+  .mtoggle[aria-pressed='true'] {
+    @apply border-solid border-transparent;
     color: var(--bad);
     background: var(--bad-soft);
-    border-color: transparent;
   }
-  .ref-chips {
-    @apply mt-1 flex flex-wrap gap-1.5;
+  .refs {
+    @apply mt-1.5 flex flex-wrap gap-1.5;
   }
   .ref-chip {
-    @apply inline-flex cursor-pointer items-center gap-1 rounded-full border bg-background px-2 py-0.5 text-xs hover:border-primary;
+    @apply inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full border bg-card py-0.5 pr-2.5 pl-2 text-xs text-foreground hover:border-primary hover:text-primary;
   }
-  .ref-chip-add {
+  .ref-chip .t {
+    @apply truncate;
+  }
+  .ref-chip.add {
     @apply border-dashed text-primary;
   }
   .add-slot {
-    @apply px-4 py-2 pl-[52px];
+    @apply border-t border-dashed;
   }
   .add-link {
-    @apply cursor-pointer border-0 bg-transparent p-0 text-sm font-semibold text-primary hover:underline;
+    @apply flex w-full cursor-pointer items-center gap-1.5 border-0 bg-transparent py-2.5 pr-4 pl-[54px] text-left text-[13px] font-semibold text-primary;
+  }
+  .add-link:hover {
+    background: var(--accent-soft);
+  }
+  .add-box {
+    @apply grid gap-1.5 px-4 py-3 pl-[54px];
+    background: var(--accent-soft);
+  }
+  .add-box textarea {
+    @apply w-full resize-y rounded-lg border border-primary bg-card px-2.5 py-2;
+  }
+  .hint {
+    @apply text-[11.5px] text-muted-foreground;
+  }
+  @media (max-width: 720px) {
+    .add-link,
+    .add-box {
+      @apply pl-4;
+    }
   }
 
-  /* Reference viewer: pages fit the column */
+  /* ---------- Dialogs (Basecoat <dialog>, prototype modal layout) ---------- */
+  .dialog > .dlg {
+    @apply w-[min(520px,calc(100%-2rem))] overflow-hidden rounded-xl border bg-card p-0 shadow-2xl;
+  }
+  .dialog > .dlg.wide {
+    @apply w-[min(900px,calc(100%-2rem))];
+  }
+  .dlg-head {
+    @apply flex items-center justify-between gap-3 border-b px-5 py-3.5;
+  }
+  .dlg-head h2 {
+    @apply text-[17px] font-semibold;
+  }
+  .dlg-body {
+    @apply grid max-h-[calc(100vh-11rem)] content-start gap-4 overflow-y-auto px-5 pt-3 pb-4;
+  }
+  .dlg-foot {
+    @apply flex flex-wrap items-center justify-end gap-2 border-t px-5 py-3;
+  }
+  .dlg-foot .grow {
+    @apply mr-auto;
+  }
+  .field {
+    @apply grid gap-1.5;
+  }
+  .field > label,
+  .field > .label {
+    @apply text-[12.5px] font-semibold;
+  }
+  .field .help {
+    @apply text-xs text-muted-foreground;
+  }
+  .req {
+    color: var(--bad);
+  }
+  .counter {
+    @apply justify-self-end text-[11.5px] text-muted-foreground tabular-nums;
+  }
+  .form-error {
+    @apply rounded-md px-3 py-2 text-[13px];
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+
+  /* Choice cards (reference type, mandatory) — prototype .choose */
+  .choose {
+    @apply grid grid-cols-2 gap-2 sm:grid-cols-4;
+  }
+  .choice {
+    @apply relative grid cursor-pointer justify-items-center gap-1 rounded-[10px] border bg-card px-2 py-2.5 text-center text-[13px] font-medium hover:border-primary;
+  }
+  .choice:has(input:checked) {
+    @apply border-primary text-primary;
+    background: var(--accent-soft);
+  }
+  .choice:has(input:focus-visible) {
+    @apply outline-2 outline-offset-2 outline-ring;
+  }
+  .choice input {
+    @apply absolute opacity-0;
+  }
+  .choice .emoji {
+    @apply text-xl leading-none;
+  }
+  .check-card {
+    @apply flex cursor-pointer items-start gap-3 rounded-[10px] border p-3 hover:border-primary;
+  }
+  .check-card:has(input:checked) {
+    border-color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .check-card input {
+    @apply mt-0.5;
+  }
+  /* Neutral choice (e.g. "Start blank"): accent instead of the red used for Mandatory. */
+  .check-card.start-option:has(input:checked) {
+    @apply border-primary;
+    background: var(--accent-soft);
+  }
+
+  /* File drop zone */
+  .dropzone {
+    @apply relative grid cursor-pointer justify-items-center gap-1 rounded-[10px] border-2 border-dashed bg-muted/40 px-4 py-5 text-center hover:border-primary;
+  }
+  .dropzone.over,
+  .dropzone:focus-within {
+    @apply border-primary;
+    background: var(--accent-soft);
+  }
+  .dropzone input {
+    @apply absolute inset-0 cursor-pointer opacity-0;
+  }
+  .dropzone .icon {
+    @apply size-6 text-primary;
+  }
+  .dropzone .file-name {
+    @apply font-semibold break-all;
+  }
+
+  /* Reference picker in "Edit standard" */
+  .picker {
+    @apply grid max-h-64 gap-3 overflow-y-auto rounded-[10px] border p-3;
+  }
+  .picker-group h4 {
+    @apply mb-1 text-[11px] font-bold tracking-wide text-muted-foreground uppercase;
+  }
+  .picker label {
+    @apply flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-[13.5px] hover:bg-muted;
+  }
+
+  /* ---------- Users ---------- */
+  .users-table {
+    @apply w-full text-left;
+  }
+  .users-table th {
+    @apply border-b px-4 py-2.5 text-xs font-semibold text-muted-foreground;
+  }
+  .users-table td {
+    @apply border-b px-4 py-2.5 align-middle;
+  }
+  .users-table tr:last-child td {
+    @apply border-b-0;
+  }
+  @media (max-width: 720px) {
+    .users-table thead {
+      @apply sr-only;
+    }
+    .users-table tr {
+      @apply grid grid-cols-2 gap-x-3 gap-y-2 border-b p-4;
+    }
+    .users-table td {
+      @apply border-0 p-0;
+    }
+    .users-table td[data-label]::before {
+      @apply mb-0.5 block text-[11px] font-semibold text-muted-foreground;
+      content: attr(data-label);
+    }
+    .users-table td.wide {
+      @apply col-span-2;
+    }
+  }
+
+  /* ---------- Auth & error pages ---------- */
+  .center-card {
+    @apply mx-auto mt-10 grid w-full max-w-sm gap-4 rounded-xl border bg-card p-6;
+    box-shadow: var(--shadow);
+  }
+  .center-card .brand-logo {
+    @apply size-10 rounded-xl;
+  }
+  .message-page {
+    @apply mx-auto mt-16 grid max-w-md justify-items-center gap-3 text-center;
+  }
+  .message-page .badge-icon {
+    @apply grid size-12 place-items-center rounded-full bg-muted text-muted-foreground;
+  }
+  .message-page .badge-icon .icon {
+    @apply size-6;
+  }
+
+  /* ---------- Reference viewer ---------- */
+  .viewer-preview {
+    @apply grid min-h-60 place-items-center rounded-lg bg-muted p-3;
+  }
   .viewer-preview canvas,
   .viewer-preview img {
-    @apply mx-auto h-auto max-w-full rounded border;
+    @apply h-auto max-w-full rounded border bg-white;
+  }
+
+  /* ---------- Toasts: bottom centre, like the prototype ---------- */
+  .toaster {
+    @apply right-auto left-1/2 -translate-x-1/2;
   }
 }

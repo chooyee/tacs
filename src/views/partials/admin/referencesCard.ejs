@@ -1,33 +1,38 @@
-<%# References card (FR-ADM-11). Rows carry their values as data-* for the edit dialog.
-    #reference-options feeds the standard dialog's checkboxes and is refreshed with this card. %>
-<section class="panel" id="references-card">
-  <div class="card-head">
+<%# References card (FR-ADM-11): one compact row per reference so the standards start higher.
+    Rows carry their values as data-* for the edit dialog; #reference-options feeds the
+    standard dialog's picker and is refreshed with this card. %>
+<section class="panel scroll-target" id="references-card" data-jump-label="<%= t.adminType.referencesTitle %>" data-jump-count="<%= references.length %>">
+  <div class="panel-head">
     <div>
-      <h2 class="text-base font-semibold"><%= t.adminType.referencesTitle %></h2>
-      <p class="text-sm text-muted-foreground"><%= t.adminType.referencesHelp %></p>
+      <h2 class="panel-title"><%= t.adminType.referencesTitle %> <span class="count"><%= references.length %></span></h2>
+      <p class="panel-sub"><%= t.adminType.referencesHelp %></p>
     </div>
-    <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="add-reference">＋ <%= t.adminType.addReference %></button>
+    <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="add-reference">
+      <%- include('../icon', { name: 'plus' }) %> <%= t.adminType.addReference %>
+    </button>
   </div>
   <div hidden id="reference-options" data-json="<%= JSON.stringify(references.map((r) => ({ id: r.id, type: r.type, title: r.title, icon: t.referenceIcons[r.type] }))) %>"></div>
   <% if (!references.length) { %>
-  <p class="empty-state"><%= t.adminType.noReferences %></p>
+  <p class="empty border-t"><%= t.adminType.noReferences %></p>
   <% } %>
   <% for (const r of references) { %>
-  <div class="admin-row" data-reference-id="<%= r.id %>" data-type="<%= r.type %>" data-title="<%= r.title %>"
+  <div class="ref-row" data-reference-id="<%= r.id %>" data-type="<%= r.type %>" data-title="<%= r.title %>"
        data-url="<%= r.url || '' %>" data-note="<%= r.note || '' %>">
-    <span class="text-lg" aria-hidden="true"><%= t.referenceIcons[r.type] %></span>
-    <div class="min-w-0 flex-1">
-      <b><%= r.title %></b> <span class="ttag"><%= r.type %></span>
-      <% if (r.note) { %><div class="text-sm text-muted-foreground"><%= r.note %></div><% } %>
-      <div class="text-sm">
-        <% if (r.url) { %><a href="<%= r.url %>" target="_blank" rel="noopener noreferrer"><%= r.url %></a> ·<% } %>
-        <button type="button" class="linkish" data-action="view-reference"><%= t.adminType.preview %></button>
-        <span class="text-muted-foreground">· <%= t.adminType.linkedTo(r.linkedCount) %></span>
+    <span class="ref-icon" aria-hidden="true"><%= t.referenceIcons[r.type] %></span>
+    <div class="ref-main">
+      <div class="ref-title"><%= r.title %> <span class="ttag"><%= r.type %></span></div>
+      <div class="ref-note" title="<%= r.note || '' %>">
+        <%= r.note || t.adminType.noNote %>
       </div>
     </div>
+    <span class="ref-linked"><%= t.adminType.linkedTo(r.linkedCount) %></span>
     <div class="row-actions">
-      <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" data-action="edit-reference" aria-label="<%= t.adminType.edit %> <%= r.title %>" title="<%= t.adminType.edit %>">✎</button>
-      <button type="button" class="btn danger" data-variant="ghost" data-size="icon-sm" data-action="delete-reference" aria-label="<%= t.adminType.delete %> <%= r.title %>" title="<%= t.adminType.delete %>">🗑</button>
+      <button type="button" class="icon-btn" data-action="view-reference" aria-label="<%= t.adminType.preview %>: <%= r.title %>" title="<%= t.adminType.preview %>"><%- include('../icon', { name: 'eye' }) %></button>
+      <% if (r.url) { %>
+      <a class="icon-btn" href="<%= r.url %>" target="_blank" rel="noopener noreferrer" aria-label="<%= t.adminType.openLink %>: <%= r.title %>" title="<%= r.url %>"><%- include('../icon', { name: 'external' }) %></a>
+      <% } %>
+      <button type="button" class="icon-btn" data-action="edit-reference" aria-label="<%= t.adminType.edit %>: <%= r.title %>" title="<%= t.adminType.edit %>"><%- include('../icon', { name: 'pencil' }) %></button>
+      <button type="button" class="icon-btn danger" data-action="delete-reference" aria-label="<%= t.adminType.delete %>: <%= r.title %>" title="<%= t.adminType.delete %>"><%- include('../icon', { name: 'trash' }) %></button>
     </div>
   </div>
   <% } %>

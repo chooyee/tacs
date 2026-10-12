@@ -193,6 +193,14 @@ Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02.
   chips, "✎ Edit links" / "＋ Link a reference" chip, ✎ ↑ ↓ 🗑), and a
   "＋ Add standard" row per section.
 - Inline add box hint: "Enter adds it and starts the next one · Esc to finish".
+- (D-36) Breadcrumb "Paper types › <name>"; one save indicator ("Saving… / ✓ Saved / Not saved") next
+  to **Delete type** covers every autosave; a sticky jump bar under the banner (References + a chip per
+  section: letter, title, count) scrolls to that part and highlights the one in view.
+- (D-36) References are compact rows: icon, title + type tag, note (one line), "linked to N",
+  actions ⊙ preview, ↗ intranet link, ✎ edit, 🗑 delete — always visible, muted until hover.
+- (D-36) Add / Edit reference: type as four icon cards, file as a drop zone showing the chosen
+  file, note with a character counter. Edit standard: text with counter, Mandatory as a highlighted
+  check card, references grouped by type with a filter and "N selected" (warning above 4).
 
 ## 4. States every screen must handle
 

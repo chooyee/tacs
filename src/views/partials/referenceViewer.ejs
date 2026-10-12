@@ -2,29 +2,33 @@
     Filled by public/js/lib/referenceViewer.js from GET /api/references/:id. %>
 <dialog class="dialog" id="reference-viewer" aria-labelledby="rv-title"
         data-strings="<%= JSON.stringify({ usedFor: t.viewer.usedFor, noStandards: t.viewer.noStandards, loading: t.viewer.loading, failed: t.viewer.failed, pageOf: t.viewer.page('{n}', '{of}'), icons: t.referenceIcons }) %>">
-  <div class="w-full sm:max-w-4xl">
-    <header><h2 id="rv-title"></h2></header>
-    <section class="grid gap-4 md:grid-cols-[1fr_280px]">
-      <div class="viewer-preview">
-        <canvas id="rv-canvas" hidden></canvas>
-        <img id="rv-image" alt="" hidden>
-        <p id="rv-status" class="text-sm text-muted-foreground"></p>
+  <div class="dlg wide">
+    <div class="dlg-head">
+      <h2 id="rv-title"></h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('icon', { name: 'close' }) %></button>
+    </div>
+    <div class="dlg-body md:grid-cols-[1fr_280px]">
+      <div>
+        <div class="viewer-preview">
+          <canvas id="rv-canvas" hidden></canvas>
+          <img id="rv-image" alt="" hidden>
+          <p id="rv-status" class="text-[13px] text-muted-foreground"></p>
+        </div>
         <div id="rv-pager" class="mt-2 flex items-center justify-center gap-2" hidden>
-          <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="rv-prev" aria-label="<%= t.viewer.previous %>">←</button>
-          <span id="rv-page" class="text-sm"></span>
-          <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="rv-next" aria-label="<%= t.viewer.next %>">→</button>
+          <button type="button" class="icon-btn" data-action="rv-prev" aria-label="<%= t.viewer.previous %>"><%- include('icon', { name: 'up', cls: '-rotate-90' }) %></button>
+          <span id="rv-page" class="text-[13px] tabular-nums"></span>
+          <button type="button" class="icon-btn" data-action="rv-next" aria-label="<%= t.viewer.next %>"><%- include('icon', { name: 'down', cls: '-rotate-90' }) %></button>
         </div>
       </div>
       <div class="grid content-start gap-3">
-        <span id="rv-type" class="badge" data-variant="outline"></span>
-        <p id="rv-note" class="text-sm"></p>
+        <span id="rv-type" class="ttag w-fit"></span>
+        <p id="rv-note" class="text-[13.5px]"></p>
         <div>
-          <h3 class="mb-1 text-xs font-semibold uppercase text-muted-foreground"><%= t.viewer.usedFor %></h3>
-          <ul id="rv-used" class="grid gap-1 text-sm"></ul>
+          <h3 class="mb-1 text-[11px] font-bold tracking-wide text-muted-foreground uppercase"><%= t.viewer.usedFor %></h3>
+          <ul id="rv-used" class="grid gap-1 text-[13px]"></ul>
         </div>
-        <a id="rv-official" class="btn" data-variant="outline" target="_blank" rel="noopener noreferrer" hidden><%= t.viewer.openOfficial %></a>
+        <a id="rv-official" class="btn w-fit" data-variant="outline" target="_blank" rel="noopener noreferrer" hidden><%- include('icon', { name: 'external' }) %> <%= t.viewer.openOfficial %></a>
       </div>
-    </section>
-    <button type="button" aria-label="<%= t.viewer.close %>" data-action="close-dialog" class="top-3 right-3">✕</button>
+    </div>
   </div>
 </dialog>

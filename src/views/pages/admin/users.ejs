@@ -1,19 +1,28 @@
-<%# Users page (FR-ACC-09). Changes are saved by public/js/pages/adminUsers.js via PATCH /api/admin/users/:id. %>
+<%# Users page (FR-ACC-09). Changes are saved by public/js/pages/adminUsers.js via PATCH /api/admin/users/:id.
+    Table on desktop; on a phone each row becomes a card (CSS, no second markup). %>
 <%- include('../../partials/admin/tabs') %>
-<div class="mb-4">
-  <h1 class="text-[22px] font-semibold leading-tight"><%= t.adminUsers.heading %></h1>
-  <p class="mt-1 text-muted-foreground"><%= t.adminUsers.subtitle %></p>
+<div class="page-head">
+  <div>
+    <h1 class="page-title"><%= t.adminUsers.heading %> <span class="count align-middle"><%= users.length %></span></h1>
+    <p class="page-sub"><%= t.adminUsers.subtitle %></p>
+  </div>
+  <% if (users.length > 5) { %>
+  <label class="relative w-full sm:w-72">
+    <span class="sr-only"><%= t.adminUsers.search %></span>
+    <span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"><%- include('../../partials/icon', { name: 'search' }) %></span>
+    <input class="input w-full pl-8" type="search" id="user-search" placeholder="<%= t.adminUsers.search %>">
+  </label>
+  <% } %>
 </div>
 
 <% if (!users.length) { %>
-<div class="panel empty-state"><p><%= t.adminUsers.empty %></p></div>
+<div class="panel empty"><%= t.adminUsers.empty %></div>
 <% } else { %>
-<div class="panel overflow-x-auto">
-  <table class="table" id="users-table">
+<div class="panel">
+  <table class="users-table" id="users-table">
     <thead>
       <tr>
         <th scope="col"><%= t.adminUsers.colName %></th>
-        <th scope="col"><%= t.adminUsers.colEmail %></th>
         <th scope="col"><%= t.adminUsers.colRole %></th>
         <th scope="col"><%= t.adminUsers.colStatus %></th>
         <th scope="col"><%= t.adminUsers.colLastLogin %></th>
@@ -21,27 +30,30 @@
     </thead>
     <tbody>
       <% for (const u of users) { %>
-      <tr data-user-id="<%= u.id %>">
-        <td class="font-medium"><%= u.name %><% if (u.isSelf) { %> <span class="badge" data-variant="secondary"><%= t.adminUsers.you %></span><% } %></td>
-        <td class="text-muted-foreground"><%= u.email || '—' %></td>
-        <td>
-          <select class="select" data-field="role" aria-label="<%= t.adminUsers.colRole %>: <%= u.name %>" <% if (u.isSelf) { %>disabled<% } %>>
+      <tr data-user-id="<%= u.id %>" data-search="<%= `${u.name} ${u.email || ''}`.toLowerCase() %>">
+        <td class="wide">
+          <div class="font-semibold"><%= u.name %><% if (u.isSelf) { %> <span class="ttag"><%= t.adminUsers.you %></span><% } %></div>
+          <div class="text-[13px] text-muted-foreground"><%= u.email || '—' %></div>
+        </td>
+        <td data-label="<%= t.adminUsers.colRole %>">
+          <select class="select" data-field="role" aria-label="<%= t.adminUsers.colRole %>: <%= u.name %>" <% if (u.isSelf) { %>disabled title="<%= t.adminUsers.selfHint %>"<% } %>>
             <option value="architect" <% if (u.role === 'architect') { %>selected<% } %>><%= t.adminUsers.roleArchitect %></option>
             <option value="admin" <% if (u.role === 'admin') { %>selected<% } %>><%= t.adminUsers.roleAdmin %></option>
           </select>
         </td>
-        <td>
-          <select class="select" data-field="status" aria-label="<%= t.adminUsers.colStatus %>: <%= u.name %>" <% if (u.isSelf) { %>disabled<% } %>>
+        <td data-label="<%= t.adminUsers.colStatus %>">
+          <select class="select" data-field="status" aria-label="<%= t.adminUsers.colStatus %>: <%= u.name %>" <% if (u.isSelf) { %>disabled title="<%= t.adminUsers.selfHint %>"<% } %>>
             <option value="active" <% if (u.status === 'active') { %>selected<% } %>><%= t.adminUsers.statusActive %></option>
             <option value="disabled" <% if (u.status === 'disabled') { %>selected<% } %>><%= t.adminUsers.statusDisabled %></option>
           </select>
         </td>
-        <td class="text-muted-foreground">
+        <td class="wide text-[13px] text-muted-foreground" data-label="<%= t.adminUsers.colLastLogin %>">
           <% if (u.lastLoginAt) { %><time datetime="<%= u.lastLoginAt.toISOString() %>"><%= u.lastLoginAt.toISOString().slice(0, 16).replace('T', ' ') %> UTC</time><% } else { %><%= t.adminUsers.never %><% } %>
         </td>
       </tr>
       <% } %>
     </tbody>
   </table>
+  <p class="empty hidden" id="users-no-match"><%= t.adminUsers.noMatch %></p>
 </div>
 <% } %>

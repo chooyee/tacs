@@ -2,6 +2,7 @@
 
 const config = require('../config');
 const strings = require('../views/strings/en');
+const icons = require('../views/icons');
 const { version } = require('../../package.json');
 
 /** Two-letter initials for the avatar button ("Dana Tan" → "DT"). */
@@ -46,6 +47,7 @@ function buildNav(req) {
  */
 function viewLocals(req, res, next) {
   res.locals.t = strings;
+  res.locals.icons = icons; // for views/partials/icon.ejs
   res.locals.assetVersion = version;
   res.locals.accessRequestText = config.access.requestText;
   Object.defineProperty(res.locals, 'nav', {

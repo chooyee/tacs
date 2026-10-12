@@ -1,22 +1,21 @@
 <%# Local administrator sign-in (FR-ACC-10, D-27). %>
-<section class="mx-auto max-w-sm py-12">
-  <div class="card p-6">
-    <h1 class="text-xl font-semibold"><%= t.auth.localTitle %></h1>
-    <p class="mt-1 text-sm text-muted-foreground"><%= t.auth.localText %></p>
-    <% if (error) { %><div class="alert mt-4" data-variant="destructive" role="alert"><section><%= error %></section></div><% } %>
-    <form method="post" action="/auth/local" class="form mt-4 grid gap-4">
-      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-      <input type="hidden" name="returnTo" value="<%= returnTo %>">
-      <div class="grid gap-2">
-        <label for="username"><%= t.auth.username %></label>
-        <input class="input" type="text" id="username" name="username" autocomplete="username" autocapitalize="none" required value="<%= username %>" autofocus>
-      </div>
-      <div class="grid gap-2">
-        <label for="password"><%= t.auth.password %></label>
-        <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
-      </div>
-      <button type="submit" class="btn w-full" data-variant="primary"><%= t.auth.signIn %></button>
-    </form>
-    <p class="mt-4 text-center text-sm"><a class="underline" href="/auth/login"><%= t.auth.signInMicrosoft %></a></p>
+<form method="post" action="/auth/local" class="center-card" novalidate>
+  <span class="brand-logo" aria-hidden="true"><%- include('../../partials/icon', { name: 'check', cls: 'size-5' }) %></span>
+  <div>
+    <h1 class="text-xl font-bold"><%= t.auth.localTitle %></h1>
+    <p class="mt-1 text-[13px] text-muted-foreground"><%= t.auth.localText %></p>
   </div>
-</section>
+  <% if (error) { %><p class="form-error" role="alert"><%= error %></p><% } %>
+  <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+  <input type="hidden" name="returnTo" value="<%= returnTo %>">
+  <div class="field">
+    <label for="username"><%= t.auth.username %></label>
+    <input class="input" type="text" id="username" name="username" autocomplete="username" autocapitalize="none" required value="<%= username %>" autofocus>
+  </div>
+  <div class="field">
+    <label for="password"><%= t.auth.password %></label>
+    <input class="input" id="password" name="password" type="password" autocomplete="current-password" required>
+  </div>
+  <button type="submit" class="btn w-full"><%= t.auth.signIn %></button>
+  <p class="text-center text-[13px]"><a href="/auth/login"><%= t.auth.signInMicrosoft %></a></p>
+</form>

@@ -1,29 +1,35 @@
-<%# Edit standard (FR-ADM-17): text, mandatory, linked references (checkboxes built by adminType.js). %>
+<%# Edit standard (FR-ADM-17, FR-ADM-21): text, mandatory, linked references. The picker is grouped
+    by type and filterable; its options are built by adminType.js from #reference-options. %>
 <dialog class="dialog" id="standard-dialog" aria-labelledby="standard-dialog-title">
-  <div class="w-full sm:max-w-lg">
-    <header><h2 id="standard-dialog-title"><%= t.adminType.standardDialog %></h2></header>
-    <form id="standard-form" class="form grid gap-4" novalidate>
-      <section class="grid gap-4">
-        <div class="grid gap-2">
-          <label for="sf-text"><%= t.adminType.standardText %> <span class="text-destructive">*</span></label>
-          <textarea class="textarea" id="sf-text" name="text" maxlength="500" rows="3" required></textarea>
+  <form id="standard-form" class="dlg" novalidate>
+    <div class="dlg-head">
+      <h2 id="standard-dialog-title"><%= t.adminType.standardDialog %></h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('../icon', { name: 'close' }) %></button>
+    </div>
+    <div class="dlg-body">
+      <div class="field">
+        <label for="sf-text"><%= t.adminType.standardText %> <span class="req">*</span></label>
+        <textarea class="textarea" id="sf-text" name="text" maxlength="500" rows="3" required data-counter></textarea>
+        <span class="counter" aria-hidden="true"></span>
+      </div>
+      <label class="check-card">
+        <input class="input" type="checkbox" id="sf-mandatory" name="isMandatory">
+        <span><b><%= t.adminType.mandatoryLabel %></b><br><span class="text-[13px] text-muted-foreground"><%= t.adminType.mandatoryHelp %></span></span>
+      </label>
+      <fieldset class="field">
+        <div class="flex items-end justify-between gap-2">
+          <legend class="label"><%= t.adminType.linkedReferences %></legend>
+          <span class="selected-count text-xs text-muted-foreground"></span>
         </div>
-        <label class="flex items-start gap-2">
-          <input class="input" type="checkbox" id="sf-mandatory" name="isMandatory">
-          <span><b><%= t.adminType.mandatoryLabel %></b><br><span class="text-sm text-muted-foreground"><%= t.adminType.mandatoryHelp %></span></span>
-        </label>
-        <fieldset class="grid gap-2">
-          <legend class="mb-1 font-medium"><%= t.adminType.linkedReferences %></legend>
-          <div id="sf-references" class="grid gap-1"></div>
-          <p class="too-many text-sm text-warn" hidden><%= t.adminType.tooManyReferences %></p>
-        </fieldset>
-        <p class="form-error text-sm text-destructive" role="alert" hidden></p>
-      </section>
-      <footer class="gap-2">
-        <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.adminType.cancel %></button>
-        <button type="submit" class="btn" data-variant="primary"><%= t.adminType.save %></button>
-      </footer>
-    </form>
-    <button type="button" aria-label="<%= t.viewer.close %>" data-action="close-dialog" class="top-3 right-3">✕</button>
-  </div>
+        <input class="input" type="search" id="sf-filter" placeholder="<%= t.adminType.filterReferences %>" aria-label="<%= t.adminType.filterReferences %>">
+        <div id="sf-references" class="picker"></div>
+        <p class="too-many text-[13px] text-warn" hidden><%- include('../icon', { name: 'alert', cls: 'inline align-[-3px]' }) %> <%= t.adminType.tooManyReferences %></p>
+      </fieldset>
+      <p class="form-error" role="alert" hidden></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.adminType.cancel %></button>
+      <button type="submit" class="btn"><%= t.adminType.save %></button>
+    </div>
+  </form>
 </dialog>

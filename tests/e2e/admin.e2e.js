@@ -16,6 +16,8 @@ const { findBrowser, start, newPage, createAdmin, signIn, settle } = require('./
 
 const skip = findBrowser() ? false : 'No Chrome or Edge found (set CHROME_PATH)';
 
+after(closeDb); // one database pool for the whole file
+
 describe('admin editor in the browser', { skip }, () => {
   let env;
   let page;
@@ -28,26 +30,24 @@ describe('admin editor in the browser', { skip }, () => {
     page = await newPage(env.browser);
     await signIn(page, env.base);
   });
-  after(async () => {
-    await env?.close();
-    await closeDb();
-  });
+  after(() => env?.close());
 
   const rows = () => page.$$eval('.standard-row', (r) => r.length);
 
   /** Open the SaaS editor fresh. */
   async function openSaas() {
     await page.goto(`${env.base}/admin/types`);
-    const href = await page.$$eval('a.tile', (as) => as.find((a) => a.textContent.includes('SaaS')).href);
+    const href = await page.$$eval(
+      'a.tile',
+      (as) => as.find((a) => a.querySelector('.tile-name').textContent === 'SaaS').href,
+    );
     await page.goto(href);
     await settle(page);
   }
 
   test('FR-ADM-01: the paper types page lists the seeded types', async () => {
     await page.goto(`${env.base}/admin/types`);
-    const names = await page.$$eval('a.tile > div:first-child > b', (b) =>
-      b.map((x) => x.textContent.trim()),
-    );
+    const names = await page.$$eval('a.tile .tile-name', (b) => b.map((x) => x.textContent.trim()));
     assert.deepEqual(names.sort(), ['Cloud Platform', 'Infrastructure', 'SaaS']);
   });
 
@@ -142,7 +142,7 @@ describe('admin editor in the browser', { skip }, () => {
     fs.writeFileSync(file, await doc.save());
     const before = await page.$$eval('#references-card [data-reference-id]', (r) => r.length);
     await page.click('[data-action="add-reference"]');
-    await page.select('#rf-type', 'Guide');
+    await page.click('#reference-form .choice:nth-child(4)'); // Guide
     await page.type('#rf-title', 'E2E guide');
     await (await page.$('#rf-file')).uploadFile(file);
     await page.click('#reference-form button[type=submit]');
@@ -151,7 +151,53 @@ describe('admin editor in the browser', { skip }, () => {
     assert.equal(await page.$$eval('#references-card [data-reference-id]', (r) => r.length), before + 1);
   });
 
+  test('the jump bar lists References and every section, and jumps there', async () => {
+    await openSaas();
+    const chips = await page.$$eval('#jump-chips .chip', (c) => c.map((x) => x.dataset.target));
+    const sections = await page.$$eval('.admin-section', (s) => s.length);
+    assert.equal(chips.length, sections + 1);
+    assert.equal(chips[0], 'references-card');
+    // A middle section: the last one may sit too low on the page to reach the top.
+    await page.click('#jump-chips .chip:nth-child(3)');
+    await settle(page, 800);
+    const top = await page.$eval(`#${chips[2]}`, (el) => el.getBoundingClientRect().top);
+    assert.ok(top < 250, `section scrolled near the top (top=${top})`);
+  });
+
+  test('every autosave shows "Saved" in the header', async () => {
+    await page.click('[data-field="description"]', { clickCount: 3 });
+    await page.keyboard.type('Vendor-hosted software');
+    await page.waitForFunction(() => document.querySelector('.save-state').dataset.state === 'saved', {
+      timeout: 5000,
+    });
+  });
+
   test('no script errors or failed requests on any of the above', () => {
     assert.deepEqual(page.problems, []);
   });
+});
+
+describe('phone width (docs/03 §2: no horizontal scrolling ≥ 320 px)', { skip }, () => {
+  let env;
+  before(async () => {
+    env = await start();
+  });
+  after(() => env?.close());
+
+  for (const width of [320, 390]) {
+    test(`admin pages fit ${width} px without sideways scrolling`, async () => {
+      const page = await newPage(env.browser, { width, height: 800 });
+      await signIn(page, env.base);
+      const urls = ['/admin/types', '/admin/users'];
+      await page.goto(`${env.base}/admin/types`);
+      urls.push(new URL(await page.$eval('a.tile', (a) => a.href)).pathname);
+      for (const url of urls) {
+        await page.goto(`${env.base}${url}`);
+        await settle(page, 200);
+        const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+        assert.ok(overflow <= 0, `${url} is ${overflow}px too wide at ${width}px`);
+      }
+      await page.close();
+    });
+  }
 });

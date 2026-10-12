@@ -24,5 +24,10 @@ module.exports = [
     languageOptions: { sourceType: 'module', globals: { ...globals.browser } },
     rules: { strict: 'off' },
   },
+  {
+    // Browser tests: Node code, but page.evaluate() callbacks run inside the browser.
+    files: ['tests/e2e/**/*.js'],
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+  },
   prettier,
 ];

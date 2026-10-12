@@ -8,29 +8,46 @@
   confirmDeleteType: t.adminType.confirmDeleteType(type.name), addReference: t.adminType.referenceDialogAdd,
   editReference: t.adminType.referenceDialogEdit, fileHelp: t.adminType.fileHelp,
   fileReplaceHelp: t.adminType.fileReplaceHelp, addPlaceholder: t.adminType.addPlaceholder,
-  addHint: t.adminType.addHint, done: t.adminType.done, addStandard: t.adminType.addStandard, tooMany: t.adminType.tooManyReferences
+  addHint: t.adminType.addHint, done: t.adminType.done, addStandard: t.adminType.addStandardLabel,
+  tooMany: t.adminType.tooManyReferences, selected: t.adminType.selectedCount('{n}'),
+  noMatch: t.adminType.noMatch, chooseFile: t.adminType.chooseFile, referencesChip: t.adminType.referencesTitle
 }) %>">
-  <p class="mb-2 text-sm"><a href="/admin/types"><%= t.adminType.back %></a></p>
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="/admin/types"><%= t.adminTypes.heading %></a>
+    <%- include('../../partials/icon', { name: 'chevronRight', cls: 'size-3.5' }) %>
+    <span aria-current="page" class="type-crumb"><%= type.name %></span>
+  </nav>
 
-  <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-    <div class="min-w-60 flex-1">
+  <div class="editor-head">
+    <div class="editor-title">
       <input class="title-input" type="text" data-field="name" value="<%= type.name %>" maxlength="80" required
              aria-label="<%= t.adminType.namePlaceholder %>" placeholder="<%= t.adminType.namePlaceholder %>">
-      <input class="sub-input" type="text" data-field="description" value="<%= type.description || '' %>" maxlength="300"
-             aria-label="<%= t.adminType.descriptionPlaceholder %>" placeholder="<%= t.adminType.descriptionPlaceholder %>">
-      <p class="save-status text-xs text-muted-foreground" aria-live="polite"></p>
+      <textarea class="sub-input" data-field="description" maxlength="300" rows="1"
+                aria-label="<%= t.adminType.descriptionPlaceholder %>" placeholder="<%= t.adminType.descriptionPlaceholder %>"><%= type.description || '' %></textarea>
     </div>
-    <% if (papersInProgress > 0) { %>
-    <span title="<%= t.adminType.inUse(papersInProgress) %>">
-      <button type="button" class="btn text-destructive" data-variant="outline" disabled aria-describedby="in-use-hint"><%= t.adminType.deleteType %></button>
-      <span id="in-use-hint" class="sr-only"><%= t.adminType.inUse(papersInProgress) %></span>
-    </span>
-    <% } else { %>
-    <button type="button" class="btn text-destructive" data-variant="outline" data-action="delete-type"><%= t.adminType.deleteType %></button>
-    <% } %>
+    <div class="editor-actions">
+      <span class="save-state" data-state="idle" role="status" aria-live="polite"></span>
+      <% if (papersInProgress > 0) { %>
+      <span title="<%= t.adminType.inUse(papersInProgress) %>">
+        <button type="button" class="btn text-danger" data-variant="outline" disabled aria-describedby="in-use-hint">
+          <%- include('../../partials/icon', { name: 'trash' }) %> <%= t.adminType.deleteType %>
+        </button>
+        <span id="in-use-hint" class="sr-only"><%= t.adminType.inUse(papersInProgress) %></span>
+      </span>
+      <% } else { %>
+      <button type="button" class="btn text-danger" data-variant="outline" data-action="delete-type">
+        <%- include('../../partials/icon', { name: 'trash' }) %> <%= t.adminType.deleteType %>
+      </button>
+      <% } %>
+    </div>
   </div>
 
-  <div class="banner mb-4"><%= t.adminType.banner(type.name, papersInProgress) %></div>
+  <div class="banner mb-4"><%- include('../../partials/icon', { name: 'info' }) %><span><%= t.adminType.banner(type.name, papersInProgress) %></span></div>
+
+  <%# Sticky jump bar: chips are built by adminType.js from the sections on the page. %>
+  <nav class="jumpbar" aria-label="<%= t.adminType.jumpTo %>">
+    <div class="chips" id="jump-chips"></div>
+  </nav>
 
   <div class="grid gap-4">
     <%- include('../../partials/admin/referencesCard') %>

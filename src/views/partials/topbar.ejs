@@ -1,9 +1,9 @@
 <%# Sticky top bar (docs/03 §2). `nav` is prepared by middleware/viewLocals.js; no logic here. %>
-<header class="topbar sticky top-0 z-20 border-b bg-card">
-  <div class="mx-auto flex max-w-[1240px] flex-wrap items-center gap-3 px-4 py-2.5">
-    <a class="flex items-center gap-2 font-bold text-foreground hover:no-underline" href="<%= nav.homeHref %>">
-      <span class="logo grid size-7 place-items-center rounded-lg bg-primary text-sm text-primary-foreground" aria-hidden="true">✓</span>
-      <%= t.appName %>
+<header class="topbar">
+  <div class="topbar-in">
+    <a class="brand" href="<%= nav.homeHref %>">
+      <span class="brand-logo"><%- include('icon', { name: 'check' }) %></span>
+      <span class="brand-name"><%= t.appName %></span>
     </a>
     <span class="flex-1"></span>
 
@@ -14,25 +14,26 @@
     </nav>
     <% } %>
 
-    <button type="button" class="btn" data-variant="ghost" data-size="icon" id="theme-toggle" aria-label="<%= t.topbar.toggleTheme %>" title="<%= t.topbar.toggleTheme %>">◐</button>
+    <button type="button" class="icon-btn" id="theme-toggle" aria-label="<%= t.topbar.toggleTheme %>" title="<%= t.topbar.toggleTheme %>">
+      <span class="theme-light"><%- include('icon', { name: 'moon' }) %></span>
+      <span class="theme-dark hidden"><%- include('icon', { name: 'sun' }) %></span>
+    </button>
 
     <% if (nav.user) { %>
     <div id="user-menu" class="dropdown-menu">
-      <button type="button" id="user-menu-trigger" class="btn rounded-full" data-variant="outline" data-size="icon" aria-haspopup="menu"
-              aria-controls="user-menu-menu" aria-expanded="false" aria-label="<%= t.topbar.userMenu %>">
-        <span class="text-xs font-semibold"><%= nav.user.initials %></span>
-      </button>
-      <div id="user-menu-popover" data-popover aria-hidden="true" data-align="end" class="min-w-60">
+      <button type="button" id="user-menu-trigger" class="avatar-btn" aria-haspopup="menu"
+              aria-controls="user-menu-menu" aria-expanded="false" aria-label="<%= t.topbar.userMenu %>"><%= nav.user.initials %></button>
+      <div id="user-menu-popover" data-popover aria-hidden="true" data-align="end" class="min-w-64">
         <div role="menu" id="user-menu-menu" aria-labelledby="user-menu-trigger">
-          <div class="px-2 py-1.5">
+          <div class="grid gap-0.5 px-2 py-2">
             <div class="font-semibold"><%= nav.user.name %></div>
-            <% if (nav.user.email) { %><div class="text-sm text-muted-foreground"><%= nav.user.email %></div><% } %>
-            <div class="mt-1 text-xs text-muted-foreground"><%= nav.user.rolesLabel %></div>
+            <% if (nav.user.email) { %><div class="text-[13px] text-muted-foreground"><%= nav.user.email %></div><% } %>
+            <div class="mt-1"><span class="ttag"><%= nav.user.rolesLabel %></span></div>
           </div>
           <hr role="separator">
           <form method="post" action="/auth/logout">
             <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-            <button type="submit" role="menuitem" class="w-full"><%= t.topbar.signOut %></button>
+            <button type="submit" role="menuitem" class="flex w-full items-center gap-2"><%- include('icon', { name: 'logout' }) %> <%= t.topbar.signOut %></button>
           </form>
         </div>
       </div>

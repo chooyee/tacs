@@ -1,29 +1,28 @@
 <%# First-start setup: create the first local administrator (D-27). %>
-<section class="mx-auto max-w-md py-12">
-  <div class="card p-6">
-    <h1 class="text-xl font-semibold"><%= t.setup.title %></h1>
-    <p class="mt-1 text-sm text-muted-foreground"><%= t.setup.intro %></p>
-    <% if (error) { %><div class="alert mt-4" data-variant="destructive" role="alert"><section><%= error %></section></div><% } %>
-    <form method="post" action="/setup" class="form mt-4 grid gap-4" autocomplete="off">
-      <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
-      <div class="grid gap-2">
-        <label for="token"><%= t.setup.token %></label>
-        <input class="input font-mono" type="text" id="token" name="token" required autofocus spellcheck="false">
-        <p class="text-xs text-muted-foreground"><%= t.setup.tokenHelp %></p>
-      </div>
-      <div class="grid gap-2">
-        <label for="username"><%= t.auth.username %></label>
-        <input class="input" type="text" id="username" name="username" autocomplete="username" autocapitalize="none" required value="<%= username %>">
-      </div>
-      <div class="grid gap-2">
-        <label for="password"><%= t.auth.password %></label>
-        <input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="12" required>
-      </div>
-      <div class="grid gap-2">
-        <label for="confirm"><%= t.auth.confirmPassword %></label>
-        <input class="input" id="confirm" name="confirm" type="password" autocomplete="new-password" minlength="12" required>
-      </div>
-      <button type="submit" class="btn w-full" data-variant="primary"><%= t.setup.submit %></button>
-    </form>
+<form method="post" action="/setup" class="center-card max-w-md" autocomplete="off" novalidate>
+  <span class="brand-logo" aria-hidden="true"><%- include('../partials/icon', { name: 'check', cls: 'size-5' }) %></span>
+  <div>
+    <h1 class="text-xl font-bold"><%= t.setup.title %></h1>
+    <p class="mt-1 text-[13px] text-muted-foreground"><%= t.setup.intro %></p>
   </div>
-</section>
+  <% if (error) { %><p class="form-error" role="alert"><%= error %></p><% } %>
+  <input type="hidden" name="_csrf" value="<%= csrfToken() %>">
+  <div class="field">
+    <label for="token"><%= t.setup.token %></label>
+    <input class="input font-mono" type="text" id="token" name="token" required autofocus spellcheck="false">
+    <span class="help"><%= t.setup.tokenHelp %></span>
+  </div>
+  <div class="field">
+    <label for="username"><%= t.auth.username %></label>
+    <input class="input" type="text" id="username" name="username" autocomplete="username" autocapitalize="none" required value="<%= username %>">
+  </div>
+  <div class="field">
+    <label for="password"><%= t.auth.password %></label>
+    <input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="12" required>
+  </div>
+  <div class="field">
+    <label for="confirm"><%= t.auth.confirmPassword %></label>
+    <input class="input" id="confirm" name="confirm" type="password" autocomplete="new-password" minlength="12" required>
+  </div>
+  <button type="submit" class="btn w-full"><%= t.setup.submit %></button>
+</form>

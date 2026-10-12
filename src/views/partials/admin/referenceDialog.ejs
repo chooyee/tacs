@@ -1,41 +1,50 @@
 <%# Add / Edit reference (FR-ADM-12). Sent as multipart/form-data by adminType.js. %>
 <dialog class="dialog" id="reference-dialog" aria-labelledby="reference-dialog-title">
-  <div class="w-full sm:max-w-lg">
-    <header><h2 id="reference-dialog-title"><%= t.adminType.referenceDialogAdd %></h2></header>
-    <form id="reference-form" class="form grid gap-4" novalidate>
-      <section class="grid gap-4">
-        <div class="grid gap-2">
-          <label for="rf-type"><%= t.adminType.type %></label>
-          <select class="select w-full" id="rf-type" name="type">
-            <% for (const type of t.referenceTypes) { %>
-            <option value="<%= type %>"><%= t.referenceIcons[type] %> <%= type %></option>
-            <% } %>
-          </select>
+  <form id="reference-form" class="dlg" novalidate>
+    <div class="dlg-head">
+      <h2 id="reference-dialog-title"><%= t.adminType.referenceDialogAdd %></h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('../icon', { name: 'close' }) %></button>
+    </div>
+    <div class="dlg-body">
+      <fieldset class="field">
+        <legend class="label mb-1.5"><%= t.adminType.type %></legend>
+        <div class="choose">
+          <% t.referenceTypes.forEach((type, i) => { %>
+          <label class="choice">
+            <input type="radio" name="type" value="<%= type %>" <% if (i === 0) { %>checked<% } %>>
+            <span class="emoji" aria-hidden="true"><%= t.referenceIcons[type] %></span>
+            <span><%= type %></span>
+          </label>
+          <% }) %>
         </div>
-        <div class="grid gap-2">
-          <label for="rf-title"><%= t.adminType.title %> <span class="text-destructive">*</span></label>
-          <input class="input" type="text" id="rf-title" name="title" maxlength="200" required>
-        </div>
-        <div class="grid gap-2">
-          <label for="rf-file"><%= t.adminType.file %> <span class="text-destructive file-required">*</span></label>
-          <input class="input" type="file" id="rf-file" name="file" accept="application/pdf,image/png,image/jpeg">
-          <p class="file-help text-xs text-muted-foreground"><%= t.adminType.fileHelp %></p>
-        </div>
-        <div class="grid gap-2">
-          <label for="rf-url"><%= t.adminType.link %></label>
-          <input class="input" type="url" id="rf-url" name="url" maxlength="2000" placeholder="<%= t.adminType.linkPlaceholder %>">
-        </div>
-        <div class="grid gap-2">
-          <label for="rf-note"><%= t.adminType.note %></label>
-          <textarea class="textarea" id="rf-note" name="note" maxlength="500" rows="3" placeholder="<%= t.adminType.notePlaceholder %>"></textarea>
-        </div>
-        <p class="form-error text-sm text-destructive" role="alert" hidden></p>
-      </section>
-      <footer class="gap-2">
-        <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.adminType.cancel %></button>
-        <button type="submit" class="btn" data-variant="primary"><%= t.adminType.save %></button>
-      </footer>
-    </form>
-    <button type="button" aria-label="<%= t.viewer.close %>" data-action="close-dialog" class="top-3 right-3">✕</button>
-  </div>
+      </fieldset>
+      <div class="field">
+        <label for="rf-title"><%= t.adminType.title %> <span class="req">*</span></label>
+        <input class="input" type="text" id="rf-title" name="title" maxlength="200" required placeholder="<%= t.adminType.titlePlaceholder %>">
+      </div>
+      <div class="field">
+        <span class="label"><%= t.adminType.file %> <span class="req file-required">*</span></span>
+        <div><label class="dropzone" for="rf-file">
+          <input type="file" id="rf-file" name="file" accept="application/pdf,image/png,image/jpeg">
+          <%- include('../icon', { name: 'upload' }) %>
+          <span class="file-name"><%= t.adminType.chooseFile %></span>
+          <span class="file-help help"><%= t.adminType.fileHelp %></span>
+        </label></div>
+      </div>
+      <div class="field">
+        <label for="rf-url"><%= t.adminType.link %></label>
+        <input class="input" type="url" id="rf-url" name="url" maxlength="2000" placeholder="<%= t.adminType.linkPlaceholder %>">
+      </div>
+      <div class="field">
+        <label for="rf-note"><%= t.adminType.note %></label>
+        <textarea class="textarea" id="rf-note" name="note" maxlength="500" rows="3" placeholder="<%= t.adminType.notePlaceholder %>" data-counter></textarea>
+        <span class="counter" aria-hidden="true"></span>
+      </div>
+      <p class="form-error" role="alert" hidden></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.adminType.cancel %></button>
+      <button type="submit" class="btn"><%= t.adminType.save %></button>
+    </div>
+  </form>
 </dialog>

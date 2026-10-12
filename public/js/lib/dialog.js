@@ -3,6 +3,14 @@
 
 const openers = new WeakMap();
 
+/** Update a "123 / 500" counter that follows a textarea marked data-counter. */
+export function updateCounter(textarea) {
+  const counter = textarea.nextElementSibling;
+  if (counter?.classList.contains('counter')) {
+    counter.textContent = `${textarea.value.length} / ${textarea.maxLength}`;
+  }
+}
+
 /**
  * Open a dialog as modal, remembering the element that had focus.
  * @param {HTMLDialogElement} dialog
@@ -10,9 +18,8 @@ const openers = new WeakMap();
 export function openDialog(dialog) {
   openers.set(dialog, document.activeElement);
   dialog.showModal();
-  dialog
-    .querySelector('[autofocus], input:not([type=hidden]):not([type=checkbox]), textarea, select')
-    ?.focus();
+  for (const textarea of dialog.querySelectorAll('textarea[data-counter]')) updateCounter(textarea);
+  dialog.querySelector('[autofocus], input[type=text], input[type=url], textarea, select')?.focus();
 }
 
 /**
@@ -24,14 +31,18 @@ export function closeDialog(dialog) {
 }
 
 /**
- * Wire every dialog on the page once: close buttons, clicking the backdrop, focus return.
+ * Wire every dialog on the page once: close buttons, clicking the backdrop, counters, focus return.
  */
 export function setupDialogs() {
   for (const dialog of document.querySelectorAll('dialog.dialog')) {
     dialog.addEventListener('click', (event) => {
       // A click on the dialog element itself (not its content) is a click on the backdrop.
-      if (event.target === dialog || event.target.closest('[data-action="close-dialog"]'))
+      if (event.target === dialog || event.target.closest('[data-action="close-dialog"]')) {
         closeDialog(dialog);
+      }
+    });
+    dialog.addEventListener('input', (event) => {
+      if (event.target.matches('textarea[data-counter]')) updateCounter(event.target);
     });
     dialog.addEventListener('close', () => {
       const opener = openers.get(dialog);

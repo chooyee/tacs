@@ -14,28 +14,29 @@ document.addEventListener('click', (event) => {
   openDialog(dialog);
 });
 
+// Picking a type to copy also selects the "Copy" option, so one click is enough.
+$('#nt-copy')?.addEventListener('change', () => {
+  form.querySelector('input[name="copyFromTypeId"][value="copy"]').checked = true;
+});
+
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const data = new FormData(form);
-  const name = String(data.get('name')).trim();
+  const name = form.elements.name.value.trim();
   if (!name) {
-    setFormError(dialog, 'Name is required.');
-    $('#nt-name').focus();
+    setFormError(dialog, 'Give the paper type a name.');
+    form.elements.name.focus();
     return;
   }
+  const copy = form.elements.copyFromTypeId.value === 'copy' ? $('#nt-copy').value : '';
   const submit = form.querySelector('[type=submit]');
   submit.disabled = true;
   try {
     const created = await api('/api/admin/types', {
       method: 'POST',
-      body: {
-        name,
-        description: String(data.get('description')),
-        ...(data.get('copyFromTypeId') && { copyFromTypeId: String(data.get('copyFromTypeId')) }),
-      },
+      body: { name, description: form.elements.description.value, ...(copy && { copyFromTypeId: copy }) },
     });
     // A blank type opens with the "add standard" box ready (FR-ADM-02).
-    window.location.assign(data.get('copyFromTypeId') ? created.url : `${created.url}#add`);
+    window.location.assign(copy ? created.url : `${created.url}#add`);
   } catch (err) {
     setFormError(dialog, err.details?.[0]?.message ?? err.message);
     submit.disabled = false;
