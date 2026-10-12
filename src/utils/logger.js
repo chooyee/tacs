@@ -27,6 +27,7 @@ const logger = pino({
       '*.clientSecret',
       '*.token',
       '*.idToken',
+      '*.secretAccessKey',
     ],
     censor: '[REDACTED]',
   },

@@ -185,7 +185,6 @@ describe('Users page API (FR-ACC-09, D-26, D-28)', () => {
     assert.equal(res.body.data.role, 'admin');
 
     await targetAgent.get('/admin/users').expect(200); // immediately, no new sign-in needed
-
   });
 
   test('D-28: disabling a user locks them out on their next request', async () => {

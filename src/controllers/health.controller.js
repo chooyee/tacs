@@ -1,6 +1,6 @@
 'use strict';
 
-const db = require('../utils/db');
+const healthService = require('../services/health.service');
 const { ExternalServiceError } = require('../utils/errors');
 
 /** GET /health — the process is up (NFR-OPS-01). No dependencies checked. */
@@ -8,22 +8,18 @@ function live(_req, res) {
   res.json({ status: 'ok' });
 }
 
-/**
- * GET /health/ready — the load balancer sends traffic only when this is 200. Checks the database;
- * S3 is added in M2 with the storage factory (D-29).
- */
+/** GET /health/ready — the load balancer sends traffic only when the DB and S3 answer. */
 async function ready(_req, res) {
-  try {
-    await db.ping();
-  } catch (err) {
+  const { ok, checks, errors } = await healthService.checkReadiness();
+  if (!ok) {
     throw new ExternalServiceError('Not ready.', {
       status: 503,
       code: 'NOT_READY',
-      details: [{ check: 'db', status: 'fail' }],
-      cause: err,
+      details: Object.entries(checks).map(([check, status]) => ({ check, status })),
+      cause: errors[0],
     });
   }
-  res.json({ status: 'ok', checks: { db: 'ok' } });
+  res.json({ status: 'ok', checks });
 }
 
 module.exports = { live, ready };

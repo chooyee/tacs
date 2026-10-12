@@ -16,6 +16,8 @@ const validEnv = () => ({
   ENTRA_CLIENT_SECRET: 'secret',
   ENTRA_REDIRECT_URI: 'http://localhost:3000/auth/callback',
   AI_PROVIDER: 'fake',
+  AWS_REGION: 'ap-southeast-1',
+  S3_BUCKET: 'psc-dev',
 });
 
 const productionEnv = () => ({
@@ -130,5 +132,25 @@ describe('config validation (docs/10 §2)', () => {
     } catch (err) {
       assert.equal(err.isOperational, false);
     }
+  });
+
+  test('D-30: S3 region and bucket are required outside tests', () => {
+    const env = validEnv();
+    delete env.S3_BUCKET;
+    assertRejects(env, 'S3_BUCKET');
+    assert.doesNotThrow(() => loadConfig({ ...env, NODE_ENV: 'test' }));
+  });
+
+  test('D-30: access keys come as a pair and become explicit credentials', () => {
+    assertRejects({ ...validEnv(), AWS_ACCESS_KEY_ID: 'AKIA' }, 'AWS_SECRET_ACCESS_KEY');
+    const config = loadConfig({ ...validEnv(), AWS_ACCESS_KEY_ID: 'AKIA', AWS_SECRET_ACCESS_KEY: 's' });
+    assert.deepEqual(config.s3.credentials, { accessKeyId: 'AKIA', secretAccessKey: 's' });
+    assert.equal(loadConfig(validEnv()).s3.credentials, undefined); // IAM role in AWS
+  });
+
+  test('D-30: S3_KEY_PREFIX must be a folder ending with /', () => {
+    assert.equal(loadConfig({ ...validEnv(), S3_KEY_PREFIX: 'tacs/' }).s3.keyPrefix, 'tacs/');
+    assertRejects({ ...validEnv(), S3_KEY_PREFIX: 'tacs' }, 'S3_KEY_PREFIX');
+    assertRejects({ ...validEnv(), S3_KEY_PREFIX: '../x/' }, 'S3_KEY_PREFIX');
   });
 });

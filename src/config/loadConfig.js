@@ -55,6 +55,15 @@ const envSchema = z
     S3_BUCKET: optional(z.string().min(1)),
     S3_ENDPOINT: optional(z.url()),
     S3_FORCE_PATH_STYLE: bool('false'),
+    // e.g. "tacs/": every object key starts with it, so a bucket can be shared with another app (D-30)
+    S3_KEY_PREFIX: withDefault(
+      // folders of letters, digits, . _ - (but never "." or ".."), each ending with /
+      z.string().regex(/^((?!\.{1,2}\/)[\w.-]+\/)*$/, 'must look like "folder/" (ends with /)'),
+      '',
+    ),
+    // Local development only (D-30); in AWS the task / instance role is used instead.
+    AWS_ACCESS_KEY_ID: optional(z.string().min(1)),
+    AWS_SECRET_ACCESS_KEY: optional(z.string().min(1)),
 
     UPLOAD_MAX_PAPER_MB: int(20),
     UPLOAD_MAX_REFERENCE_MB: int(15),
@@ -91,6 +100,14 @@ const envSchema = z
       problem('ENTRA_CERT_PRIVATE_KEY_PATH', 'file does not exist');
     }
     if (isProd && !env.BASE_URL.startsWith('https://')) problem('BASE_URL', 'must use https in production');
+    // Tests use the in-memory storage; everywhere else files go to S3 (D-09, D-30).
+    if (env.NODE_ENV !== 'test') {
+      if (!env.AWS_REGION) problem('AWS_REGION', 'is required (S3 region)');
+      if (!env.S3_BUCKET) problem('S3_BUCKET', 'is required');
+    }
+    if (Boolean(env.AWS_ACCESS_KEY_ID) !== Boolean(env.AWS_SECRET_ACCESS_KEY)) {
+      problem('AWS_SECRET_ACCESS_KEY', 'set both AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY, or neither');
+    }
     if (isProd && !env.COOKIE_SECURE) problem('COOKIE_SECURE', 'must be true in production (NFR-SEC-03)');
     if (Boolean(env.ADMIN_BOOTSTRAP_USERNAME) !== Boolean(env.ADMIN_BOOTSTRAP_PASSWORD)) {
       problem(
@@ -156,6 +173,11 @@ function loadConfig(env) {
       bucket: e.S3_BUCKET,
       endpoint: e.S3_ENDPOINT,
       forcePathStyle: e.S3_FORCE_PATH_STYLE,
+      keyPrefix: e.S3_KEY_PREFIX,
+      // undefined → the AWS SDK's default chain (IAM role in AWS)
+      credentials: e.AWS_ACCESS_KEY_ID
+        ? { accessKeyId: e.AWS_ACCESS_KEY_ID, secretAccessKey: e.AWS_SECRET_ACCESS_KEY }
+        : undefined,
     },
     uploads: {
       maxPaperMb: e.UPLOAD_MAX_PAPER_MB,

@@ -8,6 +8,7 @@ const request = require('supertest');
 const { createApp } = require('../../src/app');
 const db = require('../../src/utils/db');
 const setupService = require('../../src/services/setup.service');
+const { getStorage } = require('../../src/factories/storageFactory');
 
 // These tests use the real app with an in-memory session store and need no database. The first-start
 // check ("does a local admin exist?") would query it, so it is stubbed to "setup already done".
@@ -136,17 +137,17 @@ describe('health checks (NFR-OPS-01)', () => {
   const app = createApp();
   afterEach(() => mock.restoreAll());
 
-  test('GET /health → 200 without touching the database', async () => {
+  test('GET /health → 200 without touching the database or storage', async () => {
     const ping = mock.method(db, 'ping', async () => {});
     const res = await request(app).get('/health').expect(200);
     assert.deepEqual(res.body, { status: 'ok' });
     assert.equal(ping.mock.callCount(), 0);
   });
 
-  test('GET /health/ready → 200 when the database answers', async () => {
+  test('GET /health/ready → 200 when the database and storage answer', async () => {
     mock.method(db, 'ping', async () => {});
     const res = await request(app).get('/health/ready').expect(200);
-    assert.deepEqual(res.body, { status: 'ok', checks: { db: 'ok' } });
+    assert.deepEqual(res.body, { status: 'ok', checks: { db: 'ok', storage: 'ok' } });
   });
 
   test('GET /health/ready → 503 NOT_READY when the database is down, without details of the cause', async () => {
@@ -155,8 +156,21 @@ describe('health checks (NFR-OPS-01)', () => {
     });
     const res = await request(app).get('/health/ready').expect(503);
     assert.equal(res.body.error.code, 'NOT_READY');
-    assert.deepEqual(res.body.error.details, [{ check: 'db', status: 'fail' }]);
+    assert.deepEqual(res.body.error.details, [
+      { check: 'db', status: 'fail' },
+      { check: 'storage', status: 'ok' },
+    ]);
     assert.doesNotMatch(JSON.stringify(res.body), /ECONNREFUSED/);
+  });
+
+  test('GET /health/ready → 503 when storage (S3) is down', async () => {
+    mock.method(db, 'ping', async () => {});
+    mock.method(getStorage(), 'ping', async () => {
+      throw new Error('AccessDenied');
+    });
+    const res = await request(app).get('/health/ready').expect(503);
+    assert.deepEqual(res.body.error.details[1], { check: 'storage', status: 'fail' });
+    assert.doesNotMatch(JSON.stringify(res.body), /AccessDenied/);
   });
 
   test('health checks do not set a session cookie', async () => {
