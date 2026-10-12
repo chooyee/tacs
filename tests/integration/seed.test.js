@@ -37,7 +37,7 @@ describe('npm run seed (docs/05 §6, D-31)', () => {
       ['A', 'Identity & Access Management'],
     );
     const casb = saas.sections[0].standards.find((s) => s.number === 3);
-    assert.equal(casb.text, 'CASB protection implemented for all user access');
+    assert.equal(casb.title, 'CASB protection implemented for all user access');
     assert.deepEqual(casb.references.map((r) => r.title).sort(), [
       'CASB reference architecture',
       'SaaS Security Policy v3',
@@ -52,6 +52,9 @@ describe('npm run seed (docs/05 §6, D-31)', () => {
       assert.equal(row.page_count, 1);
       assert.ok(getStorage().objects.has(row.s3_key), row.s3_key);
     }
+    // The seed's file names are readable (they were all ".pdf" before the fix).
+    const names = await db.query('select file_name from reference_docs');
+    assert.ok(names.rows.every((r) => /^[\w.-]+\.pdf$/.test(r.file_name) && r.file_name.length > 4));
   });
 
   test('running it again changes nothing (idempotent)', async () => {

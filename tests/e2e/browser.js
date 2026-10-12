@@ -33,11 +33,12 @@ function findBrowser() {
 
 /**
  * Start the app on a free port and launch the browser.
+ * @param {{testAuth?: import('express').RequestHandler}} [opts]  tests/helpers/fakeAuth.js, to sign in Entra test users
  * @returns {Promise<{base: string, browser: import('puppeteer-core').Browser, close: () => Promise<void>}>}
  */
-async function start() {
+async function start({ testAuth } = {}) {
   const server = await new Promise((resolve) => {
-    const s = createApp().listen(0, '127.0.0.1', () => resolve(s));
+    const s = createApp({ testAuth }).listen(0, '127.0.0.1', () => resolve(s));
   });
   const browser = await puppeteer.launch({
     executablePath: findBrowser(),
@@ -57,11 +58,13 @@ async function start() {
 /**
  * A new page that records script errors, console errors and failed requests in `page.problems`.
  * @param {import('puppeteer-core').Browser} browser
- * @param {{width?: number, height?: number}} [viewport]
+ * @param {{width?: number, height?: number, userId?: string}} [opts]  userId: sign in as this Entra user (needs start({ testAuth }))
  */
-async function newPage(browser, { width = 1280, height = 900 } = {}) {
+async function newPage(browser, { width = 1280, height = 900, userId } = {}) {
   const page = await browser.newPage();
   await page.setViewport({ width, height });
+  // With start({ testAuth }), this header signs the page in as an Entra user (tests/helpers/fakeAuth.js).
+  if (userId) await page.setExtraHTTPHeaders({ 'x-test-user': userId });
   page.problems = [];
   page.on('pageerror', (e) => page.problems.push(`script error: ${e.message}`));
   page.on('console', (m) => m.type() === 'error' && page.problems.push(`console: ${m.text()}`));

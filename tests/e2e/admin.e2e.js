@@ -51,28 +51,36 @@ describe('admin editor in the browser', { skip }, () => {
     assert.deepEqual(names.sort(), ['Cloud Platform', 'Infrastructure', 'SaaS']);
   });
 
-  test('FR-ADM-02: New paper type dialog creates a type and opens its add box', async () => {
+  test('FR-ADM-02: the New paper type dialog creates a type and opens its editor', async () => {
     await page.click('[data-action="new-type"]');
     await page.type('#nt-name', 'Data Platform');
     await Promise.all([page.waitForNavigation(), page.click('#new-type-form button[type=submit]')]);
     await settle(page);
-    assert.ok(await page.$('.add-box textarea'), 'add box is open');
+    assert.match(new URL(page.url()).pathname, /^\/admin\/types\/[0-9a-f-]{36}$/);
+    assert.deepEqual(await page.$$eval('.section-title', (t) => t.map((x) => x.value)), ['General']);
   });
 
-  test('FR-ADM-16: Enter adds a standard and keeps the box open; Esc closes it', async () => {
+  test('FR-ADM-16 / D-38: Add standard opens the full-screen form; it saves title, description, mandatory and references', async () => {
     await openSaas();
     const before = await rows();
-    await page.click('[data-section-id] [data-action="open-add"]');
-    await page.type('.add-box textarea', 'Service accounts inventoried');
-    await page.keyboard.press('Enter');
+    await Promise.all([page.waitForNavigation(), page.click('.admin-section .add-link')]);
     await settle(page);
-    await page.type('.add-box textarea', 'Guest access reviewed quarterly');
-    await page.keyboard.press('Enter');
+    await page.type('#sf-title', 'Service accounts inventoried');
+    await page.click('#sf-description .ql-editor');
+    await page.keyboard.type('Every service account is listed with an owner.');
+    await page.click('#sf-mandatory');
+    await page.type('#ref-search', 'policy');
+    await settle(page, 200);
+    await page.click('#ref-results .picker-row input');
+    assert.equal(await page.$eval('#ref-count', (c) => c.textContent), '1');
+    await Promise.all([page.waitForNavigation(), page.click('#standard-form button[type=submit]')]);
     await settle(page);
-    await page.keyboard.press('Escape');
-    await settle(page);
-    assert.equal(await rows(), before + 2);
-    assert.equal(await page.$('.add-box'), null);
+    assert.equal(await rows(), before + 1);
+    const added = await page.$eval(
+      '.standard-row:has(.std-title-link)',
+      () => [...document.querySelectorAll('.std-title-link')].find((a) => a.textContent.includes('Service accounts inventoried'))?.closest('.standard-row').dataset.mandatory,
+    );
+    assert.equal(added, 'true');
     const numbers = await page.$$eval('.std-number', (n) => n.map((x) => Number(x.textContent)));
     assert.ok(
       numbers.every((n, i) => n === i + 1),
@@ -90,17 +98,16 @@ describe('admin editor in the browser', { skip }, () => {
     assert.notEqual(await state(), before);
   });
 
-  test('FR-ADM-17: the edit dialog saves text and links', async () => {
-    await page.evaluate(() => document.querySelector('.standard-row [data-action="edit-standard"]').click());
-    await settle(page, 200);
-    assert.ok(await page.$eval('#standard-dialog', (d) => d.open));
-    await page.$eval('#sf-text', (t) => (t.value = 'SSO integration defined (edited)'));
-    await page.click('#standard-form button[type=submit]');
+  test('FR-ADM-17 / D-38: the standard form edits the title; the editor shows it', async () => {
+    await Promise.all([page.waitForNavigation(), page.click('.standard-row .std-title-link')]);
     await settle(page);
-    assert.equal(
-      await page.$eval('.standard-row', (r) => r.dataset.text),
-      'SSO integration defined (edited)',
-    );
+    await page.$eval('#sf-title', (t) => {
+      t.value = 'SSO integration defined (edited)';
+      t.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await Promise.all([page.waitForNavigation(), page.click('#standard-form button[type=submit]')]);
+    await settle(page);
+    assert.equal(await page.$eval('.standard-row .std-title-link', (a) => a.textContent.trim()), 'SSO integration defined (edited)');
   });
 
   test('FR-ADM-18: delete shows Undo, which brings the standard back', async () => {
@@ -117,9 +124,11 @@ describe('admin editor in the browser', { skip }, () => {
 
   test('FR-ADM-14: add section selects its title for renaming', async () => {
     const before = await page.$$eval('.admin-section', (s) => s.length);
-    await page.click('[data-action="add-section"]');
+    // element.click(): a mouse click can land on the sticky jump bar when the page is scrolled
+    await page.$eval('[data-action="add-section"]', (b) => b.click());
     await settle(page);
-    assert.ok(await page.evaluate(() => document.activeElement.classList.contains('section-title')));
+    const focused = await page.evaluate(() => `${document.activeElement.tagName}.${document.activeElement.className} ${location.hash}`);
+    assert.ok(focused.includes('section-title'), focused);
     await page.keyboard.type('Network');
     await page.keyboard.press('Enter');
     await settle(page);
@@ -135,20 +144,29 @@ describe('admin editor in the browser', { skip }, () => {
     await page.keyboard.press('Escape');
   });
 
-  test('FR-ADM-12: a reference can be uploaded through the dialog', async () => {
+  test('FR-ADM-12 / D-39: a reference is added on its full-screen form with a file and links', async () => {
     const file = path.join(os.tmpdir(), `psc-e2e-${process.pid}.pdf`);
     const doc = await PDFDocument.create();
     doc.addPage([300, 300]);
     fs.writeFileSync(file, await doc.save());
-    const before = await page.$$eval('#references-card [data-reference-id]', (r) => r.length);
-    await page.click('[data-action="add-reference"]');
+    await page.goto(`${env.base}/admin/references`);
+    const before = await page.$$eval('.ref-row', (r) => r.length);
+    await Promise.all([page.waitForNavigation(), page.click('a[href="/admin/references/new"]')]);
+    await settle(page);
     await page.click('#reference-form .choice:nth-child(4)'); // Guide
     await page.type('#rf-title', 'E2E guide');
     await (await page.$('#rf-file')).uploadFile(file);
-    await page.click('#reference-form button[type=submit]');
+    await page.click('#rf-add-link');
+    await page.type('#rf-link-label-0', 'Policy Hub');
+    await page.type('#rf-link-url-0', 'https://intranet.example.com/e2e');
+    assert.equal(await page.$eval('#pv-chip', (c) => c.textContent), 'Guide · E2E guide');
+    await Promise.all([page.waitForNavigation(), page.click('#reference-form button[type=submit]')]);
     await settle(page);
     fs.rmSync(file, { force: true });
-    assert.equal(await page.$$eval('#references-card [data-reference-id]', (r) => r.length), before + 1);
+    assert.deepEqual(await page.$$eval('[data-key="url"]', (i) => i.map((x) => x.value)), ['https://intranet.example.com/e2e']);
+    await page.goto(`${env.base}/admin/references`);
+    assert.equal(await page.$$eval('.ref-row', (r) => r.length), before + 1);
+    await openSaas();
   });
 
   test('the jump bar lists References and every section, and jumps there', async () => {

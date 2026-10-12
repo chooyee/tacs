@@ -95,41 +95,47 @@ describe('admin API end to end (docs/06 §4)', () => {
   test('FR-ADM-16: POST a standard; the standards card shows it numbered', async () => {
     const res = await admin
       .post(`/api/admin/sections/${sectionId}/standards`)
-      .send({ text: 'Service accounts inventoried' })
+      .send({ title: 'Service accounts inventoried', description: '<p>Every service account <b>listed</b></p>' })
       .expect(201);
     standardId = res.body.data.id;
     assert.equal(res.body.data.isMandatory, false);
     await admin
       .post(`/api/admin/sections/${sectionId}/standards`)
-      .send({ text: 'x'.repeat(501) })
+      .send({ title: 'x'.repeat(501) })
       .expect(400);
 
     const card = await admin.get(`/admin/types/${typeId}/cards/standards`).expect(200);
-    assert.match(card.text.trim(), /^<section class="panel" id="standards-card">/);
+    assert.match(card.text.trim(), /^<section class="panel[^"]*" id="standards-card"/);
     assert.match(card.text, /Service accounts inventoried/);
     assert.doesNotMatch(card.text, /<html/); // a fragment, not a full page
   });
 
-  test('FR-ADM-12: upload a PDF reference (multipart) → 201 without storage details', async () => {
+  test('FR-ADM-12 / D-39: upload a PDF reference with links (multipart) → 201 without storage details', async () => {
+    const links = [
+      { label: 'Policy Hub', url: 'https://intranet.example.com/idp' },
+      { label: 'Confluence', url: 'https://confluence.example.com/IDP' },
+    ];
     const res = await admin
-      .post(`/api/admin/types/${typeId}/references`)
+      .post('/api/admin/references')
       .field('type', 'Policy')
       .field('title', 'Identity Standard')
-      .field('url', 'https://intranet.example.com/idp')
-      .field('note', 'Look for SSO')
+      .field('guidance', '<p>Look for SSO</p>')
+      .field('links', JSON.stringify(links))
       .attach('file', await makePdf(3), { filename: 'idp.pdf', contentType: 'application/pdf' })
       .expect(201);
     referenceId = res.body.data.id;
     assert.deepEqual(
-      [res.body.data.title, res.body.data.pageCount, res.body.data.fileName],
-      ['Identity Standard', 3, 'idp.pdf'],
+      [res.body.data.title, res.body.data.pageCount, res.body.data.fileName, res.body.data.note],
+      ['Identity Standard', 3, 'idp.pdf', 'Look for SSO'],
     );
+    assert.deepEqual(res.body.data.links, links);
+    assert.equal(res.body.data.url, `/admin/references/${referenceId}`);
     assert.equal(res.body.data.s3Key, undefined);
   });
 
   test('NFR-SEC-06: upload rejections (415, 422, 413, 400)', async () => {
     const post = () =>
-      admin.post(`/api/admin/types/${typeId}/references`).field('type', 'Policy').field('title', 'Bad');
+      admin.post('/api/admin/references').field('type', 'Policy').field('title', 'Bad');
     const fake = await post()
       .attach('file', Buffer.from('MZ not a pdf'), { filename: 'x.pdf', contentType: 'application/pdf' })
       .expect(415);
@@ -148,23 +154,31 @@ describe('admin API end to end (docs/06 §4)', () => {
     const missing = await post().expect(400);
     assert.match(missing.body.error.message, /Choose a file/);
     const httpLink = await admin
-      .post(`/api/admin/types/${typeId}/references`)
+      .post('/api/admin/references')
       .field('type', 'Policy')
       .field('title', 'Link')
-      .field('url', 'http://intranet/x')
+      .field('links', JSON.stringify([{ label: 'Old', url: 'http://intranet/x' }]))
       .attach('file', PNG_BYTES, { filename: 'a.png', contentType: 'image/png' })
       .expect(400);
-    assert.equal(httpLink.body.error.details[0].field, 'url');
+    assert.equal(httpLink.body.error.details[0].field, 'links.0.url'); // D-39: https only
+    const tooMany = await admin
+      .post('/api/admin/references')
+      .field('type', 'Policy')
+      .field('title', 'Links')
+      .field('links', JSON.stringify(Array.from({ length: 11 }, (_, i) => ({ label: `L${i}`, url: 'https://x.example.com' }))))
+      .attach('file', PNG_BYTES, { filename: 'a.png', contentType: 'image/png' })
+      .expect(400);
+    assert.equal(tooMany.body.error.details[0].field, 'links');
   });
 
-  test('FR-ADM-17: link the reference to the standard; another type’s reference is refused', async () => {
+  test('FR-ADM-17: link the reference to the standard; an unknown reference is refused', async () => {
     const res = await admin
       .patch(`/api/admin/standards/${standardId}`)
       .send({ isMandatory: true, referenceIds: [referenceId] })
       .expect(200);
     assert.deepEqual([res.body.data.isMandatory, res.body.data.warnings], [true, []]);
     const card = await admin.get(`/admin/types/${typeId}/cards/references`).expect(200);
-    assert.match(card.text, /linked to 1 standard\b/);
+    assert.match(card.text, /linked to 1 standard here/);
     await admin
       .patch(`/api/admin/standards/${standardId}`)
       .send({ referenceIds: ['00000000-0000-4000-8000-000000000000'] })
@@ -174,9 +188,10 @@ describe('admin API end to end (docs/06 §4)', () => {
   test('FR-REF-02 / FR-REF-04: any signed-in user can view a reference and stream its file', async () => {
     const viewer = await architect.get(`/api/references/${referenceId}`).expect(200);
     assert.deepEqual(
-      viewer.body.data.usedFor.map((s) => s.text),
-      ['Service accounts inventoried'],
+      viewer.body.data.usedFor.map((s) => [s.paperTypeName, s.title]),
+      [['SaaS API', 'Service accounts inventoried']],
     );
+    assert.equal(viewer.body.data.links[0].label, 'Policy Hub');
     const file = await architect.get(viewer.body.data.fileUrl).buffer(true).expect(200);
     assert.equal(file.headers['content-type'], 'application/pdf');
     assert.match(file.headers['content-disposition'], /^inline; filename="idp\.pdf"/);
@@ -195,6 +210,8 @@ describe('admin API end to end (docs/06 §4)', () => {
       .expect(409);
     assert.equal(res.body.error.code, 'CANNOT_MOVE');
     await admin.post(`/api/admin/standards/${standardId}/move`).send({ direction: 'sideways' }).expect(400);
+    // D-37: drag and drop sends the target section and index
+    await admin.post(`/api/admin/standards/${standardId}/move`).send({ sectionId, index: 0 }).expect(204);
   });
 
   test('FR-ADM-13 / FR-ADM-18: delete → 204, restore → 204, restore again → 409', async () => {
@@ -204,16 +221,16 @@ describe('admin API end to end (docs/06 §4)', () => {
     await admin.post(`/api/admin/references/${referenceId}/restore`).expect(409);
 
     await admin.delete(`/api/admin/sections/${sectionId}`).expect(204);
-    await admin.patch(`/api/admin/standards/${standardId}`).send({ text: 'x' }).expect(404); // hidden with its section
+    await admin.patch(`/api/admin/standards/${standardId}`).send({ title: 'x' }).expect(404); // hidden with its section
     await admin.post(`/api/admin/sections/${sectionId}/restore`).expect(204);
-    await admin.patch(`/api/admin/standards/${standardId}`).send({ text: 'Back again' }).expect(200);
+    await admin.patch(`/api/admin/standards/${standardId}`).send({ title: 'Back again' }).expect(200);
   });
 
   test('NFR-SEC-04: admin writes without the CSRF token are refused, uploads included', async () => {
     const noToken = request.agent(app).set('X-Test-User', (await createUser({ role: 'admin' })).id);
     await noToken.post('/api/admin/types').send({ name: 'No token' }).expect(403);
     await noToken
-      .post(`/api/admin/types/${typeId}/references`)
+      .post('/api/admin/references')
       .field('type', 'Policy')
       .field('title', 't')
       .attach('file', PNG_BYTES, { filename: 'a.png', contentType: 'image/png' })

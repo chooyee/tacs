@@ -9,7 +9,8 @@
 const db = require('../../src/utils/db');
 const { migrate } = require('../../db/migrate');
 
-const silentLog = { info() {}, warn() {}, error() {}, debug() {}, fatal() {} };
+/** A logger that prints nothing; child() returns itself, like pino's. */
+const silentLog = { info() {}, warn() {}, error() {}, debug() {}, fatal() {}, child: () => silentLog };
 
 /**
  * Make sure the schema named first in search_path exists (a fresh test schema has to be created
