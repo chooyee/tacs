@@ -13,6 +13,7 @@ const config = require('../../src/config');
 const db = require('../../src/utils/db');
 const { logger } = require('../../src/utils/logger');
 const paperTypeModel = require('../../src/models/paperType.model');
+const referenceModel = require('../../src/models/reference.model');
 const paperTypeService = require('../../src/services/paperType.service');
 const sectionService = require('../../src/services/section.service');
 const standardService = require('../../src/services/standard.service');
@@ -84,41 +85,55 @@ async function placeholderPdf({ type, title, note }) {
   return Buffer.from(await doc.save());
 }
 
+/** The seed's "who": shows as "Last edited by Seed data" (D-37). */
+const SEED_ACTOR = { kind: 'entra', name: 'Seed data' };
+
+/**
+ * Add a reference to the shared library (D-37), or reuse one with the same title, so running the
+ * seed for another type does not upload duplicates.
+ */
+async function libraryReference([, type, title, note], existingByTitle) {
+  const found = existingByTitle.get(title.toLowerCase());
+  if (found) return found;
+  const buffer = await placeholderPdf({ type, title, note });
+  const fileName = `${title.replace(/[^w.-]+/g, '-').replace(/^-|-$/g, '')}.pdf`;
+  const escaped = note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const ref = await referenceService.addReference({
+    fields: { type, title, guidance: `<p>${escaped}</p>` },
+    file: { buffer, originalname: fileName, size: buffer.length, mimetype: 'application/pdf' },
+    actor: SEED_ACTOR,
+    log,
+  });
+  existingByTitle.set(title.toLowerCase(), ref.id);
+  return ref.id;
+}
+
 /** Create one paper type with everything in it. */
-async function seedType(data) {
+async function seedType(data, existingByTitle) {
+  const ctx = { actor: SEED_ACTOR, log };
   const { id: typeId } = await paperTypeService.createType({
     name: data.name,
     description: data.description,
-    log,
+    ...ctx,
   });
 
   const refIds = new Map();
-  for (const [key, type, title, note] of data.references) {
-    const buffer = await placeholderPdf({ type, title, note });
-    const fileName = `${title.replace(/[^\w.-]+/g, '-').replace(/^-|-$/g, '')}.pdf`;
-    const ref = await referenceService.addReference({
-      typeId,
-      fields: { type, title, note },
-      file: { buffer, originalname: fileName, size: buffer.length, mimetype: 'application/pdf' },
-      log,
-    });
-    refIds.set(key, ref.id);
-  }
+  for (const entry of data.references) refIds.set(entry[0], await libraryReference(entry, existingByTitle));
 
   // A new type starts with a "General" section (FR-ADM-02): rename it to the first section.
   const editor = await paperTypeService.getEditor(typeId);
   for (const [index, [title, standards]] of data.sections.entries()) {
     const section =
       index === 0
-        ? await sectionService.renameSection({ sectionId: editor.sections[0].id, title, log })
-        : await sectionService.addSection({ typeId, title, log });
-    for (const [text, mandatory, refKeys] of standards) {
-      const standard = await standardService.addStandard({ sectionId: section.id, text, log });
-      await standardService.updateStandard({
-        standardId: standard.id,
+        ? await sectionService.renameSection({ sectionId: editor.sections[0].id, title, ...ctx })
+        : await sectionService.addSection({ typeId, title, ...ctx });
+    for (const [standardTitle, mandatory, refKeys] of standards) {
+      await standardService.addStandard({
+        sectionId: section.id,
+        title: standardTitle,
         isMandatory: Boolean(mandatory),
         referenceIds: refKeys.map((k) => refIds.get(k)),
-        log,
+        ...ctx,
       });
     }
   }
@@ -128,12 +143,13 @@ async function seedType(data) {
 async function main() {
   if (config.isProduction) throw new Error('npm run seed refuses to run in production.');
   const existing = new Set((await paperTypeModel.listWithStats()).map((t) => t.name.toLowerCase()));
+  const existingByTitle = new Map((await referenceModel.listAll()).map((r) => [r.title.toLowerCase(), r.id]));
   for (const data of paperTypes) {
     if (existing.has(data.name.toLowerCase())) {
       log.info({ paperType: data.name }, 'Paper type already exists, skipped');
       continue;
     }
-    const id = await seedType(data);
+    const id = await seedType(data, existingByTitle);
     const count = data.sections.reduce((n, [, list]) => n + list.length, 0);
     log.info(
       { paperType: data.name, paperTypeId: id, standards: count, references: data.references.length },

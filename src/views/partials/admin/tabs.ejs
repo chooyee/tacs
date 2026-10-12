@@ -1,5 +1,6 @@
 <%# Admin sub-navigation (D-32): links, so the URL is shareable. `adminTab` = 'types' | 'users'. %>
 <nav class="subnav" aria-label="<%= t.adminTabs.label %>">
   <a href="/admin/types" <% if (adminTab === 'types') { %>aria-current="page"<% } %>><%- include('../icon', { name: 'layers' }) %> <%= t.adminTabs.types %></a>
+  <a href="/admin/references" <% if (adminTab === 'references') { %>aria-current="page"<% } %>><%- include('../icon', { name: 'file' }) %> <%= t.adminTabs.references %></a>
   <a href="/admin/users" <% if (adminTab === 'users') { %>aria-current="page"<% } %>><%- include('../icon', { name: 'users' }) %> <%= t.adminTabs.users %></a>
 </nav>

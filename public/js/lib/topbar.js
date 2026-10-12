@@ -1,6 +1,7 @@
 // Top bar behaviour that every page shares: the dark-mode toggle (docs/03 §1.1).
 // The user menu dropdown is handled by Basecoat's dropdown-menu script.
 import { $ } from './dom.js';
+import './time.js'; // "edited 2 h ago" on every page (D-37)
 
 const root = document.documentElement;
 

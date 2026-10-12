@@ -1,20 +1,50 @@
 'use strict';
 
 /**
- * Admin API for reference documents (FR-ADM-11…13). Multipart bodies: the file is in `req.file`
- * (multer), the other fields in `req.body` (validated with zod before this runs).
+ * Admin → References: the shared library (D-37) — list page, full-screen add / edit page, and the
+ * API. Multipart bodies: the file is in `req.file` (multer), the other fields in `req.body`.
  */
 const referenceService = require('../../services/reference.service');
 
-/** POST /api/admin/types/:typeId/references */
+/** GET /admin/references — the library. */
+async function index(req, res) {
+  const references = await referenceService.listLibrary();
+  res.render('layouts/main', {
+    page: 'pages/admin/references',
+    title: res.locals.t.library.heading,
+    pageScript: 'adminReferences',
+    adminTab: 'references',
+    references,
+  });
+}
+
+/** GET /admin/references/new and /admin/references/:referenceId — the full-screen editor. */
+async function edit(req, res) {
+  const { reference, usedFor } = req.params.referenceId
+    ? await referenceService.getReferencePage(req.params.referenceId)
+    : { reference: null, usedFor: [] };
+  res.render('layouts/main', {
+    page: 'pages/admin/reference',
+    title: reference ? reference.title : res.locals.t.library.newTitle,
+    pageScript: 'adminReference',
+    adminTab: 'references',
+    usesRichEditor: true,
+    reference,
+    usedFor,
+  });
+}
+
+/** POST /api/admin/references */
 async function add(req, res) {
   const ref = await referenceService.addReference({
-    typeId: req.params.typeId,
     fields: req.body,
     file: req.file,
+    actor: req.user,
     log: req.log,
   });
-  res.status(201).json({ data: referenceService.publicReference(ref) });
+  res
+    .status(201)
+    .json({ data: { ...referenceService.publicReference(ref), url: `/admin/references/${ref.id}` } });
 }
 
 /** PATCH /api/admin/references/:referenceId */
@@ -23,6 +53,7 @@ async function update(req, res) {
     referenceId: req.params.referenceId,
     fields: req.body,
     file: req.file,
+    actor: req.user,
     log: req.log,
   });
   res.json({ data: referenceService.publicReference(ref) });
@@ -30,14 +61,22 @@ async function update(req, res) {
 
 /** DELETE /api/admin/references/:referenceId */
 async function remove(req, res) {
-  await referenceService.deleteReference({ referenceId: req.params.referenceId, log: req.log });
+  await referenceService.deleteReference({
+    referenceId: req.params.referenceId,
+    actor: req.user,
+    log: req.log,
+  });
   res.status(204).end();
 }
 
 /** POST /api/admin/references/:referenceId/restore */
 async function restore(req, res) {
-  await referenceService.restoreReference({ referenceId: req.params.referenceId, log: req.log });
+  await referenceService.restoreReference({
+    referenceId: req.params.referenceId,
+    actor: req.user,
+    log: req.log,
+  });
   res.status(204).end();
 }
 
-module.exports = { add, update, remove, restore };
+module.exports = { index, edit, add, update, remove, restore };

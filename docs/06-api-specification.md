@@ -31,6 +31,10 @@ There are two kinds of routes:
 | GET, POST | `/auth/local` | public | `auth.localForm`, `auth.localLogin` (D-27) | `pages/auth/local` |
 | GET, POST | `/auth/local/password` | local admin who must change the password | `auth.passwordForm`, `auth.changePassword` | `pages/auth/password` |
 | GET | `/admin/users` | Admin | `admin/user.index` (FR-ACC-09) | `pages/admin/users` |
+| GET | `/admin/types/:typeId/standards/new?section=` | Admin | `admin/structure.form` — full-screen standard form (D-38) | `pages/admin/standard` |
+| GET | `/admin/standards/:standardId` | Admin | `admin/structure.form` (edit; read-only content for live links) | `pages/admin/standard` |
+| GET | `/admin/references` | Admin | `admin/reference.index` — the shared library (D-37) | `pages/admin/references` |
+| GET | `/admin/references/new`, `/admin/references/:referenceId` | Admin | `admin/reference.edit` — full-screen reference editor | `pages/admin/reference` |
 | GET | `/papers` | Architect | `paper.index` (`?tab=all&q=&typeId=&page=` for All papers) | `pages/papers/index` |
 | GET | `/papers/:paperId` | Architect (anyone; read-only unless owner) | `paper.show` | `pages/papers/show` |
 | GET | `/admin/types` | Admin | `admin/paperType.index` | `pages/admin/types` |
@@ -136,6 +140,7 @@ available (FR-RDY-05). It is never a gap.
 | POST | `/api/admin/types/:typeId/sections` | `{ title }` | Added at the end. |
 | PATCH | `/api/admin/sections/:sectionId` | `{ title }` | |
 | POST | `/api/admin/sections/:sectionId/move` | `{ direction: "up"\|"down" }` | Swaps `position` with the neighbour, in a transaction. |
+| POST | `/api/admin/types/:typeId/sections/order` | `{ sectionIds: [...] }` | Drag and drop: the full new order (D-37). |
 | DELETE | `/api/admin/sections/:sectionId` | — | Soft delete, including its standards. |
 | POST | `/api/admin/sections/:sectionId/restore` | — | Undo. |
 
@@ -143,9 +148,12 @@ available (FR-RDY-05). It is never a gap.
 
 | Method | Path | Body | Notes |
 |--------|------|------|-------|
-| POST | `/api/admin/sections/:sectionId/standards` | `{ text }` | Optional, no references, added at the end. |
-| PATCH | `/api/admin/standards/:standardId` | `{ text?, isMandatory?, referenceIds? }` | `referenceIds` replaces the whole link set; every ID must belong to the same paper type. |
-| POST | `/api/admin/standards/:standardId/move` | `{ direction }` | |
+| POST | `/api/admin/sections/:sectionId/standards` | `{ title, description?, isMandatory?, referenceIds? }` | Added at the end (full form, D-38). `description` is rich text, cleaned on the server. |
+| PATCH | `/api/admin/standards/:standardId` | `{ title?, description?, isMandatory?, referenceIds? }` | `referenceIds` replaces the whole link set (library references). 409 `LINKED_STANDARD` for a live link. |
+| POST | `/api/admin/standards/:standardId/move` | `{ direction }` or `{ sectionId, index }` | Buttons, or drag and drop (also into another section of the same type). |
+| POST | `/api/admin/standards/:standardId/duplicate` | — | Live link → own copy ("Duplicate here", D-38). |
+| GET | `/api/admin/types/:typeId/tree` | — | Sections and standards, for the Import picker. |
+| POST | `/api/admin/types/:typeId/import` | `{ standardIds, mode: "sections"\|"into", targetSectionId? }` | Live links (D-38). Returns `{ imported, skipped: [titles] }`; already-linked standards are skipped. |
 | DELETE | `/api/admin/standards/:standardId` | — | Soft delete. |
 | POST | `/api/admin/standards/:standardId/restore` | — | Undo. |
 
@@ -153,7 +161,7 @@ available (FR-RDY-05). It is never a gap.
 
 | Method | Path | Body | Notes |
 |--------|------|------|-------|
-| POST | `/api/admin/types/:typeId/references` | multipart: `type, title, url?, note?, file` | File required. PDF / PNG / JPG ≤ 15 MB. |
+| POST | `/api/admin/references` | multipart: `type, title, url?, guidance?, file` | Shared library (D-37). File required. PDF / PNG / JPG ≤ 15 MB. |
 | PATCH | `/api/admin/references/:referenceId` | multipart (all fields optional; a new `file` replaces the old one) | The old S3 object is deleted after the DB commit. |
 | DELETE | `/api/admin/references/:referenceId` | — | Soft delete; links hidden. |
 | POST | `/api/admin/references/:referenceId/restore` | — | Undo (links come back). |

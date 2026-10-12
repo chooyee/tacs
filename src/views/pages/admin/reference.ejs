@@ -1,0 +1,49 @@
+<%# Full-screen add / edit of a library reference (D-37). Behaviour: public/js/pages/adminReference.js. %>
+<%- include('../../partials/admin/tabs') %>
+<div id="reference-page" data-reference-id="<%= reference ? reference.id : '' %>"
+     data-strings="<%= JSON.stringify({ saved: t.library.saved, chooseFile: t.adminType.chooseFile }) %>">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="/admin/references"><%= t.library.back %></a>
+    <%- include('../../partials/icon', { name: 'chevronRight', cls: 'size-3.5' }) %>
+    <span aria-current="page"><%= reference ? reference.title : t.library.newTitle %></span>
+  </nav>
+  <div class="page-head">
+    <div>
+      <h1 class="page-title"><%= reference ? reference.title : t.library.newTitle %></h1>
+      <% if (reference) { %><p class="page-sub"><%- include('../../partials/edited', { at: reference.updatedAt, by: reference.updatedBy }) %></p><% } %>
+    </div>
+  </div>
+
+  <form id="reference-form" class="form-page" novalidate>
+    <div class="form-main panel">
+      <div class="form-section">
+        <%- include('../../partials/admin/referenceFields', { p: 'rf', ref: reference }) %>
+      </div>
+    </div>
+
+    <aside class="form-side panel">
+      <div class="form-section">
+        <h2 class="panel-title"><%= t.library.usedFor %> <% if (reference) { %><span class="count"><%= usedFor.length %></span><% } %></h2>
+        <% if (!usedFor.length) { %>
+        <p class="panel-sub"><%= t.library.usedForEmpty %></p>
+        <% } else { %>
+        <% let lastType = null; %>
+        <ul class="used-for">
+          <% for (const s of usedFor) { %>
+            <% if (s.paperTypeId !== lastType) { lastType = s.paperTypeId; %><li class="used-type"><a href="/admin/types/<%= s.paperTypeId %>"><%= s.paperTypeName %></a></li><% } %>
+            <li><a href="/admin/standards/<%= s.id %>">#<%= s.number %> <%= s.title %></a></li>
+          <% } %>
+        </ul>
+        <% } %>
+      </div>
+    </aside>
+
+    <div class="form-bar">
+      <p class="form-error" role="alert" hidden></p>
+      <span class="save-state" data-state="idle" role="status" aria-live="polite"></span>
+      <a class="btn" data-variant="outline" href="/admin/references"><%= t.library.cancel %></a>
+      <button type="submit" class="btn"><%= reference ? t.library.save : t.library.create %></button>
+    </div>
+  </form>
+</div>
+<%- include('../../partials/referenceViewer') %>

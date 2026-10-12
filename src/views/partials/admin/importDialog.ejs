@@ -1,0 +1,49 @@
+<%# Import standards from another paper type as live links (D-38). The tree is loaded by
+    adminType.js from GET /api/admin/types/:id/tree when a source type is chosen. %>
+<dialog class="dialog" id="import-dialog" aria-labelledby="import-title"
+        data-types="<%= JSON.stringify(otherTypes) %>"
+        data-sections="<%= JSON.stringify(sections.map((s) => ({ id: s.id, title: `${s.letter}. ${s.title}` }))) %>">
+  <form id="import-form" class="dlg wide-md" novalidate>
+    <div class="dlg-head">
+      <h2 id="import-title"><%= t.importDialog.title %></h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('../icon', { name: 'close' }) %></button>
+    </div>
+    <div class="dlg-body">
+      <p class="banner"><%- include('../icon', { name: 'link' }) %><span><%= t.importDialog.help %></span></p>
+      <div class="field">
+        <label for="im-type"><%= t.importDialog.from %></label>
+        <select class="select w-full" id="im-type">
+          <option value=""><%= t.importDialog.choose %></option>
+          <% for (const other of otherTypes) { %><option value="<%= other.id %>"><%= other.name %></option><% } %>
+        </select>
+      </div>
+      <div class="field" id="im-tree-field" hidden>
+        <div class="flex items-end justify-between gap-2">
+          <span class="label"><%= t.adminType.standardsTitle %></span>
+          <span class="selected-count text-xs text-muted-foreground"></span>
+        </div>
+        <div class="picker tree" id="im-tree"></div>
+      </div>
+      <fieldset class="field" id="im-target" hidden>
+        <legend class="label mb-1.5"><%= t.importDialog.into %></legend>
+        <label class="check-card start-option">
+          <input class="input" type="radio" name="mode" value="sections" checked>
+          <span><%= t.importDialog.intoSections %></span>
+        </label>
+        <label class="check-card start-option">
+          <input class="input" type="radio" name="mode" value="into">
+          <span class="grid flex-1 gap-1.5"><span><%= t.importDialog.intoOne %></span>
+            <select class="select w-full" id="im-section" aria-label="<%= t.importDialog.intoOne %>">
+              <% sections.forEach((s) => { %><option value="<%= s.id %>"><%= s.letter %>. <%= s.title %></option><% }) %>
+            </select>
+          </span>
+        </label>
+      </fieldset>
+      <p class="form-error" role="alert" hidden></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.adminType.cancel %></button>
+      <button type="submit" class="btn"><%- include('../icon', { name: 'import' }) %> <%= t.importDialog.submit %></button>
+    </div>
+  </form>
+</dialog>

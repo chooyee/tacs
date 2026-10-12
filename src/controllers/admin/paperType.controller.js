@@ -25,6 +25,7 @@ async function show(req, res) {
     title: editor.type.name,
     pageScript: 'adminType',
     adminTab: 'types',
+    usesRichEditor: true,
     ...editor,
   });
 }
@@ -40,19 +41,24 @@ async function card(req, res) {
 
 /** POST /api/admin/types */
 async function create(req, res) {
-  const result = await paperTypeService.createType({ ...req.body, log: req.log });
+  const result = await paperTypeService.createType({ ...req.body, actor: req.user, log: req.log });
   res.status(201).json({ data: result });
 }
 
 /** PATCH /api/admin/types/:typeId */
 async function update(req, res) {
-  const type = await paperTypeService.updateType({ typeId: req.params.typeId, ...req.body, log: req.log });
+  const type = await paperTypeService.updateType({
+    typeId: req.params.typeId,
+    ...req.body,
+    actor: req.user,
+    log: req.log,
+  });
   res.json({ data: type });
 }
 
 /** DELETE /api/admin/types/:typeId */
 async function remove(req, res) {
-  await paperTypeService.deleteType({ typeId: req.params.typeId, log: req.log });
+  await paperTypeService.deleteType({ typeId: req.params.typeId, actor: req.user, log: req.log });
   res.status(204).end();
 }
 

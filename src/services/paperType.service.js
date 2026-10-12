@@ -2,18 +2,17 @@
 
 /**
  * Paper types: the list, the editor view model, create (blank or copy), autosave and delete
- * (FR-ADM-01…03, FR-ADM-10). Sections, standards and references have their own services.
+ * (FR-ADM-01…03, FR-ADM-10). Sections and standards have their own services; references are a
+ * shared library (reference.service, D-37).
  */
-const { randomUUID } = require('node:crypto');
 const paperTypeModel = require('../models/paperType.model');
 const sectionModel = require('../models/section.model');
 const standardModel = require('../models/standard.model');
 const referenceModel = require('../models/reference.model');
 const paperModel = require('../models/paper.model');
-const { getStorage } = require('../factories/storageFactory');
 const { withTransaction } = require('../utils/db');
+const { actorName } = require('../utils/actor');
 const { ConflictError, NotFoundError } = require('../utils/errors');
-const { referenceKey } = require('./reference.service');
 
 /** "A", "B" … "Z", "AA" … — section letters are computed, never stored (docs/05 §3.3). */
 function letterFor(index) {
@@ -46,8 +45,8 @@ function listTypes() {
 }
 
 /**
- * Everything the editor shows (docs/03 §3.7): the type, references with link counts, and sections
- * with their numbered standards and linked references.
+ * Everything the editor shows (docs/03 §3.7): the type, the library references its standards use,
+ * all library references (for the link picker), and sections with their numbered standards.
  *
  * @param {string} typeId
  * @returns {Promise<object>}
@@ -55,37 +54,63 @@ function listTypes() {
  */
 async function getEditor(typeId) {
   const type = await getTypeOrThrow(typeId);
-  const [papersInProgress, references, sections, standards] = await Promise.all([
+  const [papersInProgress, used, options, sections, standards, allTypes] = await Promise.all([
     paperModel.countActiveByType(typeId),
-    referenceModel.listForType(typeId),
+    referenceModel.listUsedByType(typeId),
+    referenceModel.listOptions(),
     sectionModel.listForType(typeId),
     standardModel.listForType(typeId),
+    paperTypeModel.listWithStats(),
   ]);
-  const refById = new Map(references.map((r) => [r.id, r]));
-  const view = (r) => ({ id: r.id, type: r.type, title: r.title, note: r.note });
+  const refById = new Map(used.map((r) => [r.id, r]));
 
   const sectionViews = sections.map((section, index) => ({
     id: section.id,
     title: section.title,
     letter: letterFor(index),
+    updatedAt: section.updatedAt,
+    updatedBy: section.updatedBy,
     standards: standards
       .filter((s) => s.sectionId === section.id)
       .map((s) => ({
         id: s.id,
         number: s.number,
-        text: s.text,
+        title: s.title,
+        descriptionHtml: s.descriptionHtml,
         isMandatory: s.isMandatory,
+        updatedAt: s.updatedAt,
+        updatedBy: s.updatedBy,
+        // Live link (D-38): content comes from another paper type's standard.
+        link: s.sourceStandardId
+          ? {
+              sourceId: s.sourceStandardId,
+              typeId: s.sourceTypeId,
+              typeName: s.sourceTypeName,
+              sourceDeleted: s.sourceDeleted,
+            }
+          : null,
         references: s.referenceIds
           .map((id) => refById.get(id))
           .filter(Boolean)
-          .map(view),
+          .map((r) => ({ id: r.id, type: r.type, title: r.title, note: r.note })),
       })),
   }));
 
   return {
-    type: { id: type.id, name: type.name, description: type.description },
+    type: {
+      id: type.id,
+      name: type.name,
+      description: type.description,
+      updatedAt: type.updatedAt,
+      updatedBy: type.updatedBy,
+    },
     papersInProgress,
-    references: references.map((r) => ({ ...view(r), url: r.url, linkedCount: r.linkedCount })),
+    usedReferences: used,
+    referenceOptions: options,
+    // Other paper types, for Import (D-38).
+    otherTypes: allTypes
+      .filter((t) => t.id !== typeId && t.standardsCount > 0)
+      .map((t) => ({ id: t.id, name: t.name })),
     sections: sectionViews,
     totals: {
       sections: sections.length,
@@ -96,65 +121,48 @@ async function getEditor(typeId) {
 }
 
 /**
- * Copy sections, standards (with mandatory flags), references (S3 files copied) and links into a
- * new type (FR-ADM-02). Runs inside the caller's transaction; S3 copies made before a failure are
- * removed again so no orphans remain.
+ * Copy sections, standards (title, description, mandatory) and their links to library references
+ * into a new type (FR-ADM-02). References are shared (D-37), so nothing is copied in S3.
+ * Runs inside the caller's transaction.
  */
-async function copyContent(sourceId, target, log) {
-  const storage = getStorage();
-  const [references, sections, standards] = await Promise.all([
-    referenceModel.listForType(sourceId),
+async function copyContent(sourceId, target, updatedBy) {
+  const [sections, standards] = await Promise.all([
     sectionModel.listForType(sourceId),
     standardModel.listForType(sourceId),
   ]);
-
-  const copiedKeys = [];
-  try {
-    const newRefId = new Map();
-    for (const ref of references) {
-      const id = randomUUID();
-      const s3Key = referenceKey(target.id, id, ref.mimeType);
-      await storage.copy(ref.s3Key, s3Key);
-      copiedKeys.push(s3Key);
-      await referenceModel.create({ ...ref, id, paperTypeId: target.id, s3Key });
-      newRefId.set(ref.id, id);
-    }
-    for (const section of sections) {
-      const newSection = await sectionModel.create(target.id, section.title);
-      for (const std of standards.filter((s) => s.sectionId === section.id)) {
-        const created = await standardModel.create(newSection.id, std.text, { isMandatory: std.isMandatory });
-        await standardModel.setReferences(
-          created.id,
-          std.referenceIds.map((id) => newRefId.get(id)).filter(Boolean),
-        );
+  for (const section of sections) {
+    const newSection = await sectionModel.create(target.id, section.title, updatedBy);
+    for (const std of standards.filter((s) => s.sectionId === section.id)) {
+      if (std.sourceStandardId) {
+        await standardModel.createLink(newSection.id, std.sourceStandardId, updatedBy); // stays live (D-38)
+        continue;
       }
+      const created = await standardModel.create(newSection.id, {
+        title: std.title,
+        descriptionHtml: std.descriptionHtml,
+        isMandatory: std.isMandatory,
+        updatedBy,
+      });
+      await standardModel.setReferences(created.id, std.referenceIds);
     }
-  } catch (err) {
-    await Promise.all(
-      copiedKeys.map((key) =>
-        storage
-          .remove(key)
-          .catch((cleanupErr) => log.warn({ err: cleanupErr, key }, 'Could not remove copied file')),
-      ),
-    );
-    throw err;
   }
 }
 
 /**
  * Create a paper type: blank (one "General" section) or a copy of another type (FR-ADM-02).
  *
- * @param {{name: string, description?: string|null, copyFromTypeId?: string, log: import('pino').Logger}} params
+ * @param {{name: string, description?: string|null, copyFromTypeId?: string, actor: object, log: import('pino').Logger}} params
  * @returns {Promise<{id: string, url: string}>}
  * @throws {ConflictError} NAME_TAKEN
  * @throws {NotFoundError} when the type to copy does not exist
  */
-async function createType({ name, description = null, copyFromTypeId, log }) {
+async function createType({ name, description = null, copyFromTypeId, actor, log }) {
   if (copyFromTypeId) await getTypeOrThrow(copyFromTypeId);
+  const updatedBy = actorName(actor);
   const type = await withTransaction(async () => {
-    const created = await paperTypeModel.create({ name, description });
-    if (copyFromTypeId) await copyContent(copyFromTypeId, created, log);
-    else await sectionModel.create(created.id, 'General');
+    const created = await paperTypeModel.create({ name, description, updatedBy });
+    if (copyFromTypeId) await copyContent(copyFromTypeId, created, updatedBy);
+    else await sectionModel.create(created.id, 'General', updatedBy);
     return created;
   });
   log.info({ paperTypeId: type.id, copiedFrom: copyFromTypeId ?? null }, 'Paper type created');
@@ -163,27 +171,33 @@ async function createType({ name, description = null, copyFromTypeId, log }) {
 
 /**
  * Autosave name / description (FR-ADM-10).
- * @param {{typeId: string, name?: string, description?: string|null, log: import('pino').Logger}} params
- * @returns {Promise<{id: string, name: string, description: string|null}>}
+ * @param {{typeId: string, name?: string, description?: string|null, actor: object, log: import('pino').Logger}} params
+ * @returns {Promise<object>}
  * @throws {NotFoundError}
  * @throws {ConflictError} NAME_TAKEN
  */
-async function updateType({ typeId, name, description, log }) {
-  const updated = await paperTypeModel.update(typeId, { name, description });
+async function updateType({ typeId, name, description, actor, log }) {
+  const updated = await paperTypeModel.update(typeId, { name, description, updatedBy: actorName(actor) });
   if (!updated) throw new NotFoundError('Paper type not found.');
   const fields = [name !== undefined && 'name', description !== undefined && 'description'].filter(Boolean);
   log.info({ paperTypeId: typeId, fields }, 'Paper type updated');
-  return { id: updated.id, name: updated.name, description: updated.description };
+  return {
+    id: updated.id,
+    name: updated.name,
+    description: updated.description,
+    updatedAt: updated.updatedAt,
+    updatedBy: updated.updatedBy,
+  };
 }
 
 /**
  * Soft-delete a paper type no paper uses (FR-ADM-03).
- * @param {{typeId: string, log: import('pino').Logger}} params
+ * @param {{typeId: string, actor: object, log: import('pino').Logger}} params
  * @returns {Promise<void>}
  * @throws {NotFoundError}
  * @throws {ConflictError} TYPE_IN_USE
  */
-async function deleteType({ typeId, log }) {
+async function deleteType({ typeId, actor, log }) {
   await getTypeOrThrow(typeId);
   const inUse = await paperModel.countActiveByType(typeId);
   if (inUse > 0) {
@@ -192,7 +206,7 @@ async function deleteType({ typeId, log }) {
       'TYPE_IN_USE',
     );
   }
-  await paperTypeModel.softDelete(typeId);
+  await paperTypeModel.softDelete(typeId, actorName(actor));
   log.info({ paperTypeId: typeId }, 'Paper type deleted');
 }
 

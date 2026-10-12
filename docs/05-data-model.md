@@ -93,7 +93,10 @@ admin applies immediately.
 |--------|------|-------|
 | id | uuid PK | |
 | section_id | uuid FK → sections | |
-| text | text not null | ≤ 500 chars (check constraint). |
+| title | text not null | ≤ 500 chars (check constraint). Was `text` before migration 002 (D-37). |
+| description_html | text not null default '' | Optional rich text, cleaned by `utils/richText.js` (D-37). |
+| source_standard_id | uuid FK → standards | Live link (D-38): when set, title, description, mandatory flag and references are read from the source; own content columns are ignored. |
+| updated_by | text | "Last edited by" snapshot (D-37). |
 | is_mandatory | boolean not null default false | |
 | position | integer not null | Order within the section. The number 1…N is **computed**. |
 | created_at, updated_at, deleted_at | | |
@@ -105,10 +108,12 @@ admin applies immediately.
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
-| paper_type_id | uuid FK → paper_types | |
+| paper_type_id | uuid FK → paper_types | **Legacy, nullable** (D-37): references are a shared library; kept only as a record of origin. |
 | type | text not null | check in (`Policy`,`Sample`,`Template`,`Guide`) |
 | title | text not null | |
-| note | text | "What should the architect look for?" (≤ 500). Sent to the AI. |
+| note | text | Plain-text summary (≤ 500) of `guidance_html`, for tooltips and the AI prompt. |
+| guidance_html | text not null default '' | Rich-text guidance "what should the architect look for?" (D-37). |
+| updated_by | text | "Last edited by" snapshot (D-37). |
 | url | text | Optional intranet link, must start with `https://`. |
 | s3_key | text not null | Uploaded file. |
 | file_name | text not null | Original name (display only). |

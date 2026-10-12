@@ -16,6 +16,9 @@ const FILES = [
   // pdf.js renders PDF previews in the browser (docs/04 §1); its worker must come from our origin (CSP).
   ['node_modules/pdfjs-dist/build/pdf.min.mjs', 'public/vendor/pdfjs/pdf.min.mjs'],
   ['node_modules/pdfjs-dist/build/pdf.worker.min.mjs', 'public/vendor/pdfjs/pdf.worker.min.mjs'],
+  // Quill 2: the rich-text editor (same as survey-app-poc), loaded only on pages that edit rich text.
+  ['node_modules/quill/dist/quill.js', 'public/vendor/quill/quill.js'],
+  ['node_modules/quill/dist/quill.snow.css', 'public/vendor/quill/quill.snow.css'],
 ];
 
 // Whole folders: fonts pdf.js uses for PDFs that do not embed their fonts.

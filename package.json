@@ -47,6 +47,7 @@
     "pino-pretty": "^13.2.0",
     "prettier": "^3.9.10",
     "puppeteer-core": "^25.13.0",
+    "quill": "^2.0.3",
     "supertest": "^7.3.1",
     "tailwindcss": "^4.3.3"
   }

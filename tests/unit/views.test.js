@@ -18,11 +18,15 @@ function ejsFiles(dir) {
 }
 
 // ESLint cannot read EJS, so this test is the "lint rule" of NFR-SEC-05.
-test('NFR-SEC-05: views use unescaped <%- only for include()', () => {
+test('NFR-SEC-05: views use unescaped <%- only for include() and sanitizeRich() (D-37)', () => {
   for (const file of ejsFiles(viewsDir)) {
     const source = fs.readFileSync(file, 'utf8');
     for (const match of source.matchAll(/<%-([\s\S]*?)%>/g)) {
-      assert.match(match[1], /^\s*include\(/, `${path.relative(viewsDir, file)} uses <%- without include()`);
+      assert.match(
+        match[1],
+        /^\s*(include\(|sanitizeRich\(html\)\s*$)/,
+        `${path.relative(viewsDir, file)} uses <%- without include() or sanitizeRich()`,
+      );
     }
   }
 });

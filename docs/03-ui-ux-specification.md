@@ -198,6 +198,18 @@ Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02.
   section: letter, title, count) scrolls to that part and highlights the one in view.
 - (D-36) References are compact rows: icon, title + type tag, note (one line), "linked to N",
   actions ⊙ preview, ↗ intranet link, ✎ edit, 🗑 delete — always visible, muted until hover.
+- (D-37) Sections collapse (chevron, remembered per browser; "Collapse all"); each row has a grip
+  (drag) and ↑ ↓ next to its number; a standard's title opens its form; descriptions show under the
+  title; "Last edited … by …" under each standard and the type name. No "Edit links" chip.
+- (D-38) **Standard form** (`/admin/standards/:id`, `/admin/types/:id/standards/new`): two columns —
+  section, title, description editor, Mandatory | References (selected chips, search, results, "New
+  reference" upload). Sticky Save / Cancel bar; warns before leaving with unsaved changes. Linked
+  standards show a "Linked from <type>" banner with Open the source / Duplicate here.
+- (D-38) **Import** dialog: source paper type → tree of sections / standards with checkboxes →
+  "same-named new sections" or "into section …".
+- (D-37) **References** (Admin tab): library list with search + type filter; full-screen reference
+  page with type cards, title, file drop zone (current file + preview), link, guidance editor, and
+  "Used by" per paper type.
 - (D-36) Add / Edit reference: type as four icon cards, file as a drop zone showing the chosen
   file, note with a character counter. Edit standard: text with counter, Mandatory as a highlighted
   check card, references grouped by type with a filter and "N selected" (warning above 4).

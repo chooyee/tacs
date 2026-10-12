@@ -26,6 +26,18 @@ router.delete('/types/:typeId', validate(v.typeId), asyncHandler(paperTypes.remo
 // Sections
 router.post('/types/:typeId/sections', validate(v.addSection), asyncHandler(structure.addSection));
 router.patch('/sections/:sectionId', validate(v.renameSection), asyncHandler(structure.renameSection));
+router.get('/types/:typeId/tree', validate(v.typeId), asyncHandler(structure.importTree));
+router.post('/types/:typeId/import', validate(v.importStandards), asyncHandler(structure.importStandards));
+router.post(
+  '/standards/:standardId/duplicate',
+  validate(v.standardId),
+  asyncHandler(structure.duplicateStandard),
+);
+router.post(
+  '/types/:typeId/sections/order',
+  validate(v.reorderSections),
+  asyncHandler(structure.reorderSections),
+);
 router.post('/sections/:sectionId/move', validate(v.moveSection), asyncHandler(structure.moveSection));
 router.delete('/sections/:sectionId', validate(v.sectionId), asyncHandler(structure.deleteSection));
 router.post('/sections/:sectionId/restore', validate(v.sectionId), asyncHandler(structure.restoreSection));
@@ -41,13 +53,8 @@ router.post(
   asyncHandler(structure.restoreStandard),
 );
 
-// Reference documents (multipart: the upload middleware runs before validation of the text fields)
-router.post(
-  '/types/:typeId/references',
-  referenceFileUpload,
-  validate(v.addReference),
-  asyncHandler(references.add),
-);
+// Reference library (D-37; multipart: the upload middleware runs before validation of the text fields)
+router.post('/references', referenceFileUpload, validate(v.addReference), asyncHandler(references.add));
 router.patch(
   '/references/:referenceId',
   referenceFileUpload,

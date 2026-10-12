@@ -68,7 +68,7 @@ export async function openReferenceViewer(referenceId) {
     ...(ref.usedFor.length
       ? ref.usedFor.map((std) => {
           const li = document.createElement('li');
-          li.textContent = `#${std.number} ${std.text}`;
+          li.textContent = `${std.paperTypeName} · #${std.number} ${std.title}`;
           return li;
         })
       : [

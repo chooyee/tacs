@@ -7,6 +7,11 @@
   <% if (nav.user) { %><meta name="csrf-token" content="<%= csrfToken() %>"><% } %>
   <title><%= locals.title ? `${title} · ${t.appName}` : t.appName %></title>
   <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
+  <% if (locals.usesRichEditor) { %>
+  <%# Quill 2 rich-text editor (D-37), only on pages that edit rich text. Before app.css so ours wins. %>
+  <link rel="stylesheet" href="/vendor/quill/quill.snow.css?v=<%= assetVersion %>">
+  <script src="/vendor/quill/quill.js?v=<%= assetVersion %>" defer></script>
+  <% } %>
   <link rel="stylesheet" href="/css/app.css?v=<%= assetVersion %>">
   <%# Sets the dark class before the page paints (no flash). External file: the CSP allows no inline scripts. %>
   <script src="/js/lib/theme.js?v=<%= assetVersion %>"></script>

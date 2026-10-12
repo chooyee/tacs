@@ -1,65 +1,92 @@
-<%# Standards card (FR-ADM-14…19). The inline "add standard" box is created by adminType.js.
-    Each section is a jump target for the sticky chip bar (data-jump-*). %>
+<%# Standards card (FR-ADM-14…19, D-37, D-38). Sections collapse (chevron) and can be dragged by
+    their grip; standards can be dragged within or across sections. ↑ ↓ sit next to the number for
+    keyboard and touch users. Adding and editing open the full-screen standard form. %>
 <section class="panel" id="standards-card">
   <div class="panel-head">
     <div>
       <h2 class="panel-title"><%= t.adminType.standardsTitle %> <span class="count"><%= totals.standards %></span></h2>
       <p class="panel-sub"><%= t.adminType.standardsHelp(totals.standards, totals.sections, totals.mandatory) %></p>
     </div>
-    <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="add-section">
-      <%- include('../icon', { name: 'plus' }) %> <%= t.adminType.addSection %>
-    </button>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="open-import">
+        <%- include('../icon', { name: 'import' }) %> <%= t.importDialog.open %>
+      </button>
+      <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="add-section">
+        <%- include('../icon', { name: 'plus' }) %> <%= t.adminType.addSection %>
+      </button>
+    </div>
   </div>
   <% if (!sections.length) { %>
   <p class="empty border-t"><%= t.adminType.noSections %></p>
   <% } %>
+  <div class="sections" data-sections>
   <% sections.forEach((section, si) => { %>
   <div class="admin-section scroll-target" id="section-<%= section.id %>" data-section-id="<%= section.id %>"
        data-jump-key="<%= section.letter %>" data-jump-label="<%= section.title %>" data-jump-count="<%= section.standards.length %>">
-    <div class="section-head">
+    <div class="section-head" draggable="true" data-drag="section">
+      <button type="button" class="icon-btn collapse-btn" data-action="toggle-section" aria-expanded="true"
+              aria-controls="body-<%= section.id %>" aria-label="<%= t.adminType.toggleSection %>: <%= section.title %>"><%- include('../icon', { name: 'down' }) %></button>
+      <span class="grip" title="<%= t.adminType.dragHandle %>" aria-hidden="true"><%- include('../icon', { name: 'grip' }) %></span>
+      <span class="move-pair">
+        <button type="button" class="icon-btn sm" data-action="move-section" data-direction="up" <% if (si === 0) { %>disabled<% } %> aria-label="<%= t.adminType.moveUp %>: <%= section.title %>" title="<%= t.adminType.moveUp %>"><%- include('../icon', { name: 'up' }) %></button>
+        <button type="button" class="icon-btn sm" data-action="move-section" data-direction="down" <% if (si === sections.length - 1) { %>disabled<% } %> aria-label="<%= t.adminType.moveDown %>: <%= section.title %>" title="<%= t.adminType.moveDown %>"><%- include('../icon', { name: 'down' }) %></button>
+      </span>
       <span class="section-letter" aria-hidden="true"><%= section.letter %></span>
-      <input class="section-title" type="text" value="<%= section.title %>" maxlength="150" required
-             aria-label="<%= t.adminType.sectionTitle(section.letter) %>">
-      <span class="count" title="<%= t.adminType.standardsInSection %>"><%= section.standards.length %></span>
-      <div class="row-actions">
-        <button type="button" class="icon-btn" data-action="move-section" data-direction="up" <% if (si === 0) { %>disabled<% } %> aria-label="<%= t.adminType.moveUp %>: <%= section.title %>" title="<%= t.adminType.moveUp %>"><%- include('../icon', { name: 'up' }) %></button>
-        <button type="button" class="icon-btn" data-action="move-section" data-direction="down" <% if (si === sections.length - 1) { %>disabled<% } %> aria-label="<%= t.adminType.moveDown %>: <%= section.title %>" title="<%= t.adminType.moveDown %>"><%- include('../icon', { name: 'down' }) %></button>
-        <button type="button" class="icon-btn danger" data-action="delete-section" aria-label="<%= t.adminType.deleteSection %>: <%= section.title %>" title="<%= t.adminType.deleteSection %>"><%- include('../icon', { name: 'trash' }) %></button>
+      <div class="min-w-0 flex-1">
+        <input class="section-title" type="text" value="<%= section.title %>" maxlength="150" required
+               aria-label="<%= t.adminType.sectionTitle(section.letter) %>">
       </div>
+      <span class="count" title="<%= t.adminType.standardsInSection %>"><%= section.standards.length %></span>
+      <button type="button" class="icon-btn danger" data-action="delete-section" aria-label="<%= t.adminType.deleteSection %>: <%= section.title %>" title="<%= t.adminType.deleteSection %>"><%- include('../icon', { name: 'trash' }) %></button>
     </div>
+    <div class="section-body" id="body-<%= section.id %>" data-standards>
     <% section.standards.forEach((s, ki) => { %>
-    <div class="std-row standard-row" data-standard-id="<%= s.id %>" data-text="<%= s.text %>"
-         data-mandatory="<%= s.isMandatory %>" data-reference-ids="<%= s.references.map((r) => r.id).join(',') %>">
-      <span class="std-number"><%= s.number %></span>
+    <div class="std-row standard-row scroll-target<% if (s.link) { %> is-linked<% } %>" id="std-<%= s.id %>" draggable="true" data-drag="standard"
+         data-standard-id="<%= s.id %>" data-mandatory="<%= s.isMandatory %>" data-linked="<%= Boolean(s.link) %>">
+      <div class="std-lead">
+        <span class="grip" title="<%= t.adminType.dragHandle %>" aria-hidden="true"><%- include('../icon', { name: 'grip' }) %></span>
+        <span class="move-pair">
+          <button type="button" class="icon-btn sm" data-action="move-standard" data-direction="up" <% if (ki === 0) { %>disabled<% } %> aria-label="<%= t.adminType.moveUp %> #<%= s.number %>" title="<%= t.adminType.moveUp %>"><%- include('../icon', { name: 'up' }) %></button>
+          <button type="button" class="icon-btn sm" data-action="move-standard" data-direction="down" <% if (ki === section.standards.length - 1) { %>disabled<% } %> aria-label="<%= t.adminType.moveDown %> #<%= s.number %>" title="<%= t.adminType.moveDown %>"><%- include('../icon', { name: 'down' }) %></button>
+        </span>
+        <span class="std-number"><%= s.number %></span>
+      </div>
       <div class="min-w-0">
         <div class="std-text">
-          <%= s.text %>
+          <a class="std-title-link" href="/admin/standards/<%= s.id %>"><%= s.title %></a>
+          <% if (s.link) { %>
+          <span class="mtoggle is-static" aria-pressed="<%= s.isMandatory %>"><%= s.isMandatory ? t.adminType.mandatory : t.adminType.optional %></span>
+          <a class="linked-badge<% if (s.link.sourceDeleted) { %> is-broken<% } %>" href="/admin/standards/<%= s.link.sourceId %>" title="<%= t.standardForm.linkedText %>">
+            <%- include('../icon', { name: 'link', cls: 'size-3' }) %> <%= t.linked.from(s.link.typeName) %><% if (s.link.sourceDeleted) { %> · <%= t.linked.deleted %><% } %>
+          </a>
+          <% } else { %>
           <button type="button" class="mtoggle" data-action="toggle-mandatory" aria-pressed="<%= s.isMandatory %>"
                   title="<%= t.adminType.toggleHint %>"><%= s.isMandatory ? t.adminType.mandatory : t.adminType.optional %></button>
+          <% } %>
         </div>
+        <% if (s.descriptionHtml) { %><%- include('../richText', { html: s.descriptionHtml, cls: 'std-desc' }) %><% } %>
+        <% if (s.references.length) { %>
         <div class="refs">
           <% for (const r of s.references) { %>
           <button type="button" class="ref-chip" data-action="view-reference" data-reference-id="<%= r.id %>" title="<%= r.note || r.title %>">
             <span aria-hidden="true"><%= t.referenceIcons[r.type] %></span><span class="t"><%= r.title %></span>
           </button>
           <% } %>
-          <button type="button" class="ref-chip add" data-action="edit-standard">
-            <%- include('../icon', { name: s.references.length ? 'pencil' : 'link', cls: 'size-3' }) %>
-            <%= s.references.length ? t.adminType.editLinks : t.adminType.linkReference %>
-          </button>
         </div>
+        <% } %>
+        <div class="std-meta"><%- include('../edited', { at: s.updatedAt, by: s.updatedBy }) %></div>
       </div>
       <div class="row-actions">
-        <button type="button" class="icon-btn" data-action="edit-standard" aria-label="<%= t.adminType.edit %> #<%= s.number %>" title="<%= t.adminType.edit %>"><%- include('../icon', { name: 'pencil' }) %></button>
-        <button type="button" class="icon-btn" data-action="move-standard" data-direction="up" <% if (ki === 0) { %>disabled<% } %> aria-label="<%= t.adminType.moveUp %> #<%= s.number %>" title="<%= t.adminType.moveUp %>"><%- include('../icon', { name: 'up' }) %></button>
-        <button type="button" class="icon-btn" data-action="move-standard" data-direction="down" <% if (ki === section.standards.length - 1) { %>disabled<% } %> aria-label="<%= t.adminType.moveDown %> #<%= s.number %>" title="<%= t.adminType.moveDown %>"><%- include('../icon', { name: 'down' }) %></button>
+        <a class="icon-btn" href="/admin/standards/<%= s.id %>" aria-label="<%= t.adminType.edit %> #<%= s.number %>" title="<%= t.adminType.edit %>"><%- include('../icon', { name: 'pencil' }) %></a>
         <button type="button" class="icon-btn danger" data-action="delete-standard" aria-label="<%= t.adminType.delete %> #<%= s.number %>" title="<%= t.adminType.delete %>"><%- include('../icon', { name: 'trash' }) %></button>
       </div>
     </div>
     <% }) %>
+    </div>
     <div class="add-slot">
-      <button type="button" class="add-link" data-action="open-add"><%- include('../icon', { name: 'plus' }) %> <%= t.adminType.addStandardLabel %></button>
+      <a class="add-link" href="/admin/types/<%= type.id %>/standards/new?section=<%= section.id %>"><%- include('../icon', { name: 'plus' }) %> <%= t.adminType.addStandardLabel %></a>
     </div>
   </div>
   <% }) %>
+  </div>
 </section>

@@ -1,16 +1,17 @@
-<%# Paper type editor (docs/03 §3.7, FR-ADM-10…21). Behaviour: public/js/pages/adminType.js.
+<%# Paper type editor (docs/03 §3.7, FR-ADM-10…21, D-36, D-37). Behaviour: public/js/pages/adminType.js.
     The two cards are partials, re-fetched from /admin/types/:id/cards/:card after each change. %>
 <%- include('../../partials/admin/tabs') %>
-<div id="type-editor" data-type-id="<%= type.id %>" data-strings="<%= JSON.stringify({
+<div id="type-editor" data-type-id="<%= type.id %>"
+     data-reference-options="<%= JSON.stringify(referenceOptions.map((r) => ({ id: r.id, type: r.type, title: r.title, icon: t.referenceIcons[r.type] }))) %>"
+     data-strings="<%= JSON.stringify({
   saving: t.adminType.saving, saved: t.adminType.saved, notSaved: t.adminType.notSaved,
   undo: t.adminType.undo, deletedSection: t.adminType.deletedSection, deletedStandard: t.adminType.deletedStandard,
-  deletedReference: t.adminType.deletedReference, newSection: t.adminType.newSection,
-  confirmDeleteType: t.adminType.confirmDeleteType(type.name), addReference: t.adminType.referenceDialogAdd,
-  editReference: t.adminType.referenceDialogEdit, fileHelp: t.adminType.fileHelp,
-  fileReplaceHelp: t.adminType.fileReplaceHelp, addPlaceholder: t.adminType.addPlaceholder,
-  addHint: t.adminType.addHint, done: t.adminType.done, addStandard: t.adminType.addStandardLabel,
-  tooMany: t.adminType.tooManyReferences, selected: t.adminType.selectedCount('{n}'),
-  noMatch: t.adminType.noMatch, chooseFile: t.adminType.chooseFile, referencesChip: t.adminType.referencesTitle
+  newSection: t.adminType.newSection, confirmDeleteType: t.adminType.confirmDeleteType(type.name),
+  addPlaceholder: t.adminType.addPlaceholder, addHint: t.adminType.addHint, done: t.adminType.done,
+  addStandard: t.adminType.addStandardLabel, tooMany: t.adminType.tooManyReferences,
+  selected: t.adminType.selectedCount('{n}'), noMatch: t.adminType.noMatch,
+  collapseAll: t.adminType.collapseAll, expandAll: t.adminType.expandAll,
+  importNone: t.importDialog.none, importResult: t.importDialog.resultImported, importSkipped: t.importDialog.resultSkipped
 }) %>">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="/admin/types"><%= t.adminTypes.heading %></a>
@@ -24,6 +25,7 @@
              aria-label="<%= t.adminType.namePlaceholder %>" placeholder="<%= t.adminType.namePlaceholder %>">
       <textarea class="sub-input" data-field="description" maxlength="300" rows="1"
                 aria-label="<%= t.adminType.descriptionPlaceholder %>" placeholder="<%= t.adminType.descriptionPlaceholder %>"><%= type.description || '' %></textarea>
+      <div class="type-edited"><%- include('../../partials/edited', { at: type.updatedAt, by: type.updatedBy }) %></div>
     </div>
     <div class="editor-actions">
       <span class="save-state" data-state="idle" role="status" aria-live="polite"></span>
@@ -47,6 +49,7 @@
   <%# Sticky jump bar: chips are built by adminType.js from the sections on the page. %>
   <nav class="jumpbar" aria-label="<%= t.adminType.jumpTo %>">
     <div class="chips" id="jump-chips"></div>
+    <button type="button" class="btn flex-none" data-variant="ghost" data-size="sm" data-action="toggle-all"><%= t.adminType.collapseAll %></button>
   </nav>
 
   <div class="grid gap-4">
@@ -55,6 +58,5 @@
   </div>
 </div>
 
-<%- include('../../partials/admin/referenceDialog') %>
-<%- include('../../partials/admin/standardDialog') %>
+<%- include('../../partials/admin/importDialog') %>
 <%- include('../../partials/referenceViewer') %>

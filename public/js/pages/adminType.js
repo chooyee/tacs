@@ -1,21 +1,20 @@
-// Paper type editor (FR-ADM-10…21, docs/03 §3.7).
+// Paper type editor (FR-ADM-10…21, docs/03 §3.7, D-36…D-38).
 // After each change the affected card is re-fetched as server-rendered HTML, so the markup lives
-// only in the EJS partials. Actions are delegated from the page with data-action attributes.
+// only in the EJS partials. Adding / editing a standard happens on its own full page (D-38).
 import { api, fetchHtml } from '../lib/api.js';
 import { $, $$, debounce } from '../lib/dom.js';
 import { openDialog, closeDialog, setupDialogs, setFormError } from '../lib/dialog.js';
 import { toast } from '../lib/toast.js';
+import { formatTimes } from '../lib/time.js';
 import { openReferenceViewer, setupReferenceViewer } from '../lib/referenceViewer.js';
 
 const editor = $('#type-editor');
 const typeId = editor.dataset.typeId;
 const t = JSON.parse(editor.dataset.strings);
-const MAX_REFS = 4; // FR-ADM-21
 
 setupDialogs();
 setupReferenceViewer();
 
-/** Show an API error the standard way: friendly message + request reference (docs/03 §4). */
 function showError(err) {
   toast(err.message, { error: true, ref: err.requestId });
 }
@@ -24,7 +23,6 @@ function showError(err) {
 
 const saveState = $('.save-state');
 let savedTimer;
-/** @param {'saving'|'saved'|'error'} state */
 function setSaveState(state) {
   clearTimeout(savedTimer);
   saveState.dataset.state = state;
@@ -37,13 +35,12 @@ function setSaveState(state) {
   }
 }
 
-/** Run a save and reflect it in the indicator. Errors become a toast. */
 async function saving(call) {
   setSaveState('saving');
   try {
     const result = await call();
     setSaveState('saved');
-    return result;
+    return result ?? true;
   } catch (err) {
     setSaveState('error');
     showError(err);
@@ -60,19 +57,17 @@ async function refresh(...cards) {
     template.innerHTML = html.trim(); // server-rendered with escaped output (<%= %>)
     $(`#${card}-card`).replaceWith(template.content.firstElementChild);
   }
-  buildJumpBar();
+  afterRender();
 }
 
-/** Save, then refresh cards. Returns the API result, or undefined on error. */
 function change(call, cards = ['standards']) {
   return saving(async () => {
     const result = await call();
     await refresh(...cards);
-    return result ?? true;
+    return result;
   });
 }
 
-/** Delete with an Undo toast (FR-ADM-13, FR-ADM-18): soft delete now, restore if Undo is clicked. */
 async function deleteWithUndo(url, message, cards) {
   const ok = await change(() => api(url, { method: 'DELETE' }), cards);
   if (!ok) return;
@@ -81,7 +76,43 @@ async function deleteWithUndo(url, message, cards) {
   });
 }
 
-/* ---------- Sticky jump bar: References + one chip per section ---------- */
+/* ---------- Collapsible sections (remembered per paper type in this browser) ---------- */
+
+const COLLAPSE_KEY = `psc.collapsed.${typeId}`;
+function loadCollapsed() {
+  try {
+    return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) ?? '[]'));
+  } catch {
+    return new Set();
+  }
+}
+const collapsed = loadCollapsed();
+function saveCollapsed() {
+  try {
+    localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
+  } catch {
+    // Storage blocked: the state lasts until reload.
+  }
+}
+
+function applyCollapse() {
+  for (const section of $$('.admin-section')) {
+    const isCollapsed = collapsed.has(section.dataset.sectionId);
+    section.classList.toggle('collapsed', isCollapsed);
+    $('.collapse-btn', section)?.setAttribute('aria-expanded', String(!isCollapsed));
+  }
+  const all = $$('.admin-section').every((s) => collapsed.has(s.dataset.sectionId));
+  $('[data-action="toggle-all"]').textContent = all ? t.expandAll : t.collapseAll;
+}
+
+function setCollapsed(sectionId, value) {
+  if (value) collapsed.add(sectionId);
+  else collapsed.delete(sectionId);
+  saveCollapsed();
+  applyCollapse();
+}
+
+/* ---------- Sticky jump bar ---------- */
 
 const chips = $('#jump-chips');
 let observer;
@@ -92,24 +123,24 @@ function buildJumpBar() {
     ...targets.map((target) => {
       const chip = Object.assign(document.createElement('button'), { type: 'button', className: 'chip' });
       chip.dataset.target = target.id;
-      const key = Object.assign(document.createElement('span'), {
-        className: 'chip-key',
-        textContent: target.dataset.jumpKey ?? '§',
-      });
-      const name = Object.assign(document.createElement('span'), {
-        className: 'chip-name',
-        textContent: target.dataset.jumpLabel,
-      });
-      const count = Object.assign(document.createElement('span'), {
-        className: 'chip-count',
-        textContent: target.dataset.jumpCount,
-      });
+      chip.append(
+        Object.assign(document.createElement('span'), {
+          className: 'chip-key',
+          textContent: target.dataset.jumpKey ?? '§',
+        }),
+        Object.assign(document.createElement('span'), {
+          className: 'chip-name',
+          textContent: target.dataset.jumpLabel,
+        }),
+        Object.assign(document.createElement('span'), {
+          className: 'chip-count',
+          textContent: target.dataset.jumpCount,
+        }),
+      );
       chip.setAttribute('aria-label', `${target.dataset.jumpKey ?? ''} ${target.dataset.jumpLabel}`.trim());
-      chip.append(key, name, count);
       return chip;
     }),
   );
-  // Highlight the chip of the part that is at the top of the screen.
   observer?.disconnect();
   observer = new IntersectionObserver(
     (entries) => {
@@ -117,11 +148,8 @@ function buildJumpBar() {
         .filter((e) => e.isIntersecting)
         .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
       if (!visible) return;
-      for (const chip of $$('.chip', chips)) {
-        const current = chip.dataset.target === visible.target.id;
-        chip.setAttribute('aria-current', String(current));
-        if (current) chip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-      }
+      for (const chip of $$('.chip', chips))
+        chip.setAttribute('aria-current', String(chip.dataset.target === visible.target.id));
     },
     { rootMargin: '-120px 0px -60% 0px' },
   );
@@ -130,22 +158,30 @@ function buildJumpBar() {
 
 chips.addEventListener('click', (event) => {
   const chip = event.target.closest('.chip');
-  if (chip)
-    document.getElementById(chip.dataset.target)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (!chip) return;
+  const target = document.getElementById(chip.dataset.target);
+  if (target?.dataset.sectionId) setCollapsed(target.dataset.sectionId, false); // open what you jump to
+  target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
+
+function afterRender() {
+  applyCollapse();
+  buildJumpBar();
+  formatTimes(editor);
+  for (const item of $$('[data-drag]')) item.draggable = false; // only while holding the grip
+}
 
 /* ---------- Name and description: autosave (FR-ADM-10) ---------- */
 
 const saveTypeField = debounce((input) => {
   const value = input.value.trim();
-  if (input.dataset.field === 'name' && !value) return; // the name is required; wait for text
+  if (input.dataset.field === 'name' && !value) return;
   saving(async () => {
     await api(`/api/admin/types/${typeId}`, { method: 'PATCH', body: { [input.dataset.field]: value } });
     if (input.dataset.field === 'name') $('.type-crumb').textContent = value;
   });
 }, 600);
 for (const input of $$('[data-field]', editor)) input.addEventListener('input', () => saveTypeField(input));
-// Enter in the description finishes editing instead of adding a line break.
 $('[data-field="description"]').addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
@@ -161,7 +197,7 @@ editor.addEventListener('change', (event) => {
   const section = input.closest('[data-section-id]');
   const title = input.value.trim();
   if (!title) {
-    input.value = input.defaultValue; // a section needs a title: put the old one back
+    input.value = input.defaultValue;
     return;
   }
   saving(async () => {
@@ -175,251 +211,220 @@ editor.addEventListener('keydown', (event) => {
   if (event.key === 'Enter' && event.target.matches('.section-title')) event.target.blur();
 });
 
-/* ---------- Inline "add standard" box (FR-ADM-16) ---------- */
+/* ---------- Drag and drop (grip): sections, and standards within or across sections ---------- */
 
-function el(tag, props, ...children) {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(...children);
-  return node;
-}
+let dragging = null; // { kind: 'section'|'standard', el }
 
-function addLink() {
-  const link = el('button', { type: 'button', className: 'add-link', textContent: `＋ ${t.addStandard}` });
-  link.dataset.action = 'open-add';
-  return link;
-}
-
-/** Open the add box at the end of a section and focus it. */
-function openAddBox(sectionId) {
-  closeAddBox();
-  const slot = $(`[data-section-id="${sectionId}"] .add-slot`);
-  if (!slot) return;
-  const textarea = el('textarea', { rows: 2, maxLength: 500, placeholder: t.addPlaceholder });
-  textarea.setAttribute('aria-label', t.addPlaceholder);
-  const done = el('button', { type: 'button', className: 'btn', textContent: t.done });
-  Object.assign(done.dataset, { variant: 'outline', size: 'sm', action: 'close-add' });
-  const box = el(
-    'div',
-    { className: 'add-box' },
-    textarea,
-    el(
-      'div',
-      { className: 'flex items-center justify-between gap-2' },
-      el('span', { className: 'hint', textContent: t.addHint }),
-      done,
-    ),
-  );
-  box.dataset.sectionId = sectionId;
-  slot.replaceChildren(box);
-  textarea.focus();
-}
-
-function closeAddBox() {
-  const box = $('.add-box');
-  if (box) box.parentElement.replaceChildren(addLink());
-}
-
-/** Save the box's text (if any). Keeps the box open for the next one when `keepOpen`. */
-async function submitAddBox({ keepOpen }) {
-  const box = $('.add-box');
-  if (!box) return;
-  const sectionId = box.dataset.sectionId;
-  const text = box.querySelector('textarea').value.trim();
-  if (text) {
-    const created = await change(() =>
-      api(`/api/admin/sections/${sectionId}/standards`, { method: 'POST', body: { text } }),
-    );
-    if (!created) return; // error shown; keep what was typed
-  }
-  if (keepOpen)
-    openAddBox(sectionId); // the card was re-rendered: open a fresh box
-  else closeAddBox();
-}
-
-editor.addEventListener('keydown', (event) => {
-  if (!event.target.closest('.add-box')) return;
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault();
-    submitAddBox({ keepOpen: true });
-  } else if (event.key === 'Escape') {
-    event.preventDefault();
-    submitAddBox({ keepOpen: false });
-  }
+editor.addEventListener('pointerdown', (event) => {
+  const grip = event.target.closest('.grip');
+  if (grip) grip.closest('[data-drag]').draggable = true;
 });
 
-/* ---------- Reference dialog (FR-ADM-12): type cards + file drop zone ---------- */
+editor.addEventListener('dragstart', (event) => {
+  const item = event.target.closest('[data-drag]');
+  if (!item?.draggable) return;
+  const el = item.dataset.drag === 'section' ? item.closest('.admin-section') : item;
+  dragging = { kind: item.dataset.drag, el };
+  el.classList.add('dragging');
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', el.dataset.sectionId ?? el.dataset.standardId);
+});
 
-const referenceDialog = $('#reference-dialog');
-const referenceForm = $('#reference-form');
-const fileInput = $('#rf-file');
-const dropzone = $('.dropzone', referenceForm);
-
-function showChosenFile() {
-  const file = fileInput.files[0];
-  $('.file-name', dropzone).textContent = file
-    ? `${file.name} · ${(file.size / 1024 / 1024).toFixed(1)} MB`
-    : t.chooseFile;
-}
-fileInput.addEventListener('change', showChosenFile);
-for (const type of ['dragenter', 'dragover']) {
-  dropzone.addEventListener(type, () => dropzone.classList.add('over'));
-}
-for (const type of ['dragleave', 'drop']) {
-  dropzone.addEventListener(type, () => dropzone.classList.remove('over'));
+function clearMarks() {
+  for (const el of $$('.drop-before, .drop-after, .drop-into'))
+    el.classList.remove('drop-before', 'drop-after', 'drop-into');
 }
 
-function openReferenceDialog(row) {
-  referenceForm.reset();
-  showChosenFile();
-  setFormError(referenceDialog, '');
-  referenceForm.dataset.referenceId = row?.dataset.referenceId ?? '';
-  $('#reference-dialog-title').textContent = row ? t.editReference : t.addReference;
-  $('.file-help', referenceForm).textContent = row ? t.fileReplaceHelp : t.fileHelp;
-  $('.file-required', referenceForm).hidden = Boolean(row);
-  if (row) {
-    referenceForm.elements.type.value = row.dataset.type;
-    referenceForm.elements.title.value = row.dataset.title;
-    referenceForm.elements.url.value = row.dataset.url;
-    referenceForm.elements.note.value = row.dataset.note;
+/** Where a drop would go: the element to mark and whether it is before / after it. */
+function dropTarget(event) {
+  if (!dragging) return null;
+  if (dragging.kind === 'section') {
+    const section = event.target.closest('.admin-section');
+    if (!section || section === dragging.el) return null;
+    const box = section.getBoundingClientRect();
+    return { el: section, after: event.clientY > box.top + box.height / 2 };
   }
-  openDialog(referenceDialog);
-  referenceForm.elements.title.focus();
+  const row = event.target.closest('.std-row');
+  if (row && row !== dragging.el) {
+    const box = row.getBoundingClientRect();
+    return { el: row, after: event.clientY > box.top + box.height / 2 };
+  }
+  const body = event.target.closest('.admin-section');
+  return body ? { el: $('[data-standards]', body), into: true } : null;
 }
 
-referenceForm.addEventListener('submit', async (event) => {
+editor.addEventListener('dragover', (event) => {
+  const target = dropTarget(event);
+  if (!target) return;
   event.preventDefault();
-  const id = referenceForm.dataset.referenceId;
-  const data = new FormData(referenceForm);
-  if (!data.get('file')?.size) data.delete('file'); // editing without a new file keeps the old one
-  if (!String(data.get('title')).trim()) return setFormError(referenceDialog, 'Give the reference a title.');
-  if (!id && !data.has('file')) return setFormError(referenceDialog, 'Choose a file to upload.');
-  const submit = referenceForm.querySelector('[type=submit]');
-  submit.disabled = true;
-  setSaveState('saving');
-  try {
-    await api(id ? `/api/admin/references/${id}` : `/api/admin/types/${typeId}/references`, {
-      method: id ? 'PATCH' : 'POST',
-      body: data,
-    });
-    closeDialog(referenceDialog);
-    await refresh('references', 'standards');
-    setSaveState('saved');
-  } catch (err) {
-    setSaveState('error');
-    setFormError(referenceDialog, err.details?.[0]?.message ?? err.message);
-  } finally {
-    submit.disabled = false;
-  }
+  clearMarks();
+  target.el.classList.add(target.into ? 'drop-into' : target.after ? 'drop-after' : 'drop-before');
 });
 
-/* ---------- Standard dialog (FR-ADM-17, FR-ADM-21): grouped, filterable picker ---------- */
+editor.addEventListener('dragleave', (event) => {
+  if (!editor.contains(event.relatedTarget)) clearMarks();
+});
 
-const standardDialog = $('#standard-dialog');
-const standardForm = $('#standard-form');
-const picker = $('#sf-references');
+editor.addEventListener('drop', async (event) => {
+  const target = dropTarget(event);
+  clearMarks();
+  if (!target || !dragging) return;
+  event.preventDefault();
+  const { kind, el } = dragging;
+  if (kind === 'section') {
+    const ids = $$('.admin-section')
+      .map((s) => s.dataset.sectionId)
+      .filter((id) => id !== el.dataset.sectionId);
+    const at = ids.indexOf(target.el.dataset.sectionId) + (target.after ? 1 : 0);
+    ids.splice(at, 0, el.dataset.sectionId);
+    await change(() =>
+      api(`/api/admin/types/${typeId}/sections/order`, { method: 'POST', body: { sectionIds: ids } }),
+    );
+    return;
+  }
+  const section = target.el.closest('.admin-section');
+  const others = $$('.std-row', section).filter((row) => row !== el);
+  const index = target.into ? others.length : others.indexOf(target.el) + (target.after ? 1 : 0);
+  await change(() =>
+    api(`/api/admin/standards/${el.dataset.standardId}/move`, {
+      method: 'POST',
+      body: { sectionId: section.dataset.sectionId, index },
+    }),
+  );
+});
 
-function updatePickerState() {
-  const checked = $$('input[name="referenceIds"]:checked', standardForm).length;
-  $('.selected-count', standardForm).textContent = t.selected.replace('{n}', checked);
-  $('.too-many', standardForm).hidden = checked <= MAX_REFS;
+editor.addEventListener('dragend', () => {
+  dragging?.el.classList.remove('dragging');
+  dragging = null;
+  clearMarks();
+  for (const item of $$('[data-drag]')) item.draggable = false;
+});
+
+/* ---------- Import standards from another paper type (D-38) ---------- */
+
+const importDialog = $('#import-dialog');
+const importForm = $('#import-form');
+const tree = $('#im-tree');
+
+function updateImportCount() {
+  const n = $$('input[name="std"]:checked', tree).length;
+  $('.selected-count', importDialog).textContent = t.selected.replace('{n}', n);
+  for (const group of $$('.tree-group', tree)) {
+    const boxes = $$('input[name="std"]', group);
+    const checked = boxes.filter((b) => b.checked).length;
+    const all = $('input[name="section"]', group);
+    all.checked = checked === boxes.length && checked > 0;
+    all.indeterminate = checked > 0 && checked < boxes.length;
+  }
 }
 
-function buildPicker(linked) {
-  const options = JSON.parse($('#reference-options').dataset.json);
-  const groups = Map.groupBy(options, (ref) => ref.type);
-  picker.replaceChildren(
-    ...[...groups].map(([type, refs]) =>
-      el(
-        'div',
-        { className: 'picker-group' },
-        el('h4', { textContent: `${refs[0].icon} ${type}` }),
-        ...refs.map((ref) => {
-          const box = el('input', {
+$('#im-type').addEventListener('change', async (event) => {
+  const sourceId = event.target.value;
+  $('#im-tree-field').hidden = !sourceId;
+  $('#im-target').hidden = !sourceId;
+  tree.replaceChildren();
+  if (!sourceId) return;
+  try {
+    const sections = await api(`/api/admin/types/${sourceId}/tree`);
+    tree.replaceChildren(
+      ...sections.map((section, i) => {
+        const group = Object.assign(document.createElement('div'), { className: 'tree-group' });
+        const head = document.createElement('label');
+        head.className = 'tree-section';
+        head.append(
+          Object.assign(document.createElement('input'), {
             type: 'checkbox',
             className: 'input',
-            name: 'referenceIds',
-            value: ref.id,
-            checked: linked.has(ref.id),
-          });
-          const label = el('label', {}, box, el('span', { textContent: ref.title }));
-          label.dataset.search = ref.title.toLowerCase();
-          return label;
-        }),
-      ),
-    ),
-    el('p', { className: 'picker-empty hint', textContent: t.noMatch, hidden: true }),
-  );
-  if (!options.length) picker.replaceChildren(el('p', { className: 'hint', textContent: t.noMatch }));
-}
-
-$('#sf-filter').addEventListener('input', (event) => {
-  const query = event.target.value.trim().toLowerCase();
-  let shown = 0;
-  for (const group of $$('.picker-group', picker)) {
-    let groupShown = 0;
-    for (const label of $$('label', group)) {
-      const match = !query || label.dataset.search.includes(query);
-      label.hidden = !match;
-      if (match) groupShown += 1;
-    }
-    group.hidden = groupShown === 0;
-    shown += groupShown;
+            name: 'section',
+          }),
+          Object.assign(document.createElement('b'), {
+            textContent: `${String.fromCharCode(65 + i)}. ${section.title}`,
+          }),
+        );
+        group.append(head);
+        for (const std of section.standards) {
+          const row = document.createElement('label');
+          row.append(
+            Object.assign(document.createElement('input'), {
+              type: 'checkbox',
+              className: 'input',
+              name: 'std',
+              value: std.id,
+            }),
+            Object.assign(document.createElement('span'), { textContent: `#${std.number} ${std.title}` }),
+          );
+          group.append(row);
+        }
+        return group;
+      }),
+    );
+    updateImportCount();
+  } catch (err) {
+    showError(err);
   }
-  const empty = $('.picker-empty', picker);
-  if (empty) empty.hidden = shown > 0;
 });
 
-function openStandardDialog(row) {
-  setFormError(standardDialog, '');
-  standardForm.dataset.standardId = row.dataset.standardId;
-  standardForm.elements.text.value = row.dataset.text;
-  standardForm.elements.isMandatory.checked = row.dataset.mandatory === 'true';
-  $('#sf-filter').value = '';
-  buildPicker(new Set(row.dataset.referenceIds.split(',').filter(Boolean)));
-  updatePickerState();
-  openDialog(standardDialog);
-}
+tree.addEventListener('change', (event) => {
+  if (event.target.name === 'section') {
+    for (const box of $$('input[name="std"]', event.target.closest('.tree-group')))
+      box.checked = event.target.checked;
+  }
+  updateImportCount();
+});
+$('#im-section').addEventListener('change', () => {
+  importForm.querySelector('input[name="mode"][value="into"]').checked = true;
+});
 
-standardForm.addEventListener('change', updatePickerState);
-standardForm.addEventListener('submit', async (event) => {
+importForm.addEventListener('submit', async (event) => {
   event.preventDefault();
-  const text = standardForm.elements.text.value.trim();
-  if (!text) return setFormError(standardDialog, 'The standard needs some text.');
-  const body = {
-    text,
-    isMandatory: standardForm.elements.isMandatory.checked,
-    referenceIds: $$('input[name="referenceIds"]:checked', standardForm).map((box) => box.value),
-  };
-  setSaveState('saving');
+  const standardIds = $$('input[name="std"]:checked', tree).map((b) => b.value);
+  if (!standardIds.length) return setFormError(importDialog, t.importNone);
+  const mode = importForm.elements.mode.value;
+  const body = { standardIds, mode, ...(mode === 'into' && { targetSectionId: $('#im-section').value }) };
+  const submit = importForm.querySelector('[type=submit]');
+  submit.disabled = true;
   try {
-    const saved = await api(`/api/admin/standards/${standardForm.dataset.standardId}`, {
-      method: 'PATCH',
-      body,
-    });
-    closeDialog(standardDialog);
-    await refresh('standards', 'references');
-    setSaveState('saved');
-    for (const warning of saved.warnings ?? []) toast(warning);
-  } catch (err) {
-    setSaveState('error');
-    setFormError(standardDialog, err.details?.[0]?.message ?? err.message);
+    const result = await change(
+      () => api(`/api/admin/types/${typeId}/import`, { method: 'POST', body }),
+      ['standards', 'references'],
+    );
+    if (result) {
+      closeDialog(importDialog);
+      const imported = t.importResult.replace('{n}', result.imported);
+      const skipped = result.skipped.length
+        ? ` ${t.importSkipped.replace('{skipped}', result.skipped.length)} ${result.skipped.join(', ')}`
+        : '';
+      toast(imported + skipped); // warn and skip duplicates (D-38)
+    }
+  } finally {
+    submit.disabled = false;
   }
 });
 
 /* ---------- Click actions ---------- */
 
 const actions = {
+  'toggle-section': (_b, section) =>
+    setCollapsed(section.dataset.sectionId, !collapsed.has(section.dataset.sectionId)),
+  'toggle-all': () => {
+    const ids = $$('.admin-section').map((s) => s.dataset.sectionId);
+    const collapseAll = !ids.every((id) => collapsed.has(id));
+    for (const id of ids) {
+      if (collapseAll) collapsed.add(id);
+      else collapsed.delete(id);
+    }
+    saveCollapsed();
+    applyCollapse();
+  },
   'add-section': async () => {
     const section = await change(() =>
       api(`/api/admin/types/${typeId}/sections`, { method: 'POST', body: { title: t.newSection } }),
     );
     if (!section?.id) return;
-    // FR-ADM-14: select the new title for editing; its add box opens when the title is done.
     const input = $(`[data-section-id="${section.id}"] .section-title`);
     input.scrollIntoView({ block: 'center' });
     input.focus();
     input.select();
-    input.addEventListener('blur', () => openAddBox(section.id), { once: true });
   },
   'move-section': (button, section) =>
     change(() =>
@@ -433,8 +438,6 @@ const actions = {
       'standards',
       'references',
     ]),
-  'open-add': (_b, section) => openAddBox(section.dataset.sectionId),
-  'close-add': () => submitAddBox({ keepOpen: false }),
   'toggle-mandatory': (_b, _s, row) =>
     change(() =>
       api(`/api/admin/standards/${row.dataset.standardId}`, {
@@ -442,7 +445,6 @@ const actions = {
         body: { isMandatory: row.dataset.mandatory !== 'true' },
       }),
     ),
-  'edit-standard': (_b, _s, row) => openStandardDialog(row),
   'move-standard': (button, _s, row) =>
     change(() =>
       api(`/api/admin/standards/${row.dataset.standardId}/move`, {
@@ -455,15 +457,16 @@ const actions = {
       'standards',
       'references',
     ]),
-  'add-reference': () => openReferenceDialog(null),
-  'edit-reference': (_b, _s, row) => openReferenceDialog(row),
-  'delete-reference': (_b, _s, row) =>
-    deleteWithUndo(`/api/admin/references/${row.dataset.referenceId}`, t.deletedReference, [
-      'references',
-      'standards',
-    ]),
   'view-reference': (button, _s, row) =>
     openReferenceViewer(button.dataset.referenceId ?? row.dataset.referenceId),
+  'open-import': () => {
+    importForm.reset();
+    $('#im-tree-field').hidden = true;
+    $('#im-target').hidden = true;
+    tree.replaceChildren();
+    setFormError(importDialog, '');
+    openDialog(importDialog);
+  },
   'delete-type': async () => {
     // A native confirm is accessible and enough for this rare action.
     if (!window.confirm(t.confirmDeleteType)) return;
@@ -484,11 +487,13 @@ editor.addEventListener('click', (event) => {
   actions[button.dataset.action](button, section, row);
 });
 
-buildJumpBar();
+afterRender();
 
-// FR-ADM-02: a new blank type opens with the add box of its first section ready.
-if (window.location.hash === '#add') {
-  history.replaceState(null, '', window.location.pathname);
-  const first = $('[data-section-id]');
-  if (first) openAddBox(first.dataset.sectionId);
+// Coming back from the standard form (#std-<id>): open its section and show it.
+const target =
+  window.location.hash.startsWith('#std-') && document.getElementById(window.location.hash.slice(1));
+if (target) {
+  setCollapsed(target.closest('.admin-section').dataset.sectionId, false);
+  target.classList.add('flash');
+  target.scrollIntoView({ block: 'center' });
 }

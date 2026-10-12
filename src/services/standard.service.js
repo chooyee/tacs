@@ -1,17 +1,22 @@
 'use strict';
 
 /**
- * Standards: add, edit (text, mandatory, linked references), move, delete with Undo
- * (FR-ADM-15…19, FR-ADM-21). Changes apply immediately to every paper of the type (D-12).
+ * Standards: add, edit (title, rich-text description, mandatory, linked references), move with the
+ * buttons or by drag and drop (also into another section), delete with Undo (FR-ADM-15…19,
+ * FR-ADM-21, D-37). Changes apply immediately to every paper of the type (D-12).
  */
 const standardModel = require('../models/standard.model');
 const sectionModel = require('../models/section.model');
 const referenceModel = require('../models/reference.model');
+const paperTypeModel = require('../models/paperType.model');
 const { withTransaction } = require('../utils/db');
+const { actorName } = require('../utils/actor');
+const { sanitizeRichText } = require('../utils/richText');
 const { ConflictError, NotFoundError, ValidationError } = require('../utils/errors');
 
 /** AI providers limit documents per request (docs/07 §5), so warn above this (FR-ADM-21). */
 const MAX_REFERENCES_BEFORE_WARNING = 4;
+const MAX_DESCRIPTION_HTML = 20_000;
 
 /**
  * @param {string} id
@@ -25,41 +30,92 @@ async function getStandardOrThrow(id, opts) {
   return standard;
 }
 
+/** Clean a description; '' when empty. */
+function cleanDescription(html) {
+  if (html === undefined) return undefined;
+  const clean = sanitizeRichText(html);
+  if (clean.length > MAX_DESCRIPTION_HTML) {
+    throw new ValidationError('The description is too long.', [
+      { field: 'description', message: 'Too long' },
+    ]);
+  }
+  return clean;
+}
+
+/** De-duplicate and check reference IDs against the library. */
+async function checkReferenceIds(referenceIds) {
+  const ids = referenceIds ? [...new Set(referenceIds)] : undefined;
+  if (ids?.length && (await referenceModel.countExisting(ids)) !== ids.length) {
+    throw new ValidationError('One of the references no longer exists. Reload the page.', [
+      { field: 'referenceIds', message: 'Unknown reference' },
+    ]);
+  }
+  return ids;
+}
+
 /**
- * Add an optional standard without references at the end of a section (FR-ADM-16).
- * @param {{sectionId: string, text: string, log: import('pino').Logger}} params
+ * Add a standard at the end of a section (FR-ADM-16; full form, D-38).
+ * @param {{sectionId: string, title: string, description?: string, isMandatory?: boolean,
+ *          referenceIds?: string[], actor: object, log: import('pino').Logger}} params
  * @returns {Promise<object>}
  */
-async function addStandard({ sectionId, text, log }) {
-  if (!(await sectionModel.findById(sectionId))) throw new NotFoundError('Section not found.');
-  const standard = await standardModel.create(sectionId, text);
+async function addStandard({
+  sectionId,
+  title,
+  description,
+  isMandatory = false,
+  referenceIds = [],
+  actor,
+  log,
+}) {
+  const section = await sectionModel.findById(sectionId);
+  if (!section) throw new NotFoundError('Section not found.');
+  const ids = (await checkReferenceIds(referenceIds)) ?? [];
+  const by = actorName(actor);
+  const standard = await withTransaction(async () => {
+    const created = await standardModel.create(sectionId, {
+      title,
+      descriptionHtml: cleanDescription(description) ?? '',
+      isMandatory,
+      updatedBy: by,
+    });
+    if (ids.length) await standardModel.setReferences(created.id, ids);
+    await paperTypeModel.touch(section.paperTypeId, by);
+    return created;
+  });
   log.info({ sectionId, standardId: standard.id }, 'Standard added');
   return standard;
 }
 
 /**
  * Edit a standard (FR-ADM-15 toggle, FR-ADM-17 dialog). `referenceIds` replaces the whole link set;
- * every ID must be a reference of the same paper type (docs/06 §4).
+ * every ID must be a library reference.
  *
- * @param {{standardId: string, text?: string, isMandatory?: boolean, referenceIds?: string[],
- *          log: import('pino').Logger}} params
+ * @param {{standardId: string, title?: string, description?: string, isMandatory?: boolean,
+ *          referenceIds?: string[], actor: object, log: import('pino').Logger}} params
  * @returns {Promise<{standard: object, warnings: string[]}>}
- * @throws {ValidationError} a reference from another type
+ * @throws {ValidationError} an unknown reference
  */
-async function updateStandard({ standardId, text, isMandatory, referenceIds, log }) {
+async function updateStandard({ standardId, title, description, isMandatory, referenceIds, actor, log }) {
   const current = await getStandardOrThrow(standardId);
-  const ids = referenceIds && [...new Set(referenceIds)];
-  if (ids?.length) {
-    const valid = await referenceModel.countInType(current.paperTypeId, ids);
-    if (valid !== ids.length) {
-      throw new ValidationError('Link only references of this paper type.', [
-        { field: 'referenceIds', message: 'Unknown reference' },
-      ]);
-    }
+  if (current.sourceStandardId) {
+    // D-38: the content of a live link belongs to the source paper type.
+    throw new ConflictError(
+      'This standard is linked from another paper type. Edit it there, or duplicate it here first.',
+      'LINKED_STANDARD',
+    );
   }
+  const ids = await checkReferenceIds(referenceIds);
+  const by = actorName(actor);
   const standard = await withTransaction(async () => {
-    const updated = await standardModel.update(standardId, { text, isMandatory });
+    const updated = await standardModel.update(standardId, {
+      title,
+      descriptionHtml: cleanDescription(description),
+      isMandatory,
+      updatedBy: by,
+    });
     if (ids) await standardModel.setReferences(standardId, ids);
+    await paperTypeModel.touch(current.paperTypeId, by);
     return updated;
   });
   const warnings =
@@ -73,32 +129,64 @@ async function updateStandard({ standardId, text, isMandatory, referenceIds, log
 }
 
 /**
- * @param {{standardId: string, direction: 'up'|'down', log: import('pino').Logger}} params
+ * Move a standard to a position in a section of the same paper type (drag and drop), or one step
+ * up / down inside its section (the buttons).
+ *
+ * @param {{standardId: string, direction?: 'up'|'down', sectionId?: string, index?: number,
+ *          actor: object, log: import('pino').Logger}} params
  * @returns {Promise<void>}
- * @throws {ConflictError} CANNOT_MOVE
+ * @throws {ConflictError} CANNOT_MOVE at the top / bottom
+ * @throws {ValidationError} target section of another paper type
  */
-async function moveStandard({ standardId, direction, log }) {
+async function moveStandard({ standardId, direction, sectionId, index, actor, log }) {
+  const by = actorName(actor);
   await withTransaction(async () => {
     const standard = await getStandardOrThrow(standardId);
-    const neighbour = await standardModel.findNeighbour(standard, direction);
-    if (!neighbour) {
-      throw new ConflictError(
-        `This standard is already at the ${direction === 'up' ? 'top' : 'bottom'}.`,
-        'CANNOT_MOVE',
+    const targetId = sectionId ?? standard.sectionId;
+    if (targetId !== standard.sectionId) {
+      const target = await sectionModel.findById(targetId);
+      if (!target || target.paperTypeId !== standard.paperTypeId) {
+        throw new ValidationError('A standard can only move within its paper type.');
+      }
+    }
+    const ids = (await standardModel.listIdsInSection(targetId)).filter((id) => id !== standardId);
+    let to;
+    if (direction) {
+      const from = (await standardModel.listIdsInSection(standard.sectionId)).indexOf(standardId);
+      to = direction === 'up' ? from - 1 : from + 1;
+      if (to < 0 || to > ids.length) {
+        throw new ConflictError(
+          `This standard is already at the ${direction === 'up' ? 'top' : 'bottom'}.`,
+          'CANNOT_MOVE',
+        );
+      }
+    } else {
+      to = Math.min(Math.max(index ?? ids.length, 0), ids.length);
+    }
+    ids.splice(to, 0, standardId);
+    await standardModel.placeInSection(targetId, ids, by);
+    if (targetId !== standard.sectionId) {
+      // Close the gap left in the old section.
+      await standardModel.placeInSection(
+        standard.sectionId,
+        await standardModel.listIdsInSection(standard.sectionId),
+        by,
       );
     }
-    await standardModel.swapPositions(standard, neighbour);
+    await paperTypeModel.touch(standard.paperTypeId, by);
   });
-  log.info({ standardId, direction }, 'Standard moved');
+  log.info({ standardId, direction, sectionId, index }, 'Standard moved');
 }
 
 /**
  * Soft delete (FR-ADM-18). Answers to it are kept but hidden on papers (FR-ANS-15).
  * @returns {Promise<void>}
  */
-async function deleteStandard({ standardId, log }) {
-  await getStandardOrThrow(standardId);
-  await standardModel.softDelete(standardId);
+async function deleteStandard({ standardId, actor, log }) {
+  const standard = await getStandardOrThrow(standardId);
+  const by = actorName(actor);
+  await standardModel.softDelete(standardId, by);
+  await paperTypeModel.touch(standard.paperTypeId, by);
   log.info({ standardId }, 'Standard deleted');
 }
 
@@ -107,17 +195,147 @@ async function deleteStandard({ standardId, log }) {
  * @returns {Promise<void>}
  * @throws {ConflictError} NOT_DELETED, or SECTION_DELETED when its section is gone (restore that first)
  */
-async function restoreStandard({ standardId, log }) {
+async function restoreStandard({ standardId, actor, log }) {
   const standard = await getStandardOrThrow(standardId, { includeDeleted: true });
   if (!standard.deletedAt) throw new ConflictError('This standard is not deleted.', 'NOT_DELETED');
   if (standard.sectionDeleted) {
     throw new ConflictError('Its section was deleted. Restore the section first.', 'SECTION_DELETED');
   }
-  await standardModel.restore(standardId);
+  const by = actorName(actor);
+  await standardModel.restore(standardId, by);
+  await paperTypeModel.touch(standard.paperTypeId, by);
   log.info({ standardId }, 'Standard restored');
 }
 
+/**
+ * The full-screen standard form (D-38): the standard (live link resolved) or a blank one, the
+ * sections it can go in, and the reference library for the picker.
+ * @param {{typeId?: string, standardId?: string, sectionId?: string}} params
+ * @returns {Promise<object>}
+ * @throws {NotFoundError}
+ */
+async function getStandardForm({ typeId, standardId, sectionId }) {
+  let standard = null;
+  let paperTypeId = typeId;
+  if (standardId) {
+    standard = await standardModel.findResolved(standardId);
+    if (!standard) throw new NotFoundError('Standard not found.');
+    paperTypeId = standard.paperTypeId;
+  }
+  const type = await paperTypeModel.findById(paperTypeId);
+  if (!type) throw new NotFoundError('Paper type not found.');
+  const [sections, options] = await Promise.all([
+    sectionModel.listForType(paperTypeId),
+    referenceModel.listAllForPicker(),
+  ]);
+  if (!sections.length) throw new ConflictError('Add a section first.', 'NO_SECTION');
+  const preferred = sections.some((sec) => sec.id === sectionId) ? sectionId : sections[0].id;
+  if (standard) {
+    // Number and references as shown in the type (numbering runs across all sections).
+    const shown = (await standardModel.listForType(paperTypeId)).find((st) => st.id === standard.id);
+    standard.number = shown?.number;
+    standard.referenceIds = shown?.referenceIds ?? [];
+  }
+  return {
+    type: { id: type.id, name: type.name },
+    sections: sections.map((sec) => ({ id: sec.id, title: sec.title })),
+    standard,
+    selectedSectionId: standard?.sectionId ?? preferred,
+    referenceOptions: options,
+  };
+}
+
+/**
+ * "Duplicate here" (D-38): a linked standard becomes an independent copy this type can edit.
+ * @returns {Promise<void>}
+ * @throws {ConflictError} NOT_LINKED
+ */
+async function detachStandard({ standardId, actor, log }) {
+  const standard = await getStandardOrThrow(standardId);
+  if (!standard.sourceStandardId) throw new ConflictError('This standard is not linked.', 'NOT_LINKED');
+  const by = actorName(actor);
+  await withTransaction(async () => {
+    await standardModel.detach(standardId, by);
+    await paperTypeModel.touch(standard.paperTypeId, by);
+  });
+  log.info({ standardId }, 'Linked standard duplicated');
+}
+
+/**
+ * Import standards of other paper types as live links (D-38). "sections" mode recreates each
+ * source section (same title) in this type; "into" puts everything into one chosen section.
+ * A standard already linked into this type is skipped and reported (warn and skip).
+ *
+ * @param {{typeId: string, standardIds: string[], mode: 'sections'|'into', targetSectionId?: string,
+ *          actor: object, log: import('pino').Logger}} params
+ * @returns {Promise<{imported: number, skipped: string[]}>}
+ */
+async function importStandards({ typeId, standardIds, mode, targetSectionId, actor, log }) {
+  if (!(await paperTypeModel.findById(typeId))) throw new NotFoundError('Paper type not found.');
+  if (mode === 'into') {
+    const target = await sectionModel.findById(targetSectionId);
+    if (!target || target.paperTypeId !== typeId)
+      throw new ValidationError('Choose a section of this paper type.');
+  }
+  const by = actorName(actor);
+  return withTransaction(async () => {
+    const already = await standardModel.linkedSourceIds(typeId);
+    const sectionFor = new Map(); // source section → its new copy (sections mode)
+    let imported = 0;
+    const skipped = [];
+    for (const id of [...new Set(standardIds)]) {
+      const std = await standardModel.findResolved(id);
+      if (!std) continue;
+      // Always link to the ORIGINAL standard, never to a link of a link.
+      const sourceId = std.sourceStandardId ?? std.id;
+      if (std.paperTypeId === typeId || already.has(sourceId)) {
+        skipped.push(std.title);
+        continue;
+      }
+      let sectionId = targetSectionId;
+      if (mode === 'sections') {
+        if (!sectionFor.has(std.sectionId)) {
+          const sourceSection = await sectionModel.findById(std.sectionId);
+          const created = await sectionModel.create(typeId, sourceSection.title, by);
+          sectionFor.set(std.sectionId, created.id);
+        }
+        sectionId = sectionFor.get(std.sectionId);
+      }
+      await standardModel.createLink(sectionId, sourceId, by);
+      already.add(sourceId);
+      imported += 1;
+    }
+    if (imported) await paperTypeModel.touch(typeId, by);
+    log.info({ paperTypeId: typeId, imported, skipped: skipped.length }, 'Standards imported');
+    return { imported, skipped };
+  });
+}
+
+/**
+ * Sections and standards of a paper type for the Import picker (titles resolved).
+ * @param {string} typeId
+ * @returns {Promise<object[]>}
+ */
+async function getImportTree(typeId) {
+  if (!(await paperTypeModel.findById(typeId))) throw new NotFoundError('Paper type not found.');
+  const [sections, standards] = await Promise.all([
+    sectionModel.listForType(typeId),
+    standardModel.listForType(typeId),
+  ]);
+  return sections.map((sec) => ({
+    id: sec.id,
+    title: sec.title,
+    standards: standards
+      .filter((st) => st.sectionId === sec.id)
+      .map((st) => ({ id: st.id, number: st.number, title: st.title, isMandatory: st.isMandatory })),
+  }));
+}
+
 module.exports = {
+  getStandardForm,
+  detachStandard,
+  importStandards,
+  getImportTree,
   MAX_REFERENCES_BEFORE_WARNING,
   addStandard,
   updateStandard,

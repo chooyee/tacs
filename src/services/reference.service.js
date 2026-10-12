@@ -1,27 +1,30 @@
 'use strict';
 
 /**
- * Reference documents of a paper type: policies, samples, templates and guides (FR-ADM-11…13,
- * FR-REF-02, FR-REF-04). Files live in S3 under generated keys; original names are display only.
+ * The reference library (D-37): policies, samples, templates and guides shared by every paper type
+ * (FR-ADM-11…13, FR-REF-02, FR-REF-04). Each reference has a file (preview + AI) and rich-text
+ * guidance. Files live in S3 under generated keys; original names are for display only.
  */
 const { randomUUID } = require('node:crypto');
 const referenceModel = require('../models/reference.model');
-const paperTypeModel = require('../models/paperType.model');
 const { getStorage } = require('../factories/storageFactory');
 const { checkReferenceFile } = require('../utils/pdfInfo');
+const { actorName } = require('../utils/actor');
+const { sanitizeRichText, richTextToPlain } = require('../utils/richText');
 const { ConflictError, NotFoundError, ValidationError } = require('../utils/errors');
 
 const EXTENSIONS = { 'application/pdf': 'pdf', 'image/png': 'png', 'image/jpeg': 'jpg' };
+const MAX_GUIDANCE_HTML = 50_000;
+const NOTE_LENGTH = 500; // plain-text summary for tooltips and the AI prompt (docs/07)
 
 /**
  * The S3 key of a reference file. Always generated, never from the uploaded name (NFR-SEC-06).
- * @param {string} paperTypeId
- * @param {string} referenceId
+ * @param {string} fileId  reference ID, plus a suffix when the file is replaced
  * @param {string} mimeType
  * @returns {string}
  */
-function referenceKey(paperTypeId, referenceId, mimeType) {
-  return `references/${paperTypeId}/${referenceId}.${EXTENSIONS[mimeType]}`;
+function referenceKey(fileId, mimeType) {
+  return `references/${fileId}.${EXTENSIONS[mimeType]}`;
 }
 
 /** Keep only the base name, without path parts or control characters, for display. */
@@ -61,55 +64,80 @@ function publicReference(ref) {
     type: ref.type,
     title: ref.title,
     note: ref.note,
+    guidanceHtml: ref.guidanceHtml,
     url: ref.url,
     fileName: ref.fileName,
     mimeType: ref.mimeType,
     sizeBytes: ref.sizeBytes,
     pageCount: ref.pageCount,
+    updatedAt: ref.updatedAt,
+    updatedBy: ref.updatedBy,
   };
+}
+
+/** Rich guidance → { guidanceHtml, note } (note = plain text for tooltips and the AI). */
+function cleanGuidance(html) {
+  if (html === undefined) return {};
+  const guidanceHtml = sanitizeRichText(html);
+  if (guidanceHtml.length > MAX_GUIDANCE_HTML) {
+    throw new ValidationError('The guidance is too long.', [{ field: 'guidance', message: 'Too long' }]);
+  }
+  return { guidanceHtml, note: richTextToPlain(guidanceHtml, NOTE_LENGTH) || null };
 }
 
 /**
  * Check an upload and put it in S3. Returns the columns to store.
  * @returns {Promise<{s3Key, fileName, mimeType, sizeBytes, pageCount}>}
  */
-async function storeFile(paperTypeId, referenceId, file) {
+async function storeFile(fileId, file) {
   const { mimeType, pageCount } = await checkReferenceFile(file);
-  const s3Key = referenceKey(paperTypeId, referenceId, mimeType);
+  const s3Key = referenceKey(fileId, mimeType);
   await getStorage().put(s3Key, file.buffer, { contentType: mimeType });
   return { s3Key, fileName: displayName(file.originalname), mimeType, sizeBytes: file.size, pageCount };
 }
 
+/** Remove a just-uploaded file after a failed save, so no orphan stays in S3. */
+async function removeOrphan(key, log) {
+  await getStorage()
+    .remove(key)
+    .catch((err) => log.warn({ err }, 'Could not remove orphan reference file'));
+}
+
 /**
- * Add a reference with its file (FR-ADM-12). The file is required.
+ * The library page (Admin → References).
+ * @returns {Promise<object[]>}
+ */
+function listLibrary() {
+  return referenceModel.listAll();
+}
+
+/**
+ * Add a reference to the library (FR-ADM-12). The file is required.
  *
- * @param {{typeId: string, fields: {type, title, url?, note?}, file?: object, log: import('pino').Logger}} params
+ * @param {{fields: {type, title, url?, guidance?}, file?: object, actor: object, log: import('pino').Logger}} params
  * @returns {Promise<object>} the new reference
  * @throws {ValidationError} no file
  * @throws {FileRejectedError} wrong type, too large, encrypted / unreadable PDF
  */
-async function addReference({ typeId, fields, file, log }) {
-  if (!(await paperTypeModel.findById(typeId))) throw new NotFoundError('Paper type not found.');
+async function addReference({ fields, file, actor, log }) {
   if (!file) throw new ValidationError('Choose a file to upload.', [{ field: 'file', message: 'Required' }]);
+  const guidance = cleanGuidance(fields.guidance ?? '');
   const id = randomUUID();
-  const stored = await storeFile(typeId, id, file);
+  const stored = await storeFile(id, file);
   try {
     const ref = await referenceModel.create({
       id,
-      paperTypeId: typeId,
       type: fields.type,
       title: fields.title,
-      note: fields.note ?? null,
       url: fields.url ?? null,
+      ...guidance,
       ...stored,
+      updatedBy: actorName(actor),
     });
-    log.info({ paperTypeId: typeId, referenceId: id, sizeBytes: stored.sizeBytes }, 'Reference added');
+    log.info({ referenceId: id, sizeBytes: stored.sizeBytes }, 'Reference added');
     return ref;
   } catch (err) {
-    // The row was not saved: do not leave the uploaded file behind.
-    await getStorage()
-      .remove(stored.s3Key)
-      .catch((cleanupErr) => log.warn({ err: cleanupErr }, 'Could not remove orphan reference file'));
+    await removeOrphan(stored.s3Key, log);
     throw err;
   }
 }
@@ -118,22 +146,20 @@ async function addReference({ typeId, fields, file, log }) {
  * Change a reference; a new file replaces the old one. The old S3 object is removed only after the
  * database points to the new one (docs/06 §4), so a failure never leaves a reference without a file.
  *
- * @param {{referenceId: string, fields: object, file?: object, log: import('pino').Logger}} params
+ * @param {{referenceId: string, fields: object, file?: object, actor: object, log: import('pino').Logger}} params
  * @returns {Promise<object>}
  */
-async function updateReference({ referenceId, fields, file, log }) {
+async function updateReference({ referenceId, fields, file, actor, log }) {
   const current = await getReferenceOrThrow(referenceId);
+  const { guidance, ...rest } = fields;
+  const changes = { ...rest, ...cleanGuidance(guidance), updatedBy: actorName(actor) };
   // A new key per upload (reference ID + time), so the old and new files can briefly coexist.
-  const stored = file ? await storeFile(current.paperTypeId, `${referenceId}-${Date.now()}`, file) : {};
+  const stored = file ? await storeFile(`${referenceId}-${Date.now()}`, file) : {};
   let updated;
   try {
-    updated = await referenceModel.update(referenceId, { ...fields, ...stored });
+    updated = await referenceModel.update(referenceId, { ...changes, ...stored });
   } catch (err) {
-    if (stored.s3Key) {
-      await getStorage()
-        .remove(stored.s3Key)
-        .catch((cleanupErr) => log.warn({ err: cleanupErr }, 'Could not remove orphan reference file'));
-    }
+    if (stored.s3Key) await removeOrphan(stored.s3Key, log);
     throw err;
   }
   if (file && current.s3Key !== stored.s3Key) {
@@ -150,9 +176,9 @@ async function updateReference({ referenceId, fields, file, log }) {
  * the retention job after 7 days.
  * @returns {Promise<void>}
  */
-async function deleteReference({ referenceId, log }) {
+async function deleteReference({ referenceId, actor, log }) {
   await getReferenceOrThrow(referenceId);
-  await referenceModel.softDelete(referenceId);
+  await referenceModel.softDelete(referenceId, actorName(actor));
   log.info({ referenceId }, 'Reference deleted');
 }
 
@@ -161,10 +187,10 @@ async function deleteReference({ referenceId, log }) {
  * @returns {Promise<void>}
  * @throws {ConflictError} NOT_DELETED
  */
-async function restoreReference({ referenceId, log }) {
+async function restoreReference({ referenceId, actor, log }) {
   const ref = await getReferenceOrThrow(referenceId, { includeDeleted: true });
   if (!ref.deletedAt) throw new ConflictError('This reference is not deleted.', 'NOT_DELETED');
-  await referenceModel.restore(referenceId);
+  await referenceModel.restore(referenceId, actorName(actor));
   log.info({ referenceId }, 'Reference restored');
 }
 
@@ -182,34 +208,54 @@ async function openReferenceFile(referenceId) {
 }
 
 /**
+ * The full-screen reference page: the reference and the standards that use it, by paper type.
+ * @param {string} referenceId
+ * @returns {Promise<{reference: object, usedFor: object[]}>}
+ */
+async function getReferencePage(referenceId) {
+  const ref = await getReferenceOrThrow(referenceId);
+  const usedFor = await referenceModel.listLinkedStandards(referenceId);
+  return {
+    reference: { ...publicReference(ref), linkedCount: ref.linkedCount, typeCount: ref.typeCount },
+    usedFor,
+  };
+}
+
+/**
  * What the reference viewer dialog shows (FR-REF-02).
  * @param {string} referenceId
  * @returns {Promise<object>}
  */
 async function getViewer(referenceId) {
-  const ref = await getReferenceOrThrow(referenceId);
-  const usedFor = await referenceModel.listLinkedStandards(referenceId);
+  const { reference, usedFor } = await getReferencePage(referenceId);
   return {
-    id: ref.id,
-    type: ref.type,
-    title: ref.title,
-    note: ref.note,
-    url: ref.url,
-    mimeType: ref.mimeType,
-    pageCount: ref.pageCount,
-    fileUrl: `/files/references/${ref.id}`,
-    usedFor,
+    id: reference.id,
+    type: reference.type,
+    title: reference.title,
+    note: reference.note,
+    url: reference.url,
+    mimeType: reference.mimeType,
+    pageCount: reference.pageCount,
+    fileUrl: `/files/references/${reference.id}`,
+    usedFor: usedFor.map((s) => ({
+      id: s.id,
+      number: s.number,
+      title: s.title,
+      paperTypeName: s.paperTypeName,
+    })),
   };
 }
 
 module.exports = {
   referenceKey,
-  publicReference,
   displayName,
+  publicReference,
+  listLibrary,
   addReference,
   updateReference,
   deleteReference,
   restoreReference,
   openReferenceFile,
+  getReferencePage,
   getViewer,
 };

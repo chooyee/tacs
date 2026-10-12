@@ -2,7 +2,7 @@
 
 /**
  * Request schemas for the admin API (docs/06 §4). Text is trimmed; an empty optional text field
- * means "no value" (null).
+ * means "no value" (null). Rich text arrives as HTML and is cleaned by the service (D-37).
  */
 const { z } = require('zod');
 
@@ -18,6 +18,8 @@ const optionalText = (max, label) =>
     .transform((v) => v || null)
     .nullable()
     .optional();
+/** Rich text (HTML from the editor). Size-limited here; cleaned in the service. */
+const richText = (max) => z.string().max(max, 'This text is too long.').optional();
 const httpsUrl = z
   .string()
   .trim()
@@ -27,7 +29,6 @@ const httpsUrl = z
   .nullable()
   .optional();
 const REFERENCE_TYPES = ['Policy', 'Sample', 'Template', 'Guide'];
-const direction = { body: z.object({ direction: z.enum(['up', 'down']) }).strict() };
 
 const typeId = { params: z.object({ typeId: id }) };
 const sectionId = { params: z.object({ sectionId: id }) };
@@ -58,29 +59,63 @@ module.exports = {
   card: { params: z.object({ typeId: id, card: z.enum(['references', 'standards']) }) },
   addSection: { ...typeId, body: z.object({ title: text(150, 'Title') }).strict() },
   renameSection: { ...sectionId, body: z.object({ title: text(150, 'Title') }).strict() },
-  moveSection: { ...sectionId, ...direction },
-  addStandard: { ...sectionId, body: z.object({ text: text(500, 'The standard') }).strict() },
+  moveSection: { ...sectionId, body: z.object({ direction: z.enum(['up', 'down']) }).strict() },
+  reorderSections: { ...typeId, body: z.object({ sectionIds: z.array(id).min(1).max(200) }).strict() },
+  addStandard: {
+    ...sectionId,
+    body: z
+      .object({
+        title: text(500, 'The title'),
+        description: richText(30_000),
+        isMandatory: z.boolean().optional(),
+        referenceIds: z.array(id).max(50).optional(),
+      })
+      .strict(),
+  },
   updateStandard: {
     ...standardId,
     body: z
       .object({
-        text: text(500, 'The standard').optional(),
+        title: text(500, 'The title').optional(),
+        description: richText(30_000),
         isMandatory: z.boolean().optional(),
         referenceIds: z.array(id).max(50).optional(),
       })
       .strict()
       .refine((b) => Object.keys(b).length > 0, 'Nothing to change.'),
   },
-  moveStandard: { ...standardId, ...direction },
+  // Buttons send a direction; drag and drop sends the target section and position.
+  moveStandard: {
+    ...standardId,
+    body: z.union([
+      z.object({ direction: z.enum(['up', 'down']) }).strict(),
+      z.object({ sectionId: id, index: z.number().int().min(0).max(1000) }).strict(),
+    ]),
+  },
+  standardForm: {
+    params: z.object({ typeId: id.optional(), standardId: id.optional() }),
+    query: z.object({ section: id.optional() }).loose(),
+  },
+  // Import other types' standards as live links (D-38).
+  importStandards: {
+    ...typeId,
+    body: z
+      .object({
+        standardIds: z.array(id).min(1).max(500),
+        mode: z.enum(['sections', 'into']),
+        targetSectionId: id.optional(),
+      })
+      .strict()
+      .refine((b) => b.mode === 'sections' || b.targetSectionId, 'Choose the section to import into.'),
+  },
   // multipart/form-data: every field arrives as a string; the file is checked by the service.
   addReference: {
-    ...typeId,
     body: z
       .object({
         type: z.enum(REFERENCE_TYPES, 'Choose Policy, Sample, Template or Guide.'),
         title: text(200, 'Title'),
         url: httpsUrl,
-        note: optionalText(500, 'The note'),
+        guidance: richText(100_000),
       })
       .strict(),
   },
@@ -91,7 +126,7 @@ module.exports = {
         type: z.enum(REFERENCE_TYPES, 'Choose Policy, Sample, Template or Guide.').optional(),
         title: text(200, 'Title').optional(),
         url: httpsUrl,
-        note: optionalText(500, 'The note'),
+        guidance: richText(100_000),
       })
       .strict(),
   },

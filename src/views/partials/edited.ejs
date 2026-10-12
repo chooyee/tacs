@@ -1,0 +1,2 @@
+<%# "Edited 2 h ago by Dana Tan" (D-37). public/js/lib/time.js turns the <time> into local, relative text. %>
+<% if (locals.at) { %><span class="edited"><%= t.edited.label %> <time datetime="<%= new Date(at).toISOString() %>" data-relative><%= new Date(at).toISOString().slice(0, 16).replace('T', ' ') %> UTC</time><% if (locals.by) { %> <%= t.edited.by(by) %><% } %></span><% } %>

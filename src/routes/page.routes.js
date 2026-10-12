@@ -9,6 +9,8 @@ const { rememberMode } = require('../middleware/rememberMode');
 const pages = require('../controllers/page.controller');
 const adminUsers = require('../controllers/admin/user.controller');
 const paperTypes = require('../controllers/admin/paperType.controller');
+const libraryPages = require('../controllers/admin/reference.controller');
+const standardPages = require('../controllers/admin/structure.controller');
 const { redirectToSetupWhileNoAdmin } = require('../middleware/setupGate');
 const v = require('../validators/admin.validators');
 
@@ -24,5 +26,27 @@ router.get('/admin/users', ...admin, asyncHandler(adminUsers.index));
 router.get('/admin/types', ...admin, asyncHandler(paperTypes.index));
 router.get('/admin/types/:typeId', ...admin, validate(v.typeId), asyncHandler(paperTypes.show));
 router.get('/admin/types/:typeId/cards/:card', ...admin, validate(v.card), asyncHandler(paperTypes.card));
+// Standards: full-screen add / edit form (D-38)
+router.get(
+  '/admin/types/:typeId/standards/new',
+  ...admin,
+  validate(v.standardForm),
+  asyncHandler(standardPages.form),
+);
+router.get(
+  '/admin/standards/:standardId',
+  ...admin,
+  validate(v.standardForm),
+  asyncHandler(standardPages.form),
+);
+// Reference library (D-37): list and full-screen add / edit
+router.get('/admin/references', ...admin, asyncHandler(libraryPages.index));
+router.get('/admin/references/new', ...admin, asyncHandler(libraryPages.edit));
+router.get(
+  '/admin/references/:referenceId',
+  ...admin,
+  validate(v.referenceId),
+  asyncHandler(libraryPages.edit),
+);
 
 module.exports = router;

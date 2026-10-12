@@ -2,7 +2,7 @@
 
 const { query, toCamel } = require('../utils/db');
 
-const COLUMNS = 'id, paper_type_id, title, position, created_at, updated_at, deleted_at';
+const COLUMNS = 'id, paper_type_id, title, position, created_at, updated_at, updated_by, deleted_at';
 
 /**
  * Non-deleted sections of a paper type, in order.
@@ -34,18 +34,18 @@ async function findById(id, { includeDeleted = false } = {}) {
 }
 
 /**
- * Add a section at the end. Positions only grow (deleted rows keep theirs), so a restored section
- * never collides with another.
+ * Add a section at the end.
  * @param {string} paperTypeId
  * @param {string} title
+ * @param {string|null} updatedBy
  * @returns {Promise<object>}
  */
-async function create(paperTypeId, title) {
+async function create(paperTypeId, title, updatedBy = null) {
   const { rows } = await query(
-    `insert into sections (paper_type_id, title, position)
-     values ($1, $2, (select coalesce(max(position) + 1, 0) from sections where paper_type_id = $1))
+    `insert into sections (paper_type_id, title, updated_by, position)
+     values ($1, $2, $3, (select coalesce(max(position) + 1, 0) from sections where paper_type_id = $1))
      returning ${COLUMNS}`,
-    [paperTypeId, title],
+    [paperTypeId, title, updatedBy],
   );
   return toCamel(rows[0]);
 }
@@ -53,44 +53,42 @@ async function create(paperTypeId, title) {
 /**
  * @param {string} id
  * @param {string} title
+ * @param {string} updatedBy
  * @returns {Promise<object|null>}
  */
-async function updateTitle(id, title) {
+async function updateTitle(id, title, updatedBy) {
   const { rows } = await query(
-    `update sections set title = $2, updated_at = now() where id = $1 and deleted_at is null returning ${COLUMNS}`,
-    [id, title],
+    `update sections set title = $2, updated_by = $3, updated_at = now()
+      where id = $1 and deleted_at is null returning ${COLUMNS}`,
+    [id, title, updatedBy],
   );
   return toCamel(rows[0]);
 }
 
 /**
- * The next non-deleted section above or below, for "move" (FR-ADM-19).
- * @param {{id: string, paperTypeId: string, position: number}} section
- * @param {'up'|'down'} direction
- * @returns {Promise<object|null>} null at the top / bottom
+ * IDs of the visible sections of a paper type, in order.
+ * @param {string} paperTypeId
+ * @returns {Promise<string[]>}
  */
-async function findNeighbour(section, direction) {
-  const up = direction === 'up';
+async function listIds(paperTypeId) {
   const { rows } = await query(
-    `select ${COLUMNS} from sections
-      where paper_type_id = $1 and deleted_at is null and position ${up ? '<' : '>'} $2
-      order by position ${up ? 'desc' : 'asc'} limit 1`,
-    [section.paperTypeId, section.position],
+    `select id from sections where paper_type_id = $1 and deleted_at is null order by position, created_at`,
+    [paperTypeId],
   );
-  return toCamel(rows[0]);
+  return rows.map((r) => r.id);
 }
 
 /**
- * Swap the positions of two sections. Call inside withTransaction().
- * @param {{id: string, position: number}} a
- * @param {{id: string, position: number}} b
+ * Store a new order for the sections of a paper type (positions 0…n-1). Call inside withTransaction().
+ * @param {string[]} orderedIds  every visible section of the type, in the new order
  * @returns {Promise<void>}
  */
-async function swapPositions(a, b) {
+async function reorder(orderedIds) {
   await query(
-    `update sections set position = case id when $1 then $4::int else $3::int end, updated_at = now()
-      where id in ($1, $2)`,
-    [a.id, b.id, a.position, b.position],
+    `update sections s set position = o.pos - 1
+       from unnest($1::uuid[]) with ordinality as o(id, pos)
+      where s.id = o.id`,
+    [orderedIds],
   );
 }
 
@@ -98,12 +96,13 @@ async function swapPositions(a, b) {
  * Soft delete a section and its non-deleted standards with ONE timestamp, so Undo restores exactly
  * those standards and not ones deleted earlier (FR-ADM-18). Call inside withTransaction().
  * @param {string} id
+ * @param {string} updatedBy
  * @returns {Promise<boolean>}
  */
-async function softDeleteWithStandards(id) {
+async function softDeleteWithStandards(id, updatedBy) {
   const { rows } = await query(
-    `update sections set deleted_at = now() where id = $1 and deleted_at is null returning deleted_at`,
-    [id],
+    `update sections set deleted_at = now(), updated_by = $2 where id = $1 and deleted_at is null returning deleted_at`,
+    [id, updatedBy],
   );
   if (!rows[0]) return false;
   await query(`update standards set deleted_at = $2 where section_id = $1 and deleted_at is null`, [
@@ -116,9 +115,10 @@ async function softDeleteWithStandards(id) {
 /**
  * Undo softDeleteWithStandards. Call inside withTransaction().
  * @param {string} id
+ * @param {string} updatedBy
  * @returns {Promise<boolean>} false if the section was not deleted
  */
-async function restoreWithStandards(id) {
+async function restoreWithStandards(id, updatedBy) {
   const { rows } = await query(
     `select deleted_at from sections where id = $1 and deleted_at is not null for update`,
     [id],
@@ -128,7 +128,10 @@ async function restoreWithStandards(id) {
     id,
     rows[0].deleted_at,
   ]);
-  await query(`update sections set deleted_at = null, updated_at = now() where id = $1`, [id]);
+  await query(`update sections set deleted_at = null, updated_at = now(), updated_by = $2 where id = $1`, [
+    id,
+    updatedBy,
+  ]);
   return true;
 }
 
@@ -137,8 +140,8 @@ module.exports = {
   findById,
   create,
   updateTitle,
-  findNeighbour,
-  swapPositions,
+  listIds,
+  reorder,
   softDeleteWithStandards,
   restoreWithStandards,
 };
