@@ -29,7 +29,7 @@ Contents:
 | FR-ACC-06 | MUST | On first sign-in, a `users` row is created from the token (object ID `oid`, name, email) with role `architect`. Later sign-ins update name, email and `last_login_at` (never the role). |
 | FR-ACC-07 | MUST | **Sign out** ends the app session and redirects to Entra's logout endpoint (local administrators go to the signed-out page). |
 | FR-ACC-09 | MUST | **Users** admin page (`/admin/users`): lists every user who has signed in (name, email, role, status, last sign-in). An Admin can change another user's role (Architect / Admin) and status (Active / Disabled); not their own. Every change is written to the admin audit log. |
-| FR-ACC-10 | MUST | **Local administrators** (D-27) sign in at `/auth/local` with username + password. Wrong passwords: 5 attempts, then the account is locked for 15 minutes. A temporary password must be changed at first sign-in (min. 12 characters, not the username). |
+| FR-ACC-10 | MUST | **Local administrators** (D-27) sign in at `/auth/local` with username + password. Wrong passwords: 5 attempts, then the account is locked for 15 minutes. A temporary password must be changed at first sign-in (min. 12 characters, not the username). **First start:** while no local administrator exists, `/` and `/auth/local` lead to `/setup`, which creates the first one after the user enters the setup token printed in the server log (D-27). |
 | FR-ACC-08 | MUST | **Every signed-in user** (role `Architect` or `Admin`) can **view** every non-deleted paper, read-only. Only the **owner** can change it (title, answers, uploads, AI actions, chat, delete). A change attempted by a non-owner returns **403** and is logged at `warn`. |
 
 **Acceptance (FR-ACC-08):** *Given* user A owns paper P, *when* user B opens

@@ -1,14 +1,18 @@
 'use strict';
 
-const { test, describe, mock, afterEach } = require('node:test');
+const { test, describe, mock, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const request = require('supertest');
 const { createApp } = require('../../src/app');
 const db = require('../../src/utils/db');
+const setupService = require('../../src/services/setup.service');
 
-// These tests use the real app with an in-memory session store and need no database.
+// These tests use the real app with an in-memory session store and need no database. The first-start
+// check ("does a local admin exist?") would query it, so it is stubbed to "setup already done".
+beforeEach(() => mock.method(setupService, 'isSetupRequired', async () => false));
+afterEach(() => mock.restoreAll());
 
 /** Get a CSRF token: the local sign-in form renders one for an anonymous session. */
 async function agentWithCsrfToken(app) {

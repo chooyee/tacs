@@ -64,11 +64,16 @@ Rules:
 
 - Table `local_admins` (05 · §3.1a). Passwords hashed with **scrypt** and a
   random salt (`src/utils/password.js`), compared in constant time.
-- First account: `ADMIN_BOOTSTRAP_USERNAME` + `ADMIN_BOOTSTRAP_PASSWORD` at
-  startup when no local admin exists (the password is temporary and must be
-  changed at first sign-in), or `npm run admin -- create <username>`, which
-  prints a temporary password on the terminal (never in the logs).
-  `npm run admin -- reset <username>` / `list` for recovery.
+- **First start** (like Keycloak / CloakTail, `src/services/setup.service.js`): while no local admin
+  exists, the server prints a one-time **setup token** in its log and `/setup` asks for it plus a
+  username and password. `/` and `/auth/local` redirect there for visitors who are not signed in;
+  Entra sign-in keeps working. Creation runs under a Postgres advisory lock, so two simultaneous
+  submissions create one admin. The token lives in memory only (new token on restart, forgotten once
+  an admin exists) — it is the one secret deliberately logged, because reading the log is the proof.
+- Unattended deploys / several instances: `ADMIN_BOOTSTRAP_USERNAME` + `ADMIN_BOOTSTRAP_PASSWORD`
+  create the first account at startup (temporary password, must be changed at first sign-in).
+- `npm run admin -- create <username>` (extra account, temporary password printed on the terminal,
+  never logged), `reset <username>` and `list` for recovery.
 - Sign-in at `/auth/local` (form with CSRF token). 5 wrong passwords lock the
   account for 15 minutes; unknown usernames take the same time as known ones.
   Success regenerates the session ID.

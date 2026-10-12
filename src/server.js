@@ -17,7 +17,7 @@ try {
 
 const db = require('./utils/db');
 const { createApp } = require('./app');
-const authService = require('./services/auth.service');
+const setupService = require('./services/setup.service');
 
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 let server;
@@ -69,15 +69,31 @@ async function start() {
     logger.fatal({ err }, 'Database unreachable at startup. Is PostgreSQL running and DATABASE_URL right?');
     return shutdown(1);
   }
-  await authService.bootstrapLocalAdmin(logger);
+  if (!(await db.tableExists('local_admins'))) {
+    logger.fatal('The database has no tables yet. Run: npm run db:migrate');
+    return shutdown(1);
+  }
 
   app = createApp();
-  server = app.listen(config.port, () => {
-    logger.info({ port: config.port, baseUrl: config.baseUrl }, 'Paper Standards Check is running');
-  });
+  try {
+    await new Promise((resolve, reject) => {
+      server = app.listen(config.port, resolve).once('error', reject);
+    });
+  } catch (err) {
+    const hint =
+      err.code === 'EADDRINUSE' ? `Port ${config.port} is already in use (set PORT to another one)` : '';
+    logger.fatal({ err }, hint || 'Could not start the HTTP server');
+    server = undefined; // never started, nothing to close
+    return shutdown(1);
+  }
   // Slightly longer than the load balancer's idle timeout (60 s), so it never reuses a closed socket.
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 66_000;
+  logger.info({ port: config.port, baseUrl: config.baseUrl }, 'Paper Standards Check is running');
+
+  // First start: create the admin from ADMIN_BOOTSTRAP_* or print the /setup token (D-27). Last, so
+  // the token is the newest line in the console.
+  await setupService.onStartup(logger);
 }
 
 start().catch((err) => {

@@ -63,6 +63,15 @@ module.exports = Object.freeze({
     confirmPassword: 'Repeat new password',
     savePassword: 'Save password',
   },
+  setup: {
+    title: 'Create the administrator',
+    intro:
+      'Welcome! No administrator exists yet. Create the first local administrator; it can then make ' +
+      'other people admins.',
+    token: 'Setup token',
+    tokenHelp: 'Printed in the server log when the app started. It proves you run this server.',
+    submit: 'Create administrator',
+  },
   errors: {
     notFoundTitle: 'Page not found',
     notFoundText: 'The page may have moved, or the link is wrong.',

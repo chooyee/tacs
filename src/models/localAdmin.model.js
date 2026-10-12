@@ -40,22 +40,33 @@ async function listAll() {
 }
 
 /**
- * Create an account. `onlyIfNone` makes it the FIRST account only: when another instance created one
- * at the same moment, nothing is inserted (startup bootstrap).
+ * Create an account. `onlyIfNone` makes it the FIRST account only: if one already exists, nothing is
+ * inserted. Call it inside `withTransaction()` after `lockFirstAdminCreation()` so two instances or
+ * two browser tabs cannot both create a "first" admin.
  *
- * @param {{username: string, passwordHash: string, createdBy: string, onlyIfNone?: boolean}} account
+ * @param {{username: string, passwordHash: string, createdBy: string, onlyIfNone?: boolean,
+ *          mustChangePassword?: boolean}} account
  * @returns {Promise<object|null>} the new account, or null if skipped
  */
-async function create({ username, passwordHash, createdBy, onlyIfNone = false }) {
+async function create({ username, passwordHash, createdBy, onlyIfNone = false, mustChangePassword = true }) {
   const { rows } = await query(
     `insert into local_admins (username, password_hash, must_change_password, created_by)
-     select $1, $2, true, $3
+     select $1, $2, $5, $3
      where not $4 or not exists (select 1 from local_admins)
      on conflict (username) do nothing
      returning ${COLUMNS}`,
-    [username, passwordHash, createdBy, onlyIfNone],
+    [username, passwordHash, createdBy, onlyIfNone, mustChangePassword],
   );
   return toCamel(rows[0]);
+}
+
+/**
+ * Serialise "create the first admin" across connections and app instances. Transaction-scoped:
+ * released automatically at commit / rollback, so it must run inside `withTransaction()`.
+ * @returns {Promise<void>}
+ */
+async function lockFirstAdminCreation() {
+  await query(`select pg_advisory_xact_lock(hashtext('psc.first-local-admin'))`);
 }
 
 /**
@@ -111,6 +122,7 @@ module.exports = {
   findById,
   listAll,
   create,
+  lockFirstAdminCreation,
   recordFailedSignIn,
   recordSignIn,
   setPassword,

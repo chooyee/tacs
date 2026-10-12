@@ -22,14 +22,15 @@ npm install
 cp .env.example .env          # then fill in the values marked TODO
 docker compose up -d          # only if you use Docker for Postgres (MinIO is added in M2)
 npm run db:migrate            # creates the tables
-npm run admin -- create admin # first local administrator; prints a temporary password (D-27)
 npm run seed                  # (from M2) loads SaaS / Cloud / Infra paper types + placeholder reference files
 npm run dev                   # starts the app (node --watch) + Tailwind watch on http://localhost:3000
 ```
 
-Then open http://localhost:3000 and sign in with your company account — you are
-an **Architect**. To become an Admin, sign in as the local administrator at
-http://localhost:3000/auth/local and change your role on **Users** (D-26).
+On the **first start** the log prints a setup token: open http://localhost:3000 (it
+shows `/setup`), enter the token and create the local administrator (D-27). Then sign
+in with your company account — you are an **Architect**. To become an Admin, sign in
+as the local administrator at http://localhost:3000/auth/local and change your role on
+**Users** (D-26).
 
 ### 1.3 `docker-compose.yml` (local only)
 
@@ -85,7 +86,7 @@ exactly which variable is wrong. No other file reads `process.env`.
 | `ENTRA_CLIENT_SECRET` | yes* | — | *or `ENTRA_CERT_THUMBPRINT` (SHA-256, hex) + `ENTRA_CERT_PRIVATE_KEY_PATH` (PEM) in production |
 | `ENTRA_REDIRECT_URI` | yes | `http://localhost:3000/auth/callback` | |
 | `ACCESS_REQUEST_TEXT` | no | "Ask the Architecture Office to add you…" | Shown on the 403 page |
-| `ADMIN_BOOTSTRAP_USERNAME` / `ADMIN_BOOTSTRAP_PASSWORD` | no | — | Creates the first local administrator at startup when none exists (D-27). Temporary: must be changed at first sign-in. Remove after use. |
+| `ADMIN_BOOTSTRAP_USERNAME` / `ADMIN_BOOTSTRAP_PASSWORD` | no | — | Creates the first local administrator at startup when none exists, instead of the `/setup` page (D-27) — for unattended deploys and several instances. Temporary: must be changed at first sign-in. Remove after use. |
 | `COOKIE_SECURE` | no | `true` | Session cookie `Secure` flag. Must be `true` in production (enforced). Set `false` for local `http://localhost`: the session library only sends Secure cookies over HTTPS (D-29). |
 | `TRUST_PROXY` | no | *(empty)* | Number of proxies in front of the app (e.g. `1` behind the ALB), so `req.ip` and HTTPS detection work (D-29). |
 | `AWS_REGION` | yes (from M2) | `ap-southeast-1` | |

@@ -15,6 +15,10 @@ Prerequisites: Node.js 22, PostgreSQL 16+ (installed locally, or `docker compose
    CREATE DATABASE psc_test OWNER psc;  -- used by npm test
    ```
 
+   Using another database? Put its URL in `.env`. For tests, create the git-ignored
+   `tests/test.local.env` with `DATABASE_URL=<same URL>?options=-c%20search_path%3Dtest`: the tests
+   then run in their own schema `test` and never touch your data (they refuse to reset `public`).
+
 2. **Install and configure**
 
    ```bash
@@ -23,15 +27,16 @@ Prerequisites: Node.js 22, PostgreSQL 16+ (installed locally, or `docker compose
    npm run db:migrate
    ```
 
-3. **Create the first local administrator** (D-27), either:
-   - `npm run admin -- create admin` → prints a temporary password, or
-   - set `ADMIN_BOOTSTRAP_USERNAME` / `ADMIN_BOOTSTRAP_PASSWORD` in `.env` (created at startup).
+3. **Run**: `npm run dev` → http://localhost:3000 (app restarts on changes, CSS rebuilds on changes).
 
-4. **Run**: `npm run dev` → http://localhost:3000 (app restarts on changes, CSS rebuilds on changes).
+4. **First start: create the administrator** (D-27, like Keycloak). The log shows
+   `No administrator exists yet. Open http://localhost:3000/setup and enter this setup token: …`.
+   Open http://localhost:3000, paste the token, choose a username and password. You are signed in as
+   the local administrator. (Unattended deploys: set `ADMIN_BOOTSTRAP_USERNAME` / `_PASSWORD` instead.)
 
-   - Everyone signs in with Microsoft and starts as an **Architect**.
-   - The local administrator signs in at http://localhost:3000/auth/local, changes the temporary
-     password, and can then make people **Admin** on **Users** (`/admin/users`).
+   - Everyone else signs in with Microsoft and starts as an **Architect**.
+   - The local administrator makes people **Admin** on **Users** (`/admin/users`); later sign-ins
+     are at http://localhost:3000/auth/local. Lost the password? `npm run admin -- reset <username>`.
 
 ## Entra ID app registration (dev)
 

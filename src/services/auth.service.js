@@ -5,7 +5,6 @@
  * session record into the current user on every request. No `req` / `res` here.
  */
 const crypto = require('node:crypto');
-const config = require('../config');
 const entra = require('../providers/auth/entraProvider');
 const userModel = require('../models/user.model');
 const localAdminModel = require('../models/localAdmin.model');
@@ -203,42 +202,6 @@ async function loadCurrentUser(sessionUser) {
   };
 }
 
-/**
- * Create the first local administrator from ADMIN_BOOTSTRAP_USERNAME / _PASSWORD when none exists
- * (D-27). Safe to call on every start and from several instances at once.
- *
- * @param {import('pino').Logger} log
- * @returns {Promise<void>}
- */
-async function bootstrapLocalAdmin(log) {
-  const { username, password } = config.adminBootstrap;
-  if (!username) {
-    if ((await localAdminModel.count()) === 0) {
-      log.warn('No local administrator exists. Create one with: npm run admin -- create <username>');
-    }
-    return;
-  }
-  const name = username.trim().toLowerCase();
-  const problem = USERNAME_RE.test(name)
-    ? passwordProblem(password, name)
-    : 'username must be 3-40 lowercase letters, digits, dots, dashes or underscores';
-  if (problem) {
-    log.error({ problem }, 'ADMIN_BOOTSTRAP_USERNAME / ADMIN_BOOTSTRAP_PASSWORD ignored');
-    return;
-  }
-  const created = await localAdminModel.create({
-    username: name,
-    passwordHash: await hashPassword(password),
-    createdBy: 'bootstrap',
-    onlyIfNone: true,
-  });
-  if (created)
-    log.info(
-      { localAdminId: created.id },
-      'Created the first local administrator from ADMIN_BOOTSTRAP_USERNAME',
-    );
-}
-
 module.exports = {
   USERNAME_RE,
   safeReturnTo,
@@ -248,5 +211,4 @@ module.exports = {
   changeLocalAdminPassword,
   sessionRecordFor,
   loadCurrentUser,
-  bootstrapLocalAdmin,
 };

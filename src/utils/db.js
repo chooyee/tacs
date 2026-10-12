@@ -78,6 +78,17 @@ async function ping() {
 }
 
 /**
+ * Does a table exist in the current search_path? Used at startup to say "run the migrations" instead
+ * of failing on the first query.
+ * @param {string} name
+ * @returns {Promise<boolean>}
+ */
+async function tableExists(name) {
+  const { rows } = await pool.query('select to_regclass($1) is not null as exists', [name]);
+  return rows[0].exists;
+}
+
+/**
  * Close all connections (graceful shutdown, scripts, tests).
  * @returns {Promise<void>}
  */
@@ -85,4 +96,4 @@ function close() {
   return pool.end();
 }
 
-module.exports = { pool, query, withTransaction, toCamel, ping, close };
+module.exports = { pool, query, withTransaction, toCamel, ping, tableExists, close };

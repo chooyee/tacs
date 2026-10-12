@@ -26,6 +26,7 @@ There are two kinds of routes:
 | GET | `/auth/login` | public | `auth.login` (redirect to Entra) | — |
 | GET | `/auth/callback` | public | `auth.callback` | — |
 | POST | `/auth/logout` | signed in | `auth.logout` | — |
+| GET, POST | `/setup` | public, only while no local admin exists (needs the setup token) | `setup.form`, `setup.create` (D-27) | `pages/setup` |
 | GET | `/auth/logged-out` | public | `auth.loggedOut` | `pages/auth/loggedOut` |
 | GET, POST | `/auth/local` | public | `auth.localForm`, `auth.localLogin` (D-27) | `pages/auth/local` |
 | GET, POST | `/auth/local/password` | local admin who must change the password | `auth.passwordForm`, `auth.changePassword` | `pages/auth/password` |
