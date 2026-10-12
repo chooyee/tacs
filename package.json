@@ -14,8 +14,8 @@
     "start": "node src/server.js",
     "db:migrate": "node db/migrate.js",
     "admin": "node scripts/adminUser.js",
-    "test": "node --env-file=tests/test.env --test --test-concurrency=1 \"tests/**/*.test.js\"",
-    "test:coverage": "node --env-file=tests/test.env --test --test-concurrency=1 --experimental-test-coverage \"tests/**/*.test.js\"",
+    "test": "node --env-file=tests/test.env --env-file-if-exists=tests/test.local.env --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "test:coverage": "node --env-file=tests/test.env --env-file-if-exists=tests/test.local.env --test --test-concurrency=1 --experimental-test-coverage \"tests/**/*.test.js\"",
     "lint": "eslint .",
     "format": "prettier --write ."
   },
