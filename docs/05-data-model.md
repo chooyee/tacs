@@ -217,7 +217,11 @@ Partial unique index: one active check per paper —
 | content | jsonb | `text` → `{text}`; `files` → `{files:[{name,size}]}`; `report` → `{checkId}`; `compare` → `{standardId, checkId}`… The front end renders cards from live data. |
 | created_at | timestamptz | |
 
-### 3.14 `admin_audit_log`
+### 3.14 `admin_audit_log` — not used (D-33)
+
+Created by migration 001 but **not written** since D-33. Kept to avoid a destructive migration;
+remove it in a later migration if it stays unused.
+
 
 | Column | Type | Notes |
 |--------|------|-------|
@@ -254,16 +258,16 @@ Used by `db/migrate.js`: `filename text primary key, applied_at timestamptz`.
 | `paper_documents` + S3 object | `created_at` older than 7 days | Delete the S3 object first, then the row. `check_results.document_id` is set to null (`on delete set null`). |
 | `chat_messages` | `created_at` older than 7 days | `delete … where created_at < now() - interval '7 days'` |
 | Soft-deleted papers and admin items | `deleted_at` older than 7 days | Hard delete with `on delete cascade` to children; S3 objects first. |
-| `check_results`, `answers`, `admin_audit_log` | Not by the retention job | Removed only when their paper is purged. |
+| `check_results`, `answers` | Not by the retention job | Removed only when their paper is purged. |
 
 Add indexes on `paper_documents(created_at)`, `chat_messages(created_at)`
 and `deleted_at` columns so the job stays fast.
 
 ## 6. Seed data
 
-`db/seed/001_paper_types.sql` loads the three paper types from the prototype
-(SaaS with 33 standards in 5 sections, Cloud Platform, Infrastructure), their
-mandatory flags and the reference **records**. Reference **files** for local
-development are placeholder PDFs in `tests/fixtures/references/`, uploaded to
-MinIO by `npm run seed`. Real policy documents are uploaded by admins in each
-environment.
+`npm run seed` (`db/seed/seed.js`, D-31) loads the three paper types from the prototype (SaaS with
+33 standards in 5 sections, Cloud Platform, Infrastructure) with their mandatory flags, references and
+links (data in `db/seed/paperTypes.js`). Each reference gets a **placeholder PDF generated with
+pdf-lib** (its title and note) uploaded to the configured S3 bucket. It skips paper types that
+already exist (by name) and refuses to run when `NODE_ENV=production`. Real policy documents are
+uploaded by admins in each environment.

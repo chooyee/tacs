@@ -116,7 +116,7 @@ available (FR-RDY-05). It is never a gap.
 
 | Method | Path | Body | Notes |
 |--------|------|------|-------|
-| PATCH | `/api/admin/users/:userId` | `{ role?: 'architect'\|'admin', status?: 'active'\|'disabled' }` | Returns the updated user. 409 `CANNOT_CHANGE_SELF` for your own account. Audit-logged as `user.update`. |
+| PATCH | `/api/admin/users/:userId` | `{ role?: 'architect'\|'admin', status?: 'active'\|'disabled' }` | Returns the updated user. 409 `CANNOT_CHANGE_SELF` for your own account. |
 
 ### Paper types
 
@@ -155,7 +155,7 @@ available (FR-RDY-05). It is never a gap.
 | DELETE | `/api/admin/references/:referenceId` | — | Soft delete; links hidden. |
 | POST | `/api/admin/references/:referenceId/restore` | — | Undo (links come back). |
 
-Every admin write also writes `admin_audit_log` (FR-ADM-20).
+Every admin write is logged as an `info` line with the user ID (NFR-SEC-13). There is no audit table (D-33).
 
 ## 5. Front-end API helper (example)
 

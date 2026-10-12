@@ -4,8 +4,6 @@
  * Managing who is an Architect or an Admin, and who is disabled (FR-ACC-09, D-26, D-28).
  */
 const userModel = require('../models/user.model');
-const auditService = require('./audit.service');
-const { withTransaction } = require('../utils/db');
 const { ConflictError, NotFoundError } = require('../utils/errors');
 
 /** Only the fields the Users page shows (no Entra object ID). */
@@ -32,7 +30,8 @@ async function getUsersPage({ currentUser }) {
 }
 
 /**
- * Change another user's role and/or status, and write it to the audit log.
+ * Change another user's role and/or status. Logged as an `info` line (NFR-SEC-13); there is no
+ * audit table (D-33).
  *
  * @param {{currentUser: object, userId: string, role?: string, status?: string, log: import('pino').Logger}} params
  * @returns {Promise<object>} the updated user (list item shape)
@@ -46,21 +45,12 @@ async function updateUserAccess({ currentUser, userId, role, status, log }) {
       'CANNOT_CHANGE_SELF',
     );
   }
-  const updated = await withTransaction(async () => {
-    const before = await userModel.findById(userId);
-    if (!before) throw new NotFoundError('User not found.');
-    const after = await userModel.updateAccess(userId, { role, status });
-    await auditService.record({
-      actor: currentUser,
-      action: 'user.update',
-      entityType: 'user',
-      entityId: userId,
-      before: { role: before.role, status: before.status },
-      after: { role: after.role, status: after.status },
-    });
-    return after;
-  });
-  log.info({ targetUserId: userId, role: updated.role, status: updated.status }, 'User access changed');
+  const updated = await userModel.updateAccess(userId, { role, status });
+  if (!updated) throw new NotFoundError('User not found.');
+  log.info(
+    { targetUserId: userId, role: updated.role, status: updated.status, byKind: currentUser.kind },
+    'User access changed',
+  );
   return toListItem(updated, currentUser);
 }
 

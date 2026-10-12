@@ -91,9 +91,10 @@ exactly which variable is wrong. No other file reads `process.env`.
 | `TRUST_PROXY` | no | *(empty)* | Number of proxies in front of the app (e.g. `1` behind the ALB), so `req.ip` and HTTPS detection work (D-29). |
 | `AWS_REGION` | yes (from M2) | `ap-southeast-1` | |
 | `S3_BUCKET` | yes (from M2) | `psc-local` | |
-| `S3_ENDPOINT` | local only | `http://localhost:9000` | Points the SDK at MinIO |
+| `S3_KEY_PREFIX` | no | *(empty)*, e.g. `tacs/` | Prefix for every object key, so a bucket can be shared (D-30) |
+| `S3_ENDPOINT` | no | `http://localhost:9000` | Only for an S3-compatible server such as MinIO |
 | `S3_FORCE_PATH_STYLE` | local only | `true` | Needed for MinIO |
-| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | local only | `minio` / `minio12345` | In AWS, use the task / instance IAM role instead |
+| `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | local only | dev IAM user keys | Local development against the dev bucket (D-30). In AWS, leave empty: the task / instance IAM role is used |
 | `AI_PROVIDER` … `AI_MAX_RETRIES` | see 07 · §8 | | |
 | `UPLOAD_MAX_PAPER_MB` | no | `20` | Per paper PDF |
 | `UPLOAD_MAX_REFERENCE_MB` | no | `15` | |

@@ -152,8 +152,7 @@ paper-standards-check/
 │  │  ├─ check.service.js       # create check, run check (used by worker), apply / keep
 │  │  ├─ chat.service.js
 │  │  ├─ paperType.service.js   # incl. copy paper type
-│  │  ├─ reference.service.js
-│  │  └─ audit.service.js
+│  │  └─ reference.service.js
 │  ├─ models/
 │  │  ├─ user.model.js
 │  │  ├─ paper.model.js
@@ -165,8 +164,7 @@ paper-standards-check/
 │  │  ├─ document.model.js
 │  │  ├─ check.model.js
 │  │  ├─ checkResult.model.js
-│  │  ├─ chatMessage.model.js
-│  │  └─ auditLog.model.js
+│  │  └─ chatMessage.model.js
 │  ├─ factories/
 │  │  ├─ aiProviderFactory.js
 │  │  └─ storageFactory.js

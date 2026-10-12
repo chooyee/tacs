@@ -172,7 +172,7 @@ describe('Users page API (FR-ACC-09, D-26, D-28)', () => {
     token = await csrfFrom(agent, '/papers');
   });
 
-  test('FR-ACC-09: promoting a user applies on their next request and is audit-logged', async () => {
+  test('FR-ACC-09: promoting a user applies on their next request', async () => {
     const target = await createUser({ name: 'Ben Architect' });
     const targetAgent = request.agent(app).set('X-Test-User', target.id);
     await targetAgent.get('/admin/users').set('Accept', 'text/html').expect(403);
@@ -186,12 +186,6 @@ describe('Users page API (FR-ACC-09, D-26, D-28)', () => {
 
     await targetAgent.get('/admin/users').expect(200); // immediately, no new sign-in needed
 
-    const { rows } = await db.query(`select * from admin_audit_log where entity_id = $1`, [target.id]);
-    assert.equal(rows.length, 1);
-    assert.equal(rows[0].action, 'user.update');
-    assert.equal(rows[0].user_id, admin.id);
-    assert.deepEqual(rows[0].before, { role: 'architect', status: 'active' });
-    assert.deepEqual(rows[0].after, { role: 'admin', status: 'active' });
   });
 
   test('D-28: disabling a user locks them out on their next request', async () => {
@@ -290,7 +284,7 @@ describe('local administrators (FR-ACC-10, D-27)', () => {
     assert.equal(home.headers.location, '/admin/users');
   });
 
-  test('a local admin can promote a user; the audit log records the local admin', async () => {
+  test('a local admin can promote a user', async () => {
     const admin = await newLocalAdmin('promoter');
     await localAdminModel.setPassword(admin.id, {
       passwordHash: await hashPassword(LOCAL_PASSWORD),
@@ -307,9 +301,8 @@ describe('local administrators (FR-ACC-10, D-27)', () => {
       .set('X-CSRF-Token', token)
       .send({ role: 'admin' })
       .expect(200);
-    const { rows } = await db.query('select * from admin_audit_log where entity_id = $1', [target.id]);
-    assert.equal(rows[0].local_admin_id, admin.id);
-    assert.equal(rows[0].user_id, null);
+    const { rows } = await db.query('select role from users where id = $1', [target.id]);
+    assert.equal(rows[0].role, 'admin');
   });
 
   test('FR-ACC-10: five wrong passwords lock the account for 15 minutes', async () => {

@@ -28,7 +28,7 @@ Contents:
 | FR-ACC-05 | MUST | The top-bar **mode switch** (Solution Architect / Admin) is shown only to Entra users with the `Admin` role (local administrators only have Admin mode). The active mode follows the URL (`/admin…` = Admin mode). |
 | FR-ACC-06 | MUST | On first sign-in, a `users` row is created from the token (object ID `oid`, name, email) with role `architect`. Later sign-ins update name, email and `last_login_at` (never the role). |
 | FR-ACC-07 | MUST | **Sign out** ends the app session and redirects to Entra's logout endpoint (local administrators go to the signed-out page). |
-| FR-ACC-09 | MUST | **Users** admin page (`/admin/users`): lists every user who has signed in (name, email, role, status, last sign-in). An Admin can change another user's role (Architect / Admin) and status (Active / Disabled); not their own. Every change is written to the admin audit log. |
+| FR-ACC-09 | MUST | **Users** admin page (`/admin/users`): lists every user who has signed in (name, email, role, status, last sign-in). An Admin can change another user's role (Architect / Admin) and status (Active / Disabled); not their own. Every change is logged (`info` line with both user IDs; no audit table, D-33). |
 | FR-ACC-10 | MUST | **Local administrators** (D-27) sign in at `/auth/local` with username + password. Wrong passwords: 5 attempts, then the account is locked for 15 minutes. A temporary password must be changed at first sign-in (min. 12 characters, not the username). **First start:** while no local administrator exists, `/` and `/auth/local` lead to `/setup`, which creates the first one after the user enters the setup token printed in the server log (D-27). |
 | FR-ACC-08 | MUST | **Every signed-in user** (role `Architect` or `Admin`) can **view** every non-deleted paper, read-only. Only the **owner** can change it (title, answers, uploads, AI actions, chat, delete). A change attempted by a non-owner returns **403** and is logged at `warn`. |
 
@@ -192,7 +192,7 @@ as "N answer(s) worth a second look" but do not block.
 |----|----------|-------------|
 | FR-RET-01 | MUST | A daily **retention job** (run by the worker at 02:00 server time, and safe to run more often) permanently deletes anything **older than 7 days** (`RETENTION_DAYS=7`): **(a)** uploaded paper PDFs — the S3 object and the `paper_documents` row, counted from upload; **(b)** chat messages, counted from creation; **(c)** soft-deleted papers (with their answers, checks, results, documents and chat) and soft-deleted admin items (paper types, sections, standards, references with their S3 files), counted from `deleted_at`. |
 | FR-RET-02 | MUST | The job logs one `info` line per run with counts per category, and `error` (without stopping) for any item it could not delete — it retries the next day. |
-| FR-RET-03 | MUST | Answers, remarks, check results (verdict, page, area **and finding text**) and the admin audit log are **not** removed by the retention job; they live as long as the paper (decision D-23). Keeping the results ensures an unresolved AI issue cannot disappear just because the PDF expired. |
+| FR-RET-03 | MUST | Answers, remarks, check results (verdict, page, area **and finding text**) are **not** removed by the retention job; they live as long as the paper (decision D-23). Keeping the results ensures an unresolved AI issue cannot disappear just because the PDF expired. |
 | FR-RET-04 | SHOULD | The upload area and the AI checker tell users: "Uploaded PDFs and chat are kept for 7 days." |
 
 ---
@@ -223,7 +223,7 @@ Prototype: switch to **Admin**.
 | FR-ADM-17 | MUST | **Edit standard** dialog: text (required), Mandatory checkbox with explanation, and checkboxes for the type's references. |
 | FR-ADM-18 | MUST | Deleting a section or a standard shows a toast with **Undo** (soft delete + restore). Deleting a section deletes its standards. |
 | FR-ADM-19 | MUST | Moving changes `position`. Move up is disabled for the first item and move down for the last. |
-| FR-ADM-20 | SHOULD | Every admin change is written to `admin_audit_log` (who, what, before, after, when). A read-only **Change history** list per paper type MAY be shown. |
+| FR-ADM-20 | — | *Dropped (D-33): no admin audit log or change history. Admin changes are logged as `info` lines (NFR-SEC-13).* |
 | FR-ADM-21 | SHOULD | Warn (non-blocking) when a standard links more than **4** references, because AI providers limit the number of documents per request (see 07 · §5). |
 
 **Acceptance (FR-ADM-16):** *Given* the admin opened **Add standard** in
