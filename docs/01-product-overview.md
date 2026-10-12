@@ -108,7 +108,7 @@ flowchart LR
 | **Mandatory** | A standard that must **not** be answered "No" for the paper to be ready. (Replaces the old "mandatory gate" idea.) |
 | **Answer** | The architect's Yes / No / N/A for a standard, plus a remark. |
 | **Remark** | Free text. **Required** for No (the gap and the plan) and for N/A (why it doesn't apply). |
-| **Reference** | A Policy, Sample, Template or Guide document linked to standards. Has an uploaded file and optionally an intranet link. |
+| **Reference** | A Policy, Sample, Template or Guide document linked to standards. Has an uploaded file, a description and optionally several links (D-39). |
 | **Check** | One run of the AI checker over the uploaded PDF(s) of a paper. |
 | **Verdict** | The AI's result per standard: *Complies*, *Partially*, *Does not comply*, *Not found in paper*. |
 | **AI issue** | The AI's verdict disagrees with the architect's answer (see FR-AI-08). |

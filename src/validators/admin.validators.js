@@ -20,13 +20,38 @@ const optionalText = (max, label) =>
     .optional();
 /** Rich text (HTML from the editor). Size-limited here; cleaned in the service. */
 const richText = (max) => z.string().max(max, 'This text is too long.').optional();
-const httpsUrl = z
-  .string()
-  .trim()
-  .max(2000)
-  .transform((v) => v || null)
-  .refine((v) => v === null || /^https:\/\/[^\s]+$/.test(v), 'The link must start with https://')
-  .nullable()
+/** The most links one reference may have (D-39). */
+const MAX_REFERENCE_LINKS = 10;
+/**
+ * The ordered links of a reference (D-39). Multipart forms carry them as one JSON string field,
+ * e.g. links='[{"label":"Policy Hub","url":"https://…"}]'; the first link is the main one.
+ */
+const referenceLinks = z
+  .preprocess(
+    (value) => {
+      if (typeof value !== 'string') return value;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value; // not JSON: the array check below reports it
+      }
+    },
+    z
+      .array(
+        z
+          .object({
+            label: text(120, 'Link label'),
+            url: z
+              .string()
+              .trim()
+              .max(2000, 'The address must be at most 2000 characters.')
+              .regex(/^https:\/\/[^\s]+$/, 'Use a full address that starts with https://'),
+          })
+          .strict(),
+        'The links could not be read.',
+      )
+      .max(MAX_REFERENCE_LINKS, `Add at most ${MAX_REFERENCE_LINKS} links.`),
+  )
   .optional();
 const REFERENCE_TYPES = ['Policy', 'Sample', 'Template', 'Guide'];
 
@@ -114,7 +139,7 @@ module.exports = {
       .object({
         type: z.enum(REFERENCE_TYPES, 'Choose Policy, Sample, Template or Guide.'),
         title: text(200, 'Title'),
-        url: httpsUrl,
+        links: referenceLinks,
         guidance: richText(100_000),
       })
       .strict(),
@@ -125,7 +150,7 @@ module.exports = {
       .object({
         type: z.enum(REFERENCE_TYPES, 'Choose Policy, Sample, Template or Guide.').optional(),
         title: text(200, 'Title').optional(),
-        url: httpsUrl,
+        links: referenceLinks,
         guidance: richText(100_000),
       })
       .strict(),

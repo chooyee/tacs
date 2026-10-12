@@ -21,7 +21,7 @@ const TOOLBARS = {
 /**
  * Turn an empty <div class="rich-editor basic|full" data-html data-placeholder> into an editor.
  * @param {HTMLElement} el
- * @returns {{getHtml: () => string, setHtml: (html: string) => void, isEmpty: () => boolean, onChange: (fn: Function) => void}}
+ * @returns {{getHtml: () => string, setHtml: (html: string) => void, isEmpty: () => boolean, getText: () => string, onChange: (fn: Function) => void}}
  */
 export function createRichEditor(el) {
   if (!window.Quill) throw new Error('Quill is not loaded on this page (usesRichEditor).');
@@ -38,6 +38,8 @@ export function createRichEditor(el) {
       quill.setContents(quill.clipboard.convert({ html: html || '' }), 'silent');
     },
     isEmpty: () => !quill.getText().trim(),
+    /** The plain text, e.g. for a live preview or a word count. */
+    getText: () => quill.getText().trim(),
     onChange(fn) {
       quill.on('text-change', fn);
     },

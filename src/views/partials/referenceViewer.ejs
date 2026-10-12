@@ -27,7 +27,12 @@
           <h3 class="mb-1 text-[11px] font-bold tracking-wide text-muted-foreground uppercase"><%= t.viewer.usedFor %></h3>
           <ul id="rv-used" class="grid gap-1 text-[13px]"></ul>
         </div>
-        <a id="rv-official" class="btn w-fit" data-variant="outline" target="_blank" rel="noopener noreferrer" hidden><%- include('icon', { name: 'external' }) %> <%= t.viewer.openOfficial %></a>
+        <%# Links (D-39): the first is the main button, the others smaller links. Filled from #rv-link-tpl. %>
+        <div id="rv-links-box" hidden>
+          <h3 class="mb-1.5 text-[11px] font-bold tracking-wide text-muted-foreground uppercase"><%= t.viewer.links %></h3>
+          <div id="rv-links" class="grid justify-items-start gap-1.5"></div>
+        </div>
+        <template id="rv-link-tpl"><a target="_blank" rel="noopener noreferrer"><%- include('icon', { name: 'external' }) %> <span></span></a></template>
       </div>
     </div>
   </div>

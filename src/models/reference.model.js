@@ -6,7 +6,7 @@ const { query, toCamel } = require('../utils/db');
  * The reference library (D-37): policies, samples, templates and guides shared by all paper types.
  * `paper_type_id` is a legacy column (where a reference came from) and is no longer used.
  */
-const COLUMNS = `id, type, title, note, guidance_html, url, s3_key, file_name, mime_type, size_bytes,
+const COLUMNS = `id, type, title, note, guidance_html, s3_key, file_name, mime_type, size_bytes,
   page_count, created_at, updated_at, updated_by, deleted_at`;
 
 /** Count of visible standards linking to a reference, and of paper types they belong to. */
@@ -28,7 +28,7 @@ const USAGE = `
  */
 async function listAll() {
   const { rows } = await query(
-    `select r.id, r.type, r.title, r.note, r.url, r.file_name, r.mime_type, r.size_bytes, r.page_count,
+    `select r.id, r.type, r.title, r.note, r.file_name, r.mime_type, r.size_bytes, r.page_count,
             r.updated_at, r.updated_by, ${USAGE}
        from reference_docs r
       where r.deleted_at is null
@@ -44,7 +44,7 @@ async function listAll() {
  */
 async function listUsedByType(paperTypeId) {
   const { rows } = await query(
-    `select r.id, r.type, r.title, r.note, r.url, r.mime_type, r.updated_at, r.updated_by,
+    `select r.id, r.type, r.title, r.note, r.mime_type, r.updated_at, r.updated_by,
             count(*)::int as linked_count
        from reference_docs r
        join standards s on s.deleted_at is null
@@ -104,8 +104,8 @@ async function countExisting(ids) {
 async function create(ref) {
   const { rows } = await query(
     `insert into reference_docs
-       (id, type, title, note, guidance_html, url, s3_key, file_name, mime_type, size_bytes, page_count, updated_by)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       (id, type, title, note, guidance_html, s3_key, file_name, mime_type, size_bytes, page_count, updated_by)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
      returning ${COLUMNS}`,
     [
       ref.id,
@@ -113,7 +113,6 @@ async function create(ref) {
       ref.title,
       ref.note,
       ref.guidanceHtml,
-      ref.url,
       ref.s3Key,
       ref.fileName,
       ref.mimeType,
@@ -130,7 +129,6 @@ const UPDATABLE = {
   title: 'title',
   note: 'note',
   guidanceHtml: 'guidance_html',
-  url: 'url',
   s3Key: 's3_key',
   fileName: 'file_name',
   mimeType: 'mime_type',
@@ -140,7 +138,7 @@ const UPDATABLE = {
 };
 
 /**
- * Update the given fields only (a key present with value null clears it, e.g. `url: null`).
+ * Update the given fields only (a key present with value null clears it, e.g. `note: null`).
  * @param {string} id
  * @param {object} changes  keys from UPDATABLE
  * @returns {Promise<object|null>}
@@ -221,7 +219,41 @@ async function listAllForPicker() {
   return rows;
 }
 
+/**
+ * The links of a reference, in order (D-39). The first one is the main link.
+ * @param {string} referenceId
+ * @returns {Promise<Array<{label: string, url: string}>>}
+ */
+async function listLinks(referenceId) {
+  const { rows } = await query(
+    'select label, url from reference_links where reference_id = $1 order by position',
+    [referenceId],
+  );
+  return rows;
+}
+
+/**
+ * Replace all links of a reference with `links`, in that order. Call inside withTransaction() so a
+ * failure never leaves a reference with half of its links.
+ * @param {string} referenceId
+ * @param {Array<{label: string, url: string}>} links
+ * @returns {Promise<void>}
+ */
+async function replaceLinks(referenceId, links) {
+  await query('delete from reference_links where reference_id = $1', [referenceId]);
+  if (!links.length) return;
+  // One insert: the arrays are parameters and the position follows the array order.
+  await query(
+    `insert into reference_links (reference_id, position, label, url)
+     select $1, l.ord - 1, l.label, l.url
+       from unnest($2::text[], $3::text[]) with ordinality as l(label, url, ord)`,
+    [referenceId, links.map((l) => l.label), links.map((l) => l.url)],
+  );
+}
+
 module.exports = {
+  listLinks,
+  replaceLinks,
   listAllForPicker,
   listAll,
   listUsedByType,

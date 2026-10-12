@@ -1,45 +1,106 @@
-<%# The fields of a library reference (FR-ADM-12, D-37): type cards, title, file drop zone, intranet
-    link, rich-text guidance. Used by the full-screen reference page and by the "New reference"
-    panel of the standard form. `p` = id prefix, `ref` = the reference being edited (or null). %>
-<fieldset class="field">
-  <legend class="label mb-1.5"><%= t.adminType.type %></legend>
-  <div class="choose">
-    <% t.referenceTypes.forEach((type, i) => { %>
-    <label class="choice">
-      <input type="radio" name="type" value="<%= type %>" <% if (ref ? ref.type === type : i === 0) { %>checked<% } %>>
-      <span class="emoji" aria-hidden="true"><%= t.referenceIcons[type] %></span>
-      <span><%= type %></span>
+<%# The fields of a library reference (FR-ADM-12, D-37, D-39) in three blocks: About (type, title,
+    rich-text description), File (one file, drop zone) and Reference links (ordered label + https link
+    rows). Behaviour: public/js/lib/referenceForm.js. `p` = id prefix, `ref` = the reference being
+    edited (or null). %>
+<section class="form-section" aria-labelledby="<%= p %>-about">
+  <div>
+    <h2 class="panel-title" id="<%= p %>-about"><%= t.library.aboutHeading %></h2>
+    <p class="panel-sub"><%= t.library.aboutSub %></p>
+  </div>
+  <fieldset class="field">
+    <legend class="label mb-1.5"><%= t.adminType.type %></legend>
+    <div class="choose">
+      <% t.referenceTypes.forEach((type, i) => { %>
+      <label class="choice">
+        <input type="radio" name="type" value="<%= type %>" <% if (ref ? ref.type === type : i === 0) { %>checked<% } %>>
+        <span class="emoji" aria-hidden="true"><%= t.referenceIcons[type] %></span>
+        <span><%= type %></span>
+        <small class="choice-hint"><%= t.library.typeHints[type] %></small>
+      </label>
+      <% }) %>
+    </div>
+  </fieldset>
+  <div class="field" data-field="title">
+    <div class="flex items-center justify-between gap-2">
+      <label for="<%= p %>-title"><%= t.adminType.title %> <span class="req">*</span></label>
+      <span class="counter" id="<%= p %>-title-count" aria-hidden="true"></span>
+    </div>
+    <input class="input" type="text" id="<%= p %>-title" name="title" maxlength="200" required autocomplete="off"
+           value="<%= ref ? ref.title : '' %>" placeholder="<%= t.adminType.titlePlaceholder %>" aria-describedby="<%= p %>-title-error">
+    <p class="field-error" id="<%= p %>-title-error" hidden><%= t.library.titleRequired %></p>
+  </div>
+  <div class="field">
+    <div class="flex items-center justify-between gap-2">
+      <span class="label" id="<%= p %>-guidance-label"><%= t.library.guidance %></span>
+      <span class="counter" id="<%= p %>-guidance-count" aria-hidden="true"></span>
+    </div>
+    <div class="rich-editor full" id="<%= p %>-guidance" data-html="<%= ref ? ref.guidanceHtml : '' %>"
+         data-placeholder="<%= t.library.guidancePlaceholder %>" aria-labelledby="<%= p %>-guidance-label"></div>
+    <span class="help"><%= t.library.guidanceHelp %></span>
+  </div>
+</section>
+
+<section class="form-section" aria-labelledby="<%= p %>-file-heading">
+  <div>
+    <h2 class="panel-title" id="<%= p %>-file-heading"><%= t.library.file %> <span class="req">*</span></h2>
+    <p class="panel-sub"><%= t.library.fileSub %></p>
+  </div>
+  <div class="field" data-field="file">
+    <%# The current file (edit) or the chosen one; filled by referenceForm.js. %>
+    <div class="file-card" id="<%= p %>-file-card" <% if (!ref) { %>hidden<% } %>>
+      <span class="file-thumb" aria-hidden="true"><span id="<%= p %>-file-ext"><%= ref ? ref.fileName.split('.').pop().toUpperCase() : '' %></span></span>
+      <span class="min-w-0 flex-1">
+        <b class="block break-all" id="<%= p %>-file-name"><%= ref ? ref.fileName : '' %></b>
+        <small class="text-xs text-muted-foreground" id="<%= p %>-file-meta"><% if (ref) { %><%= (ref.sizeBytes / 1024 / 1024).toFixed(1) %> MB<% if (ref.pageCount) { %> · <%= t.library.pages(ref.pageCount) %><% } %><% } %></small>
+        <span class="chip-ok" id="<%= p %>-file-new" hidden><%- include('../icon', { name: 'check', cls: 'size-3' }) %> <%= t.library.newFile %></span>
+      </span>
+      <span class="flex items-center gap-1">
+        <% if (ref) { %>
+        <button type="button" class="link-btn" data-action="view-reference" data-reference-id="<%= ref.id %>" id="<%= p %>-file-preview"><%- include('../icon', { name: 'eye' }) %> <%= t.library.preview %></button>
+        <% } %>
+        <button type="button" class="icon-btn danger" data-action="clear-file" id="<%= p %>-file-clear" hidden
+                aria-label="<%= ref ? t.library.undoFile : t.library.removeLink %>" title="<%= ref ? t.library.undoFile : t.library.removeLink %>"><%- include('../icon', { name: 'close' }) %></button>
+      </span>
+    </div>
+    <label class="dropzone" for="<%= p %>-file">
+      <input type="file" id="<%= p %>-file" name="file" accept="application/pdf,image/png,image/jpeg" aria-describedby="<%= p %>-file-error">
+      <%- include('../icon', { name: 'upload' }) %>
+      <span class="file-name"><%= ref ? t.library.replaceFile : t.adminType.chooseFile %></span>
+      <span class="help"><%= t.adminType.fileHelp %></span>
     </label>
-    <% }) %>
+    <p class="field-error" id="<%= p %>-file-error" hidden></p>
   </div>
-</fieldset>
-<div class="field">
-  <label for="<%= p %>-title"><%= t.adminType.title %> <span class="req">*</span></label>
-  <input class="input" type="text" id="<%= p %>-title" name="title" maxlength="200" required value="<%= ref ? ref.title : '' %>" placeholder="<%= t.adminType.titlePlaceholder %>">
-</div>
-<div class="field">
-  <span class="label"><%= t.library.file %> <% if (!ref) { %><span class="req">*</span><% } %></span>
-  <% if (ref) { %>
-  <div class="current-file">
-    <%- include('../icon', { name: 'file' }) %>
-    <span class="min-w-0 flex-1 truncate"><b><%= ref.fileName %></b> · <%= (ref.sizeBytes / 1024 / 1024).toFixed(1) %> MB<% if (ref.pageCount) { %> · <%= ref.pageCount %> pages<% } %></span>
-    <button type="button" class="link-btn" data-action="view-reference" data-reference-id="<%= ref.id %>"><%- include('../icon', { name: 'eye' }) %> <%= t.library.preview %></button>
+</section>
+
+<section class="form-section" aria-labelledby="<%= p %>-links-heading">
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <h2 class="panel-title" id="<%= p %>-links-heading"><%= t.library.linksHeading %> <span class="count" id="<%= p %>-links-count" hidden></span></h2>
+      <p class="panel-sub max-w-xl"><%= t.library.linksSub %></p>
+    </div>
+    <button type="button" class="btn" data-variant="ghost" data-action="add-link" id="<%= p %>-add-link"><%- include('../icon', { name: 'plus' }) %> <%= t.library.addLink %></button>
   </div>
-  <% } %>
-  <div><label class="dropzone" for="<%= p %>-file">
-    <input type="file" id="<%= p %>-file" name="file" accept="application/pdf,image/png,image/jpeg">
-    <%- include('../icon', { name: 'upload' }) %>
-    <span class="file-name" data-empty="<%= ref ? t.library.replaceFile : t.adminType.chooseFile %>"><%= ref ? t.library.replaceFile : t.adminType.chooseFile %></span>
-    <span class="help"><%= t.adminType.fileHelp %></span>
-  </label></div>
-</div>
-<div class="field">
-  <label for="<%= p %>-url"><%= t.adminType.link %></label>
-  <input class="input" type="url" id="<%= p %>-url" name="url" maxlength="2000" value="<%= ref && ref.url ? ref.url : '' %>" placeholder="<%= t.adminType.linkPlaceholder %>">
-</div>
-<div class="field">
-  <span class="label" id="<%= p %>-guidance-label"><%= t.library.guidance %></span>
-  <div class="rich-editor full" id="<%= p %>-guidance" data-html="<%= ref ? ref.guidanceHtml : '' %>"
-       data-placeholder="<%= t.library.guidancePlaceholder %>" aria-labelledby="<%= p %>-guidance-label"></div>
-  <span class="help"><%= t.library.guidanceHelp %></span>
-</div>
+  <div class="link-list" id="<%= p %>-links" data-links="<%= JSON.stringify(ref ? ref.links : []) %>" data-max="10"></div>
+  <p class="link-empty" id="<%= p %>-links-empty" hidden><%= t.library.noLinks %></p>
+  <template id="<%= p %>-link-row">
+    <div class="link-row" draggable="true">
+      <span class="link-handle" title="<%= t.adminType.dragHandle %>"><%- include('../icon', { name: 'grip' }) %><span class="link-number"></span></span>
+      <div class="field" data-part="label">
+        <label class="link-field-label"><%= t.library.linkLabel %> <span class="main-tag" hidden><%= t.library.mainLink %></span></label>
+        <input class="input" type="text" maxlength="120" data-key="label" placeholder="<%= t.library.linkLabelPlaceholder %>">
+        <p class="field-error" hidden></p>
+      </div>
+      <div class="field link-url" data-part="url">
+        <label class="link-field-label"><%= t.library.linkUrl %></label>
+        <input class="input" type="url" inputmode="url" maxlength="2000" data-key="url" placeholder="https://">
+        <p class="field-error" hidden></p>
+      </div>
+      <div class="link-actions">
+        <button type="button" class="icon-btn" data-action="link-up"><%- include('../icon', { name: 'up' }) %></button>
+        <button type="button" class="icon-btn" data-action="link-down"><%- include('../icon', { name: 'down' }) %></button>
+        <a class="icon-btn" data-action="link-open" target="_blank" rel="noopener noreferrer"><%- include('../icon', { name: 'external' }) %></a>
+        <button type="button" class="icon-btn danger" data-action="link-remove"><%- include('../icon', { name: 'trash' }) %></button>
+      </div>
+    </div>
+  </template>
+</section>

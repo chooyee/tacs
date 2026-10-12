@@ -768,6 +768,138 @@
   .current-file {
     @apply flex items-center gap-2 rounded-lg border bg-muted/40 px-3 py-2 text-[13px];
   }
+
+  /* Reference form (D-39): field errors, file card, link rows, live summary */
+  .choice-hint {
+    @apply text-[11px] leading-snug font-normal text-muted-foreground;
+  }
+  .field-error {
+    @apply text-xs;
+    color: var(--bad);
+  }
+  .field.invalid > .input,
+  .field.invalid > input.input,
+  .field.invalid .dropzone {
+    border-color: var(--bad);
+  }
+  .file-card {
+    @apply flex flex-wrap items-center gap-3 rounded-[10px] border p-2.5;
+  }
+  .file-thumb {
+    @apply relative grid h-14 w-11 flex-none place-items-end justify-center overflow-hidden rounded border bg-card pb-1 text-[10px] font-extrabold;
+    color: var(--bad);
+  }
+  .file-thumb::before {
+    @apply absolute inset-x-[7px] top-2 h-[22px];
+    content: '';
+    background: repeating-linear-gradient(var(--muted) 0 3px, transparent 3px 6px);
+  }
+  .chip-ok {
+    @apply ml-1.5 inline-flex items-center gap-1 rounded-full px-2 text-[11.5px] font-semibold;
+    color: var(--ok);
+    background: var(--ok-soft);
+  }
+  /* When a file card is shown above it, the drop zone is a slim "replace" strip. */
+  .dropzone.compact {
+    @apply flex flex-wrap items-center justify-center gap-x-2 py-3;
+  }
+  .link-list {
+    @apply grid gap-2;
+  }
+  .link-list:empty {
+    @apply hidden;
+  }
+  .link-row {
+    @apply grid items-start gap-2 rounded-[10px] border bg-card p-2.5;
+    grid-template-columns: 22px minmax(0, 0.8fr) minmax(0, 1.2fr) auto;
+  }
+  .link-row.dragging {
+    @apply opacity-50;
+  }
+  .link-row.drop-target {
+    @apply border-primary;
+    background: var(--accent-soft);
+  }
+  .link-handle {
+    @apply grid cursor-grab justify-items-center gap-1 pt-6 text-muted-foreground;
+  }
+  .link-number {
+    @apply text-[11px] font-bold tabular-nums;
+  }
+  .field > .link-field-label {
+    @apply text-[11.5px] text-muted-foreground;
+  }
+  .main-tag {
+    @apply ml-1 rounded px-1.5 text-[10.5px] font-bold text-primary;
+    background: var(--accent-soft);
+  }
+  .link-actions {
+    @apply flex pt-5;
+  }
+  .icon-btn[aria-disabled='true'] {
+    @apply pointer-events-none opacity-35;
+  }
+  @media (max-width: 640px) {
+    .link-row {
+      grid-template-columns: 22px minmax(0, 1fr);
+    }
+    .link-row .link-url,
+    .link-row .link-actions {
+      @apply col-start-2;
+    }
+    .link-row .link-actions {
+      @apply pt-0;
+    }
+  }
+  .link-empty {
+    @apply rounded-[10px] border border-dashed p-4 text-center text-[13px] text-muted-foreground;
+  }
+  .seen-std {
+    @apply grid gap-1.5 rounded-lg border p-2.5 text-[13px];
+    background: var(--page);
+  }
+  .seen-std .ref-chip {
+    @apply w-fit border-primary;
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .seen-pop {
+    @apply grid gap-2 rounded-[10px] border bg-card p-3 text-[12.5px];
+    box-shadow: 0 6px 20px rgb(16 24 40 / 12%);
+  }
+  .seen-pop p {
+    @apply line-clamp-4 text-muted-foreground;
+  }
+  .seen-link {
+    @apply rounded-md border px-2 py-0.5 text-xs text-foreground no-underline;
+  }
+  .seen-link.main {
+    @apply border-primary bg-primary text-primary-foreground;
+  }
+  .ready-list {
+    @apply grid gap-1.5 text-[13px];
+  }
+  .ready-list li {
+    @apply flex items-center gap-2;
+  }
+  .ready-list li.optional {
+    @apply text-muted-foreground;
+  }
+  .ready-list li.problem {
+    color: var(--bad);
+  }
+  .ready-dot {
+    @apply grid size-[18px] flex-none place-items-center rounded-full border-[1.5px] text-[11px] font-extrabold;
+  }
+  .ready-list li.done .ready-dot {
+    @apply text-white;
+    background: var(--ok);
+    border-color: var(--ok);
+  }
+  .ready-list li.problem .ready-dot {
+    @apply text-white;
+    background: var(--bad);
+    border-color: var(--bad);
+  }
   .dialog > .dlg.wide-md {
     @apply w-[min(680px,calc(100%-2rem))];
   }
@@ -832,5 +964,506 @@
   }
   .used-for .used-type {
     @apply mt-2 text-[11px] font-bold tracking-wide uppercase first:mt-0;
+  }
+
+  /* ---------- Papers (M3: docs/03 §3.1–3.2) ---------- */
+
+  /* Readiness pill (FR-PAP-01): ready = green, not started = grey, things to fix = red */
+  .pill {
+    @apply inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap text-muted-foreground;
+    background: var(--muted);
+  }
+  .pill[data-kind='ready'] {
+    color: var(--ok);
+    background: var(--ok-soft);
+    border-color: transparent;
+  }
+  .pill[data-kind='fix'] {
+    color: var(--bad);
+    background: var(--bad-soft);
+    border-color: transparent;
+  }
+  /* Progress bar (a native <progress>, so no inline width style is needed under the CSP) */
+  progress.bar {
+    @apply block h-1.5 w-full appearance-none overflow-hidden rounded-full border-0;
+    background: var(--muted);
+  }
+  progress.bar::-webkit-progress-bar {
+    background: var(--muted);
+  }
+  progress.bar::-webkit-progress-value {
+    background: var(--primary);
+  }
+  progress.bar::-moz-progress-bar {
+    background: var(--primary);
+  }
+  progress.bar[data-full='true']::-webkit-progress-value {
+    background: var(--ok);
+  }
+  progress.bar[data-full='true']::-moz-progress-bar {
+    background: var(--ok);
+  }
+  .paper-tile .tile-name {
+    @apply text-[14.5px];
+  }
+  .pager {
+    @apply mt-5 flex items-center justify-center gap-3 text-[13px] text-muted-foreground;
+  }
+
+  /* Paper page layout: form column + sticky side panel (two columns from 1100 px) */
+  .paper-layout {
+    @apply grid items-start gap-4;
+  }
+  @media (min-width: 1100px) {
+    .paper-layout {
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+    .paper-side {
+      @apply sticky;
+      top: calc(var(--topbar-h) + var(--secbar-h, 56px) + 12px);
+    }
+  }
+  .paper-side {
+    @apply grid content-start gap-4;
+  }
+  .side-title {
+    @apply mb-2 text-[13.5px] font-bold;
+  }
+
+  /* Sticky section bar (FR-ANS-08/09) */
+  .secbar {
+    @apply sticky z-20 -mx-4 mb-4 flex flex-wrap items-center gap-2 border-b px-4 py-2.5;
+    top: var(--topbar-h);
+    background: var(--page);
+  }
+  .sec-chip[data-state='done'] .chip-count {
+    color: var(--ok);
+    @apply font-bold;
+  }
+  .sec-chip[data-state='warn'] {
+    border-color: var(--bad);
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .sec-chip[data-state='warn'] .chip-count {
+    color: var(--bad);
+  }
+  .seg .filter-count {
+    @apply ml-1 tabular-nums;
+  }
+  .paper-section,
+  .answer-row {
+    scroll-margin-top: calc(var(--topbar-h) + var(--secbar-h, 56px) + 12px);
+  }
+
+  .legend {
+    @apply flex flex-wrap gap-x-4 gap-y-1 rounded-lg border border-dashed px-3 py-2 text-[12.5px] text-muted-foreground;
+  }
+  .legend b {
+    @apply text-foreground;
+  }
+  .mtag {
+    @apply ml-1 inline-block rounded px-1.5 align-[1px] text-[10.5px] font-extrabold tracking-wide whitespace-nowrap;
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .legend .mtag {
+    @apply ml-0;
+  }
+
+  /* Section cards */
+  .psec-head {
+    @apply flex cursor-default flex-wrap items-center gap-2.5 px-4 py-3;
+  }
+  .psec-title {
+    @apply text-[15px] font-bold;
+  }
+  .paper-section.collapsed .collapse-btn .icon {
+    @apply -rotate-90;
+  }
+  .paper-section.collapsed .psec-body {
+    @apply hidden;
+  }
+
+  /* One standard: number | title, refs, remark | Yes / No / N/A */
+  .answer-row {
+    @apply grid items-start gap-x-3 gap-y-2 border-t px-4 py-3;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+  }
+  .answer-row[hidden] {
+    @apply hidden;
+  }
+  @media (max-width: 640px) {
+    .answer-row {
+      grid-template-columns: 24px minmax(0, 1fr);
+    }
+    .answer-row .yn,
+    .answer-row .answer-badge {
+      @apply col-start-2 justify-self-start;
+    }
+  }
+  .answer-title {
+    @apply font-medium;
+  }
+  .answer-desc {
+    @apply mt-1 text-[13px] text-muted-foreground;
+  }
+  .remark-line {
+    @apply mt-2 flex items-center gap-2;
+  }
+  .remark {
+    @apply min-w-0 flex-1 text-[13.5px];
+  }
+  .remark-state {
+    @apply flex-none text-[11.5px] text-muted-foreground;
+  }
+  .remark-state[data-state='error'] {
+    color: var(--bad);
+  }
+  .remark-error {
+    @apply mt-1 hidden text-xs font-medium;
+    color: var(--bad);
+  }
+  /* FR-ANS-05: No / N/A without a remark → red row and message */
+  .answer-row.need-remark {
+    background: var(--bad-soft);
+    box-shadow: inset 3px 0 0 var(--bad);
+  }
+  .answer-row.need-remark .remark {
+    border-color: var(--bad);
+  }
+  .answer-row.need-remark .remark-error {
+    @apply block;
+  }
+  .remark-text {
+    @apply mt-2 text-[13.5px] whitespace-pre-wrap text-muted-foreground;
+  }
+  .answer-row.flash {
+    animation: flash 1.4s ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .answer-row.flash,
+    .std-row.flash {
+      animation: none;
+      outline: 2px solid var(--primary);
+    }
+  }
+
+  /* Yes / No / N/A (docs/03 §1.1): pressed Yes = ok, No = bad, N/A = muted */
+  .yn {
+    @apply inline-flex overflow-hidden rounded-lg border bg-card;
+  }
+  .yn button {
+    @apply min-w-12 cursor-pointer border-0 bg-transparent px-3 py-1.5 text-[13px] font-semibold text-muted-foreground hover:bg-muted;
+  }
+  .yn button + button {
+    @apply border-l;
+  }
+  .yn button[data-value='yes'][aria-pressed='true'] {
+    color: #fff;
+    background: var(--ok);
+  }
+  .yn button[data-value='no'][aria-pressed='true'] {
+    color: #fff;
+    background: var(--bad);
+  }
+  .yn button[data-value='na'][aria-pressed='true'] {
+    @apply text-foreground;
+    background: color-mix(in srgb, var(--muted-foreground) 30%, var(--card));
+  }
+  .answer-badge {
+    @apply rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap text-muted-foreground;
+    background: var(--muted);
+  }
+  .answer-badge[data-value='yes'] {
+    color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .answer-badge[data-value='no'] {
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .filter-note {
+    @apply flex flex-wrap items-center gap-3 border-t px-4 py-3 text-[13px] text-muted-foreground;
+  }
+  .filter-note[hidden] {
+    @apply hidden;
+  }
+
+  /* Readiness card (FR-RDY) */
+  .ready-card {
+    @apply grid gap-2 p-4;
+  }
+  .ready-card[data-ready='true'] {
+    border-color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .ready-big {
+    @apply text-[17px] font-bold;
+  }
+  .ready-card[data-ready='true'] .ready-big {
+    color: var(--ok);
+  }
+  .gap-list {
+    @apply grid gap-1.5;
+  }
+  .gap-list button {
+    @apply w-full cursor-pointer rounded-lg border bg-card px-3 py-2 text-left text-[13px] font-medium hover:border-primary;
+    color: var(--bad);
+  }
+  .ai-tip {
+    @apply rounded-lg border border-dashed px-3 py-2 text-[12.5px] text-muted-foreground;
+  }
+  .side-refs {
+    @apply grid gap-1;
+  }
+  .side-refs button {
+    @apply flex w-full cursor-pointer items-start gap-2 rounded-md border-0 bg-transparent p-1.5 text-left text-[13px] hover:bg-muted;
+  }
+  .side-ref-meta {
+    @apply block truncate text-xs text-muted-foreground;
+  }
+
+  /* ---------- AI results (M4: FR-AI-07, docs/03 §3.2 "AI line colours") ---------- */
+  .vd {
+    @apply inline-flex items-center rounded-full px-2 py-px text-xs font-bold whitespace-nowrap;
+  }
+  .vd[data-verdict='comply'] {
+    color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .vd[data-verdict='partial'] {
+    color: var(--warn);
+    background: var(--warn-soft);
+  }
+  .vd[data-verdict='gap'] {
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .vd[data-verdict='none'] {
+    @apply text-muted-foreground;
+    background: var(--muted);
+  }
+  .ai-line {
+    @apply mt-2 grid gap-2 rounded-lg border px-3 py-2 text-[13px];
+  }
+  .ai-line[hidden] {
+    @apply hidden;
+  }
+  .ai-line[data-verdict='comply'] {
+    background: color-mix(in srgb, var(--ok-soft) 60%, var(--card));
+  }
+  .ai-line[data-verdict='partial'] {
+    background: color-mix(in srgb, var(--warn-soft) 60%, var(--card));
+  }
+  .ai-line[data-verdict='gap'] {
+    background: color-mix(in srgb, var(--bad-soft) 60%, var(--card));
+  }
+  .ai-line[data-verdict='none'] {
+    background: var(--muted);
+  }
+  .ai-msg .issue {
+    @apply mt-1 block font-semibold;
+  }
+  .issue.gap {
+    color: var(--bad);
+  }
+  .issue.check {
+    color: var(--warn);
+  }
+  .issue.kept {
+    @apply font-normal text-muted-foreground;
+  }
+  .ai-actions {
+    @apply flex flex-wrap gap-1.5;
+  }
+  .ai-counts {
+    @apply my-2 flex flex-wrap gap-1.5;
+  }
+
+  /* ---------- AI paper checker: floating button + docked chat (docs/03 §3.3) ---------- */
+  .checker-fab {
+    @apply fixed right-4 z-30 inline-flex cursor-pointer items-center gap-2 rounded-full border-0 px-4 py-2.5 text-[13.5px] font-semibold shadow-lg;
+    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    color: var(--primary-foreground);
+    background: var(--primary);
+  }
+  .checker-badge {
+    @apply rounded-full px-2 py-px text-[11.5px] font-bold;
+    background: rgb(255 255 255 / 22%);
+  }
+  .checker-badge[data-kind='fix'] {
+    color: #fff;
+    background: var(--bad);
+  }
+  body.checker-open .checker-fab {
+    @apply hidden;
+  }
+  .checker {
+    @apply fixed right-0 bottom-0 z-40 flex w-[440px] max-w-full flex-col border-l bg-card shadow-2xl;
+    top: var(--topbar-h);
+  }
+  .checker[hidden] {
+    @apply hidden;
+  }
+  /* Desktop: the chat docks and pushes the content; the side panel hides (docs/03 §3.3). */
+  @media (min-width: 1100px) {
+    body.checker-open main {
+      padding-right: 456px;
+    }
+    body.checker-open .paper-layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    body.checker-open .paper-side {
+      @apply hidden;
+    }
+  }
+  /* Phones: full screen */
+  @media (max-width: 719px) {
+    .checker {
+      @apply inset-0 w-full border-l-0;
+      top: 0;
+    }
+  }
+  .checker-head {
+    @apply flex items-center gap-2.5 border-b px-4 py-3;
+  }
+  .checker-avatar {
+    @apply grid size-9 flex-none place-items-center rounded-full text-[17px];
+    color: var(--primary-foreground);
+    background: var(--primary);
+  }
+  .checker-bar {
+    @apply flex flex-wrap items-center gap-2 border-b px-4 py-2 text-[12.5px] text-muted-foreground;
+    background: var(--muted);
+  }
+  .checker-note {
+    @apply w-full;
+  }
+  .checker-messages {
+    @apply grid min-h-0 flex-1 content-start gap-2.5 overflow-y-auto px-4 py-3;
+  }
+  .checker-retention {
+    @apply text-center text-[11.5px] text-muted-foreground;
+  }
+  .msg {
+    @apply max-w-[92%] rounded-xl px-3 py-2 text-[13.5px];
+    overflow-wrap: anywhere;
+  }
+  .msg.assistant {
+    @apply justify-self-start;
+    background: var(--muted);
+  }
+  .msg.user {
+    @apply justify-self-end;
+    color: var(--primary-foreground);
+    background: var(--primary);
+  }
+  .msg.error {
+    color: var(--bad);
+    background: var(--bad-soft);
+  }
+  .msg.typing {
+    @apply italic text-muted-foreground;
+  }
+  .msg .btn {
+    @apply mt-1;
+  }
+  .step {
+    @apply text-[13px];
+  }
+  .step.done {
+    color: var(--ok);
+  }
+  .step.now {
+    @apply font-semibold;
+  }
+  .step.todo {
+    @apply text-muted-foreground;
+  }
+  .checker-quick {
+    @apply flex gap-1.5 overflow-x-auto border-t px-4 py-2;
+    scrollbar-width: none;
+  }
+  .checker-quick .chip-btn {
+    @apply flex-none rounded-full;
+  }
+  .checker-composer {
+    @apply flex items-end gap-2 border-t px-3 py-2.5;
+  }
+  .checker-composer label.icon-btn {
+    @apply cursor-pointer;
+  }
+  .checker-composer textarea {
+    @apply max-h-[120px] min-h-9 flex-1 resize-none text-[13.5px];
+  }
+  .checker-drop {
+    @apply absolute inset-2 z-10 grid place-items-center rounded-xl border-2 border-dashed text-[15px] font-semibold;
+    border-color: var(--primary);
+    color: var(--primary);
+    background: color-mix(in srgb, var(--accent-soft) 90%, transparent);
+  }
+  .checker-drop[hidden] {
+    @apply hidden;
+  }
+
+  /* Compare cards in the chat and the side-by-side dialog (docs/03 §3.4) */
+  .cmp-card {
+    @apply grid gap-2 rounded-lg border bg-card p-2.5;
+  }
+  .cmp-card-head {
+    @apply flex min-w-0 items-center gap-1.5 text-[13px];
+  }
+  .cmp-thumbs {
+    @apply grid grid-cols-2 gap-2;
+  }
+  .cmp-thumb {
+    @apply grid min-h-24 place-items-center overflow-hidden rounded border;
+    background: var(--muted);
+  }
+  .cmp-actions {
+    @apply flex flex-wrap gap-1.5;
+  }
+  .cmp-grid {
+    @apply grid gap-3 sm:grid-cols-2;
+  }
+  .cmp-col {
+    @apply m-0 grid min-w-0 content-start gap-1.5;
+  }
+  .cmp-label {
+    @apply truncate text-xs font-semibold text-muted-foreground;
+  }
+  .cmp-page {
+    @apply grid min-h-48 place-items-center overflow-hidden rounded-lg border p-2;
+    background: var(--muted);
+  }
+  .cmp-frame {
+    @apply relative inline-block max-w-full;
+  }
+  .cmp-frame canvas,
+  .cmp-frame img {
+    @apply block max-w-full bg-white shadow;
+    height: auto !important;
+  }
+  .cmp-empty {
+    @apply p-3 text-center text-xs text-muted-foreground;
+  }
+  .cmp-mark {
+    @apply pointer-events-none absolute rounded-sm;
+  }
+  .cmp-mark.solid {
+    border: 2px solid var(--primary);
+  }
+  .cmp-mark.solid[data-verdict='comply'] {
+    border-color: var(--ok);
+  }
+  .cmp-mark.solid[data-verdict='partial'] {
+    border-color: var(--warn);
+  }
+  .cmp-mark.solid[data-verdict='gap'] {
+    border-color: var(--bad);
+  }
+  .cmp-mark.dashed {
+    border: 2px dashed #2453d4;
   }
 }

@@ -2,11 +2,13 @@
 
 /**
  * The reference library (D-37): policies, samples, templates and guides shared by every paper type
- * (FR-ADM-11…13, FR-REF-02, FR-REF-04). Each reference has a file (preview + AI) and rich-text
- * guidance. Files live in S3 under generated keys; original names are for display only.
+ * (FR-ADM-11…13, FR-REF-02, FR-REF-04). Each reference has a file (preview + AI), rich-text
+ * guidance shown as its "Description" and ordered links (D-39). Files live in S3 under generated keys;
+ * original names are for display only.
  */
 const { randomUUID } = require('node:crypto');
 const referenceModel = require('../models/reference.model');
+const { withTransaction } = require('../utils/db');
 const { getStorage } = require('../factories/storageFactory');
 const { checkReferenceFile } = require('../utils/pdfInfo');
 const { actorName } = require('../utils/actor');
@@ -65,7 +67,7 @@ function publicReference(ref) {
     title: ref.title,
     note: ref.note,
     guidanceHtml: ref.guidanceHtml,
-    url: ref.url,
+    links: ref.links ?? [],
     fileName: ref.fileName,
     mimeType: ref.mimeType,
     sizeBytes: ref.sizeBytes,
@@ -114,27 +116,32 @@ function listLibrary() {
 /**
  * Add a reference to the library (FR-ADM-12). The file is required.
  *
- * @param {{fields: {type, title, url?, guidance?}, file?: object, actor: object, log: import('pino').Logger}} params
- * @returns {Promise<object>} the new reference
+ * @param {{fields: {type, title, guidance?, links?}, file?: object, actor: object, log: import('pino').Logger}} params
+ * @returns {Promise<object>} the new reference, with its links
  * @throws {ValidationError} no file
  * @throws {FileRejectedError} wrong type, too large, encrypted / unreadable PDF
  */
 async function addReference({ fields, file, actor, log }) {
   if (!file) throw new ValidationError('Choose a file to upload.', [{ field: 'file', message: 'Required' }]);
   const guidance = cleanGuidance(fields.guidance ?? '');
+  const links = fields.links ?? [];
   const id = randomUUID();
   const stored = await storeFile(id, file);
   try {
-    const ref = await referenceModel.create({
-      id,
-      type: fields.type,
-      title: fields.title,
-      url: fields.url ?? null,
-      ...guidance,
-      ...stored,
-      updatedBy: actorName(actor),
+    // The reference and its links are saved together, or not at all.
+    const ref = await withTransaction(async () => {
+      const created = await referenceModel.create({
+        id,
+        type: fields.type,
+        title: fields.title,
+        ...guidance,
+        ...stored,
+        updatedBy: actorName(actor),
+      });
+      await referenceModel.replaceLinks(id, links);
+      return { ...created, links };
     });
-    log.info({ referenceId: id, sizeBytes: stored.sizeBytes }, 'Reference added');
+    log.info({ referenceId: id, sizeBytes: stored.sizeBytes, links: links.length }, 'Reference added');
     return ref;
   } catch (err) {
     await removeOrphan(stored.s3Key, log);
@@ -146,18 +153,24 @@ async function addReference({ fields, file, actor, log }) {
  * Change a reference; a new file replaces the old one. The old S3 object is removed only after the
  * database points to the new one (docs/06 §4), so a failure never leaves a reference without a file.
  *
+ * `fields.links`, when present, replaces all links (D-39); when absent the links stay as they are.
+ *
  * @param {{referenceId: string, fields: object, file?: object, actor: object, log: import('pino').Logger}} params
- * @returns {Promise<object>}
+ * @returns {Promise<object>} the reference, with its links
  */
 async function updateReference({ referenceId, fields, file, actor, log }) {
   const current = await getReferenceOrThrow(referenceId);
-  const { guidance, ...rest } = fields;
+  const { guidance, links, ...rest } = fields;
   const changes = { ...rest, ...cleanGuidance(guidance), updatedBy: actorName(actor) };
   // A new key per upload (reference ID + time), so the old and new files can briefly coexist.
   const stored = file ? await storeFile(`${referenceId}-${Date.now()}`, file) : {};
   let updated;
   try {
-    updated = await referenceModel.update(referenceId, { ...changes, ...stored });
+    updated = await withTransaction(async () => {
+      const row = await referenceModel.update(referenceId, { ...changes, ...stored });
+      if (links) await referenceModel.replaceLinks(referenceId, links);
+      return { ...row, links: await referenceModel.listLinks(referenceId) };
+    });
   } catch (err) {
     if (stored.s3Key) await removeOrphan(stored.s3Key, log);
     throw err;
@@ -214,9 +227,12 @@ async function openReferenceFile(referenceId) {
  */
 async function getReferencePage(referenceId) {
   const ref = await getReferenceOrThrow(referenceId);
-  const usedFor = await referenceModel.listLinkedStandards(referenceId);
+  const [usedFor, links] = await Promise.all([
+    referenceModel.listLinkedStandards(referenceId),
+    referenceModel.listLinks(referenceId),
+  ]);
   return {
-    reference: { ...publicReference(ref), linkedCount: ref.linkedCount, typeCount: ref.typeCount },
+    reference: { ...publicReference({ ...ref, links }), linkedCount: ref.linkedCount, typeCount: ref.typeCount },
     usedFor,
   };
 }
@@ -233,7 +249,7 @@ async function getViewer(referenceId) {
     type: reference.type,
     title: reference.title,
     note: reference.note,
-    url: reference.url,
+    links: reference.links,
     mimeType: reference.mimeType,
     pageCount: reference.pageCount,
     fileUrl: `/files/references/${reference.id}`,

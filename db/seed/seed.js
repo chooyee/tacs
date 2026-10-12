@@ -96,7 +96,7 @@ async function libraryReference([, type, title, note], existingByTitle) {
   const found = existingByTitle.get(title.toLowerCase());
   if (found) return found;
   const buffer = await placeholderPdf({ type, title, note });
-  const fileName = `${title.replace(/[^w.-]+/g, '-').replace(/^-|-$/g, '')}.pdf`;
+  const fileName = `${title.replace(/[^\w.-]+/g, '-').replace(/^-|-$/g, '')}.pdf`;
   const escaped = note.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const ref = await referenceService.addReference({
     fields: { type, title, guidance: `<p>${escaped}</p>` },

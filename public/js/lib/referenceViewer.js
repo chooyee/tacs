@@ -1,5 +1,5 @@
 // Reference viewer dialog (FR-REF-02, docs/03 §3.5): preview (pdf.js or image), type, note,
-// "Used for" standards and the official link. Shared by the admin editor and (M3) the paper page.
+// "Used for" standards and the links (D-39: the first is the main button). Shared by the admin editor and (M3) the paper page.
 import { api } from './api.js';
 import { $ } from './dom.js';
 import { openDialog } from './dialog.js';
@@ -59,9 +59,7 @@ export async function openReferenceViewer(referenceId) {
   $('#rv-title').textContent = ref.title;
   $('#rv-type').textContent = `${s.icons[ref.type] ?? ''} ${ref.type}`;
   $('#rv-note').textContent = ref.note ?? '';
-  const official = $('#rv-official');
-  official.hidden = !ref.url;
-  if (ref.url) official.href = ref.url; // validated server-side: https:// only
+  showLinks(ref.links ?? []);
 
   const used = $('#rv-used');
   used.replaceChildren(
@@ -96,6 +94,22 @@ export async function openReferenceViewer(referenceId) {
     image.alt = ref.title;
     image.hidden = false;
   }
+}
+
+/** The reference's links; URLs are validated server-side (https:// only). Text via textContent. */
+function showLinks(links) {
+  const template = $('#rv-link-tpl');
+  $('#rv-links-box').hidden = !links.length;
+  $('#rv-links').replaceChildren(
+    ...links.map((link, i) => {
+      const a = template.content.firstElementChild.cloneNode(true);
+      a.href = link.url;
+      a.className = i === 0 ? 'btn' : 'link-btn';
+      if (i === 0) a.dataset.variant = 'outline';
+      a.querySelector('span').textContent = link.label;
+      return a;
+    }),
+  );
 }
 
 /** Wire the pager buttons once per page. */

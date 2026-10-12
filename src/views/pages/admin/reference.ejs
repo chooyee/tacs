@@ -1,7 +1,15 @@
-<%# Full-screen add / edit of a library reference (D-37). Behaviour: public/js/pages/adminReference.js. %>
+<%# Full-screen add / edit of a library reference (D-37, D-39): About · File · Reference links, and a
+    live summary (how architects see it, what is still missing, where it is used).
+    Behaviour: public/js/pages/adminReference.js and public/js/lib/referenceForm.js. %>
 <%- include('../../partials/admin/tabs') %>
 <div id="reference-page" data-reference-id="<%= reference ? reference.id : '' %>" data-for-standard="<%= forStandard %>"
-     data-strings="<%= JSON.stringify({ saved: t.library.saved, chooseFile: t.adminType.chooseFile, linkedClose: t.library.linkedClose }) %>">
+     data-strings="<%= JSON.stringify({
+       saved: t.library.saved, linkedClose: t.library.linkedClose, unsaved: t.library.unsavedShort,
+       fixFields: t.library.fixFields, untitled: t.library.untitled, noDescription: t.library.noDescription,
+       viewFile: t.library.viewFile, optional: t.library.optional, fixLinks: t.library.fixLinks,
+       checkTitle: t.adminType.title, checkFile: t.library.file, checkDescription: t.library.guidance,
+       checkLinks: t.library.linksHeading, icons: t.referenceIcons
+     }) %>">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="/admin/references"><%= t.library.back %></a>
     <%- include('../../partials/icon', { name: 'chevronRight', cls: 'size-3.5' }) %>
@@ -17,15 +25,40 @@
   <% if (forStandard) { %>
   <div class="banner mb-4"><%- include('../../partials/icon', { name: 'link' }) %><span><%= t.library.forStandard %></span></div>
   <% } %>
-  <form id="reference-form" class="form-page" novalidate>
-    <div class="form-main panel">
-      <div class="form-section">
-        <%- include('../../partials/admin/referenceFields', { p: 'rf', ref: reference }) %>
-      </div>
+  <form id="reference-form" class="form-page" novalidate
+        data-strings="<%= JSON.stringify({
+          words: t.library.words(0).replace('0', '{n}'), wordsOne: t.library.words(1).replace('1', '{n}'),
+          pages: t.library.pages(2).replace('2', '{n}'), newFile: t.library.newFile,
+          fileTypeError: t.library.fileTypeError('{name}'), fileSizeError: t.library.fileSizeError('{name}', '{mb}'),
+          fileRequired: t.library.fileRequired, titleRequired: t.library.titleRequired,
+          labelRequired: t.library.linkLabelRequired, urlRequired: t.library.linkUrlRequired, urlInvalid: t.library.linkUrlInvalid,
+          moveUp: t.adminType.moveUp, moveDown: t.adminType.moveDown, open: t.library.openLink, remove: t.library.removeLink,
+          removed: t.library.linkRemoved, undo: t.adminType.undo, chooseFile: t.adminType.chooseFile, replaceFile: t.library.replaceFile
+        }) %>">
+    <div class="form-main panel divide-y">
+      <%- include('../../partials/admin/referenceFields', { p: 'rf', ref: reference }) %>
     </div>
 
-    <aside class="form-side panel">
-      <div class="form-section">
+    <aside class="form-side grid gap-4" aria-label="<%= t.library.details %>">
+      <div class="panel"><div class="form-section gap-3">
+        <h2 class="panel-title"><%= t.library.seenBy %></h2>
+        <div class="seen-std">
+          <span class="text-muted-foreground"><%= t.library.exampleStandard %></span>
+          <span class="ref-chip selected-like"><span aria-hidden="true" id="pv-icon"></span><span class="t" id="pv-chip"></span></span>
+        </div>
+        <div class="seen-pop" aria-live="polite">
+          <b id="pv-title"></b>
+          <p id="pv-note"></p>
+          <div class="flex flex-wrap gap-1.5" id="pv-links"></div>
+        </div>
+      </div></div>
+
+      <div class="panel"><div class="form-section gap-3">
+        <h2 class="panel-title"><%= t.library.ready %></h2>
+        <ul class="ready-list" id="ready-list"></ul>
+      </div></div>
+
+      <div class="panel"><div class="form-section gap-3">
         <h2 class="panel-title"><%= t.library.usedFor %> <% if (reference) { %><span class="count"><%= usedFor.length %></span><% } %></h2>
         <% if (!usedFor.length) { %>
         <p class="panel-sub"><%= t.library.usedForEmpty %></p>
@@ -38,14 +71,14 @@
           <% } %>
         </ul>
         <% } %>
-      </div>
+      </div></div>
     </aside>
 
     <div class="form-bar">
       <p class="form-error" role="alert" hidden></p>
       <span class="save-state" data-state="idle" role="status" aria-live="polite"></span>
       <a class="btn" data-variant="outline" href="/admin/references"><%= t.library.cancel %></a>
-      <button type="submit" class="btn"><%= reference ? t.library.save : t.library.create %></button>
+      <button type="submit" class="btn"><%= reference ? t.library.save : (forStandard ? t.library.createAndLink : t.library.create) %></button>
     </div>
   </form>
 </div>

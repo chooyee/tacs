@@ -114,13 +114,25 @@ admin applies immediately.
 | note | text | Plain-text summary (≤ 500) of `guidance_html`, for tooltips and the AI prompt. |
 | guidance_html | text not null default '' | Rich-text guidance "what should the architect look for?" (D-37). |
 | updated_by | text | "Last edited by" snapshot (D-37). |
-| url | text | Optional intranet link, must start with `https://`. |
+| url | text | **Legacy, unused** (D-39): links moved to `reference_links`. |
 | s3_key | text not null | Uploaded file. |
 | file_name | text not null | Original name (display only). |
 | mime_type | text not null | `application/pdf`, `image/png`, `image/jpeg`. |
 | size_bytes | integer not null | |
 | page_count | integer | PDFs only. |
 | created_at, updated_at, deleted_at | | |
+
+### 3.5a `reference_links` (D-39)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| reference_id | uuid FK → reference_docs | on delete cascade |
+| position | integer not null | 0 = the main link; the save replaces all rows in order. |
+| label | text not null | 1–120 characters. |
+| url | text not null | must start with `https://`, ≤ 2000. |
+
+Migration 003 copied each old `reference_docs.url` in as the first link, labelled "Official document".
 
 ### 3.6 `standard_references` (many-to-many)
 
