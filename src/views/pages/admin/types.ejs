@@ -10,10 +10,10 @@
 
 <div class="tile-grid">
   <% for (const type of types) { %>
-  <a class="card tile" href="/admin/types/<%= type.id %>">
+  <a class="panel tile" href="/admin/types/<%= type.id %>">
     <div class="flex items-start justify-between gap-2">
       <b><%= type.name %></b>
-      <span class="badge" data-variant="outline"><%= t.adminTypes.papers(type.papersCount) %></span>
+      <span class="ttag"><%= t.adminTypes.papers(type.papersCount) %></span>
     </div>
     <p class="text-sm text-muted-foreground"><%= type.description || t.adminTypes.noDescription %></p>
     <div class="tile-meta">
@@ -23,7 +23,7 @@
     </div>
   </a>
   <% } %>
-  <button type="button" class="card tile tile-add" data-action="new-type">
+  <button type="button" class="panel tile tile-add" data-action="new-type">
     <span class="text-2xl" aria-hidden="true">＋</span>
     <b><%= t.adminTypes.newType %></b>
     <span class="text-sm text-muted-foreground"><%= t.adminTypes.newTypeHint %></span>

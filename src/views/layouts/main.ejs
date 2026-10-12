@@ -6,6 +6,7 @@
   <%# Only for signed-in users: csrfToken() creates a session, which anonymous error pages don't need. %>
   <% if (nav.user) { %><meta name="csrf-token" content="<%= csrfToken() %>"><% } %>
   <title><%= locals.title ? `${title} · ${t.appName}` : t.appName %></title>
+  <link rel="icon" href="/img/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/app.css?v=<%= assetVersion %>">
   <%# Sets the dark class before the page paints (no flash). External file: the CSP allows no inline scripts. %>
   <script src="/js/lib/theme.js?v=<%= assetVersion %>"></script>
@@ -16,7 +17,7 @@
   <script type="module" src="/js/pages/<%= pageScript %>.js?v=<%= assetVersion %>"></script>
   <% } %>
 </head>
-<body class="min-h-screen bg-background text-foreground">
+<body class="min-h-screen text-foreground">
   <%- include('../partials/topbar') %>
   <main id="main" class="mx-auto max-w-[1240px] px-4 pt-5 pb-24">
     <%- include('../' + page) %>

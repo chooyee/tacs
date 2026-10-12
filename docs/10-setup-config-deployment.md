@@ -103,8 +103,9 @@ exactly which variable is wrong. No other file reads `process.env`.
   by `npm run build`. Pages load them with `<script type="module">`.
 - Page scripts are native ES modules in `public/js/pages/*.js`, each loaded
   only by its page.
-- Static files are served with `express.static('public', { maxAge: '7d' })`
-  and a version query string (`?v=<package version>`) for cache busting.
+- Static files are served with `Cache-Control: no-cache` and an ETag: the browser keeps them but
+  revalidates (304 when unchanged), because ES modules import each other without a version in the
+  URL (D-35).
 
 ## 4. Environments
 

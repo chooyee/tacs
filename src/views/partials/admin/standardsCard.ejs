@@ -1,12 +1,12 @@
 <%# Standards card (FR-ADM-14…19). The inline "add standard" box is created by adminType.js. %>
-<section class="card p-0" id="standards-card">
-  <header class="card-head">
+<section class="panel" id="standards-card">
+  <div class="card-head">
     <div>
       <h2 class="text-base font-semibold"><%= t.adminType.standardsTitle %></h2>
       <p class="text-sm text-muted-foreground"><%= t.adminType.standardsHelp(totals.standards, totals.sections) %></p>
     </div>
     <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="add-section">＋ <%= t.adminType.addSection %></button>
-  </header>
+  </div>
   <% if (!sections.length) { %>
   <p class="empty-state"><%= t.adminType.noSections %></p>
   <% } %>
@@ -16,7 +16,7 @@
       <span class="section-letter"><%= section.letter %></span>
       <input class="section-title" type="text" value="<%= section.title %>" maxlength="150" required
              aria-label="<%= t.adminType.sectionTitle(section.letter) %>">
-      <span class="badge" data-variant="secondary"><%= section.standards.length %></span>
+      <span class="count-pill"><%= section.standards.length %></span>
       <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" data-action="move-section" data-direction="up" <% if (si === 0) { %>disabled<% } %> aria-label="<%= t.adminType.moveUp %>" title="<%= t.adminType.moveUp %>">↑</button>
       <button type="button" class="btn" data-variant="ghost" data-size="icon-sm" data-action="move-section" data-direction="down" <% if (si === sections.length - 1) { %>disabled<% } %> aria-label="<%= t.adminType.moveDown %>" title="<%= t.adminType.moveDown %>">↓</button>
       <button type="button" class="btn danger" data-variant="ghost" data-size="icon-sm" data-action="delete-section" aria-label="<%= t.adminType.deleteSection %>" title="<%= t.adminType.deleteSection %>">🗑</button>

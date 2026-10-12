@@ -13,9 +13,9 @@
 </nav>
 
 <% if (tab === 'all') { %>
-<div class="card empty-state"><p><%= t.papers.allComingSoon %></p></div>
+<div class="panel empty-state"><p><%= t.papers.allComingSoon %></p></div>
 <% } else if (!papers.length) { %>
-<div class="card empty-state">
+<div class="panel empty-state">
   <h2 class="text-base font-semibold"><%= t.papers.emptyTitle %></h2>
   <p class="mt-1"><%= t.papers.emptyText %></p>
   <button type="button" class="btn mt-4" disabled title="<%= t.papers.comingSoon %>">+ <%= t.papers.newPaper %></button>

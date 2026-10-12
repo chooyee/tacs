@@ -38,7 +38,16 @@ function createApp({ sessionStore = createSessionStore(), testAuth } = {}) {
   app.set('views', path.join(__dirname, 'views'));
 
   // Static files first: no logging, no session for CSS / JS (docs/10 §3).
-  app.use(express.static(path.join(__dirname, '..', 'public'), { maxAge: '7d', index: false }));
+  // `no-cache` = the browser keeps the file but asks every time (ETag → 304 when unchanged). Needed
+  // because ES modules import each other without a version in the URL, so a long max-age would keep
+  // old code after an update (D-35).
+  app.use(
+    express.static(path.join(__dirname, '..', 'public'), {
+      index: false,
+      etag: true,
+      setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache'),
+    }),
+  );
 
   app.use(requestLogger);
   app.use(securityHeaders);

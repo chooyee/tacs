@@ -102,6 +102,17 @@ describe('security headers and cookies (NFR-SEC-02, NFR-SEC-03)', () => {
   });
 });
 
+describe('static files (D-35)', () => {
+  const app = createApp();
+
+  test('browser modules are revalidated on every load, so an update is never stuck in the cache', async () => {
+    const res = await request(app).get('/js/lib/api.js').expect(200);
+    assert.equal(res.headers['cache-control'], 'no-cache');
+    assert.ok(res.headers.etag, 'an ETag lets the browser get a cheap 304 when nothing changed');
+    await request(app).get('/js/lib/api.js').set('If-None-Match', res.headers.etag).expect(304);
+  });
+});
+
 describe('sign-in redirects (FR-ACC-01)', () => {
   const app = createApp();
 

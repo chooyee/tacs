@@ -22,15 +22,15 @@
     </div>
     <% if (papersInProgress > 0) { %>
     <span title="<%= t.adminType.inUse(papersInProgress) %>">
-      <button type="button" class="btn" data-variant="outline" disabled aria-describedby="in-use-hint"><%= t.adminType.deleteType %></button>
+      <button type="button" class="btn text-destructive" data-variant="outline" disabled aria-describedby="in-use-hint"><%= t.adminType.deleteType %></button>
       <span id="in-use-hint" class="sr-only"><%= t.adminType.inUse(papersInProgress) %></span>
     </span>
     <% } else { %>
-    <button type="button" class="btn" data-variant="destructive" data-action="delete-type"><%= t.adminType.deleteType %></button>
+    <button type="button" class="btn text-destructive" data-variant="outline" data-action="delete-type"><%= t.adminType.deleteType %></button>
     <% } %>
   </div>
 
-  <div class="alert mb-4"><section><%= t.adminType.banner(type.name, papersInProgress) %></section></div>
+  <div class="banner mb-4"><%= t.adminType.banner(type.name, papersInProgress) %></div>
 
   <div class="grid gap-4">
     <%- include('../../partials/admin/referencesCard') %>

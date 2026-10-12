@@ -105,7 +105,7 @@ describe('admin API end to end (docs/06 §4)', () => {
       .expect(400);
 
     const card = await admin.get(`/admin/types/${typeId}/cards/standards`).expect(200);
-    assert.match(card.text.trim(), /^<section class="card p-0" id="standards-card">/);
+    assert.match(card.text.trim(), /^<section class="panel" id="standards-card">/);
     assert.match(card.text, /Service accounts inventoried/);
     assert.doesNotMatch(card.text, /<html/); // a fragment, not a full page
   });

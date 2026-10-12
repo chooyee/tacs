@@ -6,9 +6,9 @@
 </div>
 
 <% if (!users.length) { %>
-<div class="card empty-state"><p><%= t.adminUsers.empty %></p></div>
+<div class="panel empty-state"><p><%= t.adminUsers.empty %></p></div>
 <% } else { %>
-<div class="card overflow-x-auto p-0">
+<div class="panel overflow-x-auto">
   <table class="table" id="users-table">
     <thead>
       <tr>
