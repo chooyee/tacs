@@ -24,9 +24,11 @@ async function listWithStats() {
             (select count(*)::int from papers p where p.paper_type_id = t.id and p.deleted_at is null) as papers_count,
             (select count(*)::int from standards s join sections sec on sec.id = s.section_id
               where sec.paper_type_id = t.id and sec.deleted_at is null and s.deleted_at is null) as standards_count,
+            -- A live link (D-38) takes the mandatory flag of its source.
             (select count(*)::int from standards s join sections sec on sec.id = s.section_id
+               left join standards src on src.id = s.source_standard_id
               where sec.paper_type_id = t.id and sec.deleted_at is null and s.deleted_at is null
-                and s.is_mandatory) as mandatory_count,
+                and coalesce(src.is_mandatory, s.is_mandatory)) as mandatory_count,
             (select count(distinct sr.reference_id)::int
                from standards s
                join sections sec on sec.id = s.section_id and sec.deleted_at is null

@@ -1,0 +1,33 @@
+<%# The AI paper checker (docs/03 §3.3, FR-AI-01…05, FR-CHAT): a floating button and a docked chat
+    panel. Not a dialog: the page stays usable while it is open. Behaviour: public/js/lib/checker.js.
+    Viewers (not the owner) get history mode: no 📎, no input, no actions (FR-PAP-08). %>
+<button type="button" class="checker-fab" id="checker-fab" data-action="open-checker" aria-controls="checker" aria-expanded="false">
+  <span><%= t.checker.button %></span><span class="checker-badge" id="checker-badge"></span>
+</button>
+
+<aside class="checker" id="checker" aria-labelledby="checker-title" hidden
+       data-strings="<%= JSON.stringify(t.checker) %>" data-icons="<%= JSON.stringify(t.referenceIcons) %>">
+  <header class="checker-head">
+    <span class="checker-avatar" aria-hidden="true">✦</span>
+    <div class="min-w-0 flex-1">
+      <h2 id="checker-title" class="text-[15px] font-bold"><%= t.checker.title %></h2>
+      <p class="truncate text-xs text-muted-foreground" id="checker-subtitle"></p>
+    </div>
+    <button type="button" class="icon-btn" data-action="close-checker" aria-label="<%= t.checker.close %>"><%- include('../icon', { name: 'close' }) %></button>
+  </header>
+  <div class="checker-bar" id="checker-bar"></div>
+  <div class="checker-messages" id="checker-messages" aria-live="polite"></div>
+  <% if (isOwner) { %>
+  <div class="checker-quick" id="checker-quick" role="group" aria-label="Quick questions"></div>
+  <form class="checker-composer" id="checker-composer" novalidate>
+    <label class="icon-btn" title="<%= t.checker.attach %>">
+      <span class="sr-only"><%= t.checker.attach %></span>
+      <input type="file" id="checker-files" accept="application/pdf,.pdf" multiple hidden>
+      <%- include('../icon', { name: 'upload' }) %>
+    </label>
+    <textarea class="textarea" id="checker-input" rows="1" maxlength="1000" placeholder="<%= t.checker.placeholder %>" aria-label="<%= t.checker.placeholder %>"></textarea>
+    <button type="submit" class="btn" data-size="sm"><%= t.checker.send %></button>
+  </form>
+  <div class="checker-drop" id="checker-drop" hidden><%= t.checker.dropHere %></div>
+  <% } %>
+</aside>

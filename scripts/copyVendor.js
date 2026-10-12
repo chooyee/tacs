@@ -19,6 +19,8 @@ const FILES = [
   // Quill 2: the rich-text editor (same as survey-app-poc), loaded only on pages that edit rich text.
   ['node_modules/quill/dist/quill.js', 'public/vendor/quill/quill.js'],
   ['node_modules/quill/dist/quill.snow.css', 'public/vendor/quill/quill.snow.css'],
+  // Our own readiness rules, the SAME file on server and browser (docs/04 §6).
+  ['src/utils/readinessRules.js', 'public/js/shared/readinessRules.js'],
 ];
 
 // Whole folders: fonts pdf.js uses for PDFs that do not embed their fonts.

@@ -1,10 +1,11 @@
-<%# Papers home (docs/03 §3.1). M1: the empty state only; cards, New paper dialog and All papers come in M3. %>
+<%# Papers home (docs/03 §3.1): My papers (FR-PAP-01, FR-PAP-06) and All papers (FR-PAP-07), plus the
+    New paper dialog (FR-PAP-02). Behaviour: public/js/pages/papers.js. %>
 <div class="page-head">
   <div>
-    <h1 class="page-title"><%= t.papers.heading %></h1>
-    <p class="page-sub"><%= t.papers.subtitle %></p>
+    <h1 class="page-title"><%= tab === 'all' ? t.papers.tabAll : t.papers.heading %></h1>
+    <p class="page-sub"><%= tab === 'all' ? t.papers.allSubtitle : t.papers.subtitle %></p>
   </div>
-  <button type="button" class="btn" disabled title="<%= t.papers.comingSoon %>"><%- include('../../partials/icon', { name: 'plus' }) %> <%= t.papers.newPaper %></button>
+  <button type="button" class="btn" data-action="new-paper"><%- include('../../partials/icon', { name: 'plus' }) %> <%= t.papers.newPaper %></button>
 </div>
 
 <nav class="subnav" aria-label="<%= t.papers.heading %>">
@@ -13,12 +14,101 @@
 </nav>
 
 <% if (tab === 'all') { %>
-<div class="panel empty"><%= t.papers.allComingSoon %></div>
+<%# A plain GET form: the URL stays shareable and it works without JavaScript. %>
+<form class="mb-4 flex flex-wrap gap-2" method="get" action="/papers" role="search">
+  <input type="hidden" name="tab" value="all">
+  <label class="relative min-w-60 flex-1">
+    <span class="sr-only"><%= t.papers.search %></span>
+    <span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"><%- include('../../partials/icon', { name: 'search' }) %></span>
+    <input class="input w-full pl-8" type="search" name="q" maxlength="100" value="<%= pager.q %>" placeholder="<%= t.papers.search %>">
+  </label>
+  <label class="min-w-48">
+    <span class="sr-only"><%= t.papers.paperType %></span>
+    <select class="select w-full" name="typeId" data-auto-submit>
+      <option value=""><%= t.papers.allTypes %></option>
+      <% for (const type of paperTypes) { %><option value="<%= type.id %>" <% if (pager.typeId === type.id) { %>selected<% } %>><%= type.name %></option><% } %>
+    </select>
+  </label>
+  <button type="submit" class="btn" data-variant="outline"><%= t.papers.filter %></button>
+  <% if (pager.q || pager.typeId) { %><a class="btn" data-variant="ghost" href="/papers?tab=all"><%= t.papers.clear %></a><% } %>
+</form>
+<% if (!papers.length) { %>
+<div class="panel empty"><%= pager.q || pager.typeId ? t.papers.noMatch : t.papers.noPapersAll %></div>
+<% } else { %>
+<p class="mb-2 text-[13px] text-muted-foreground"><%= t.papers.total(pager.total) %></p>
+<div class="tile-grid">
+  <% for (const p of papers) { %><%- include('../../partials/papers/card', { p, showOwner: true }) %><% } %>
+</div>
+<% if (pager.pages > 1) { %>
+<% const link = (n) => `/papers?tab=all&page=${n}${pager.q ? `&q=${encodeURIComponent(pager.q)}` : ''}${pager.typeId ? `&typeId=${pager.typeId}` : ''}`; %>
+<nav class="pager" aria-label="<%= t.papers.pageOf(pager.page, pager.pages) %>">
+  <% if (pager.page > 1) { %><a class="btn" data-variant="outline" href="<%= link(pager.page - 1) %>"><%= t.papers.previous %></a><% } %>
+  <span><%= t.papers.pageOf(pager.page, pager.pages) %></span>
+  <% if (pager.page < pager.pages) { %><a class="btn" data-variant="outline" href="<%= link(pager.page + 1) %>"><%= t.papers.next %></a><% } %>
+</nav>
+<% } %>
+<% } %>
+
 <% } else if (!papers.length) { %>
 <div class="panel empty grid justify-items-center gap-2">
   <span class="grid size-12 place-items-center rounded-full bg-muted"><%- include('../../partials/icon', { name: 'file', cls: 'size-6' }) %></span>
   <h2 class="text-[15px] font-semibold text-foreground"><%= t.papers.emptyTitle %></h2>
   <p class="max-w-md"><%= t.papers.emptyText %></p>
-  <p class="text-xs"><%= t.papers.comingSoon %></p>
+  <button type="button" class="btn mt-1" data-action="new-paper"><%- include('../../partials/icon', { name: 'plus' }) %> <%= t.papers.newPaper %></button>
+</div>
+<% } else { %>
+<div class="tile-grid">
+  <% for (const p of papers) { %><%- include('../../partials/papers/card', { p }) %><% } %>
+  <button type="button" class="tile tile-add" data-action="new-paper">
+    <span class="plus" aria-hidden="true">＋</span>
+    <b><%= t.papers.newPaper %></b>
+    <span class="text-[13px] text-muted-foreground"><%= t.papers.newPaperHint %></span>
+  </button>
 </div>
 <% } %>
+
+<dialog class="dialog" id="new-paper-dialog" aria-labelledby="new-paper-title">
+  <form id="new-paper-form" class="dlg wide-md" novalidate>
+    <div class="dlg-head">
+      <h2 id="new-paper-title"><%= t.papers.dialogTitle %></h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('../../partials/icon', { name: 'close' }) %></button>
+    </div>
+    <div class="dlg-body">
+      <div class="field">
+        <label for="np-title"><%= t.papers.title %> <span class="req">*</span></label>
+        <input class="input" type="text" id="np-title" name="title" minlength="3" maxlength="150" required autocomplete="off" placeholder="<%= t.papers.titlePlaceholder %>">
+      </div>
+      <div class="field">
+        <label for="np-vendor"><%= t.papers.vendor %></label>
+        <input class="input" type="text" id="np-vendor" name="vendor" maxlength="150" autocomplete="off" placeholder="<%= t.papers.vendorPlaceholder %>">
+      </div>
+      <fieldset class="field">
+        <legend class="label mb-1.5"><%= t.papers.paperType %> <span class="req">*</span></legend>
+        <% if (!paperTypes.length) { %>
+        <p class="panel-sub"><%= t.papers.noTypes %></p>
+        <% } else { %>
+        <%# Native radios: arrow keys move between the cards (docs/03 §3.1). %>
+        <div class="grid gap-2">
+          <% paperTypes.forEach((type, i) => { %>
+          <label class="check-card start-option">
+            <input class="input" type="radio" name="paperTypeId" value="<%= type.id %>" <% if (i === 0) { %>checked<% } %>>
+            <span class="grid gap-0.5">
+              <b><%= type.name %></b>
+              <% if (type.description) { %><span class="text-[13px] text-muted-foreground"><%= type.description %></span><% } %>
+              <span class="text-xs text-muted-foreground"><%= t.papers.typeStats(type.standardsCount, type.mandatoryCount) %></span>
+            </span>
+          </label>
+          <% }) %>
+        </div>
+        <p class="help mt-1.5"><%= t.papers.typeLocked %></p>
+        <% } %>
+      </fieldset>
+      <p class="form-error" role="alert" hidden></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-variant="outline" data-action="close-dialog"><%= t.papers.cancel %></button>
+      <button type="submit" class="btn" <% if (!paperTypes.length) { %>disabled<% } %>><%= t.papers.create %></button>
+    </div>
+  </form>
+</dialog>
+<div hidden id="papers-strings" data-json="<%= JSON.stringify({ titleError: t.papers.titleError }) %>"></div>

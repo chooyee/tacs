@@ -1,0 +1,19 @@
+<%# One paper card (FR-PAP-01; All papers adds the owner, FR-PAP-07). `p` = a card from paper.service. %>
+<a class="tile paper-tile" href="/papers/<%= p.id %>">
+  <div class="tile-top">
+    <div class="min-w-0">
+      <span class="tile-name block break-words"><%= p.title %></span>
+      <% if (p.vendor) { %><span class="block text-[12.5px] text-muted-foreground"><%= p.vendor %></span><% } %>
+      <% if (locals.showOwner) { %><span class="block text-[12.5px] text-muted-foreground"><%= t.papers.by(p.ownerName) %></span><% } %>
+    </div>
+    <span class="ttag"><%= p.paperTypeName %></span>
+  </div>
+  <div><span class="pill" data-kind="<%= p.readiness.pill.kind %>"><%= p.readiness.pill.text %></span></div>
+  <progress class="bar" max="<%= Math.max(1, p.readiness.total) %>" value="<%= p.readiness.answered %>" data-full="<%= p.percent === 100 %>"
+            aria-label="<%= p.readiness.answered %>/<%= p.readiness.total %> <%= t.papers.answered %>"></progress>
+  <div class="tile-meta">
+    <span><b><%= p.readiness.answered %>/<%= p.readiness.total %></b> <%= t.papers.answered %></span>
+    <span><b><%= p.readiness.mandatoryMet %>/<%= p.readiness.mandatory %></b> <%= t.papers.mandatoryMet %></span>
+    <span><%= p.aiChecked ? t.papers.aiChecked : t.papers.notAiChecked %></span>
+  </div>
+</a>

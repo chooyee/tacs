@@ -2,7 +2,7 @@
 
 /**
  * Entry point: starts the HTTP server and shuts down cleanly (docs/09 §4).
- * In M4 the check worker is started and stopped here too.
+ * The background check worker (docs/04 §7) is started and stopped here too.
  */
 let config;
 let logger;
@@ -18,10 +18,12 @@ try {
 const db = require('./utils/db');
 const { createApp } = require('./app');
 const setupService = require('./services/setup.service');
+const { createWorker } = require('./workers/checkWorker');
 
 const SHUTDOWN_TIMEOUT_MS = 30_000;
 let server;
 let app;
+let worker;
 let shuttingDown = false;
 
 /**
@@ -41,6 +43,7 @@ async function shutdown(code) {
 
   try {
     if (server) await new Promise((resolve) => server.close(resolve));
+    await worker?.stop(); // stop claiming checks; running ones get up to 30 s
     app?.sessionStore?.close?.(); // stops connect-pg-simple's prune timer
     await db.close();
   } catch (err) {
@@ -90,6 +93,9 @@ async function start() {
   server.keepAliveTimeout = 65_000;
   server.headersTimeout = 66_000;
   logger.info({ port: config.port, baseUrl: config.baseUrl }, 'Paper Standards Check is running');
+
+  worker = createWorker({ log: logger });
+  worker.start();
 
   // First start: create the admin from ADMIN_BOOTSTRAP_* or print the /setup token (D-27). Last, so
   // the token is the newest line in the console.

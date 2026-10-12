@@ -19,7 +19,8 @@ function friendly(handler, maxMb) {
         return next(new FileRejectedError(`The file is larger than ${maxMb} MB.`, 413, 'FILE_TOO_LARGE'));
       }
       if (err instanceof multer.MulterError) {
-        return next(new ValidationError('The upload could not be read. Send one file in the "file" field.'));
+        const tooMany = err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE';
+        return next(new ValidationError(tooMany ? 'Attach at most 3 files.' : 'The upload could not be read.'));
       }
       return next(err);
     });
@@ -38,4 +39,17 @@ const referenceFileUpload = friendly(
   config.uploads.maxReferenceMb,
 );
 
-module.exports = { referenceFileUpload };
+/**
+ * 1–3 paper PDFs in the field `files` (FR-AI-02), kept in memory (≤ 20 MB each by default) and
+ * checked by check.service (type by content, pages, encryption) before they go to S3.
+ * @type {import('express').RequestHandler}
+ */
+const paperFilesUpload = friendly(
+  multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: config.uploads.maxPaperMb * MB, files: 3, fields: 0 },
+  }).array('files', 3),
+  config.uploads.maxPaperMb,
+);
+
+module.exports = { referenceFileUpload, paperFilesUpload };

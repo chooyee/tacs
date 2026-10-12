@@ -1,0 +1,167 @@
+<%# The paper page (docs/03 §3.2, FR-ANS, FR-RDY, FR-REF-03) and its read-only view for non-owners
+    (§3.2b, FR-PAP-08). The server renders the structure; public/js/pages/paper.js keeps the live
+    parts (pills, chips, filters, readiness, progress) up to date using the shared readiness rules. %>
+<%
+  const remarkPlaceholder = (v) => v === 'no' ? t.paper.remarkNo : v === 'na' ? t.paper.remarkNa : t.paper.remarkYes;
+  const answerLabel = { yes: t.paper.yes, no: t.paper.no, na: t.paper.na };
+%>
+<div id="paper-page" data-state="<%= JSON.stringify(client) %>"
+     data-strings="<%= JSON.stringify({
+       filters: t.paper.filters, toFix: t.paper.toFix('{n}'), complete: t.paper.complete, doneOf: t.paper.doneOf('{done}', '{total}'),
+       readyTitle: t.paper.readyTitle, readyText: t.paper.readyText, notReadyTitle: t.paper.notReadyTitle,
+       notReadyOne: t.paper.notReadyText(1), notReadyMany: t.paper.notReadyText(2).replace('2', '{n}'),
+       aiTip: t.paper.aiTip, aiTipLater: t.paper.aiTipLater, answered: t.papers.answered, mandatoryMet: t.papers.mandatoryMet,
+       remarkYes: t.paper.remarkYes, remarkNo: t.paper.remarkNo, remarkNa: t.paper.remarkNa,
+       errorNo: t.paper.errorNo, errorNa: t.paper.errorNa, saving: t.paper.saving, saved: t.paper.saved, notSaved: t.paper.notSaved,
+       answerFailed: t.paper.answerFailed, titleRequired: t.paper.titleRequired, confirmDelete: t.paper.confirmDelete,
+       expand: t.paper.expand, collapse: t.paper.collapse
+     }) %>">
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a class="inline-flex items-center gap-1" href="<%= isOwner ? '/papers' : '/papers?tab=all' %>"><%- include('../../partials/icon', { name: 'arrowLeft', cls: 'size-3.5' }) %> <%= isOwner ? t.paper.back : t.paper.backAll %></a>
+  </nav>
+
+  <% if (!isOwner) { %>
+  <div class="banner mb-4" role="status"><%- include('../../partials/icon', { name: 'info' }) %><span><%= t.paper.readOnly(paper.ownerName) %></span></div>
+  <% } %>
+
+  <div class="page-head">
+    <div class="min-w-0 flex-1 basis-64">
+      <% if (isOwner) { %>
+      <input class="title-input w-full" id="paper-title" data-paper-field="title" value="<%= paper.title %>" minlength="3" maxlength="150" aria-label="<%= t.paper.titleLabel %>" autocomplete="off">
+      <input class="sub-input w-full" id="paper-vendor" data-paper-field="vendor" value="<%= paper.vendor || '' %>" maxlength="150" placeholder="<%= t.paper.vendorPlaceholder %>" aria-label="<%= t.paper.vendorLabel %>" autocomplete="off">
+      <% } else { %>
+      <h1 class="page-title break-words"><%= paper.title %></h1>
+      <% if (paper.vendor) { %><p class="page-sub"><%= paper.vendor %></p><% } %>
+      <% } %>
+    </div>
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="save-state" data-state="idle" role="status" aria-live="polite" id="paper-save-state"></span>
+      <span class="ttag"><%= t.paper.typeTag(paper.paperTypeName) %></span>
+      <span class="pill" id="head-pill" data-kind="<%= readiness.pill.kind %>"><%= readiness.pill.text %></span>
+      <% if (isOwner) { %>
+      <button type="button" class="btn text-danger" data-variant="outline" data-size="sm" data-action="delete-paper"><%- include('../../partials/icon', { name: 'trash' }) %> <%= t.paper.delete %></button>
+      <% } %>
+    </div>
+  </div>
+
+  <%# Sticky section bar (FR-ANS-08/09): chips per section + filters with live counts. %>
+  <div class="secbar" id="secbar">
+    <nav class="chips" aria-label="<%= t.paper.sectionsNav %>">
+      <% for (const section of sections) { %>
+      <button type="button" class="chip sec-chip" data-action="jump-section" data-section-id="<%= section.id %>" title="<%= section.letter %>. <%= section.title %>">
+        <span class="chip-key"><%= section.letter %></span><span class="chip-name"><%= section.title.length > 26 ? section.title.slice(0, 25) + '…' : section.title %></span><span class="chip-count"></span>
+      </button>
+      <% } %>
+    </nav>
+    <div class="seg" role="group" aria-label="<%= t.paper.show %>">
+      <% for (const [key, label] of Object.entries(t.paper.filters)) { %>
+      <button type="button" data-action="filter" data-filter="<%= key %>" aria-pressed="<%= key === 'all' %>"><%= label %> <b class="filter-count"></b></button>
+      <% } %>
+    </div>
+  </div>
+
+  <div class="paper-layout">
+    <div class="grid min-w-0 content-start gap-4" id="paper-form">
+      <div class="legend">
+        <span><b><%= t.paper.yes %></b> <%= t.paper.legendYes %></span>
+        <span><b><%= t.paper.no %></b> <%= t.paper.legendNo %></span>
+        <span><b><%= t.paper.na %></b> <%= t.paper.legendNa %></span>
+        <span><span class="mtag"><%= t.paper.mandatory %></span> <%= t.paper.legendMandatory %></span>
+        <span><span aria-hidden="true"><%= Object.values(t.referenceIcons).join('') %></span> <%= t.paper.legendRefs %></span>
+      </div>
+
+      <% for (const section of sections) { %>
+      <section class="panel paper-section scroll-target" id="sec-<%= section.id %>" data-section-id="<%= section.id %>" aria-labelledby="sec-title-<%= section.id %>">
+        <header class="psec-head">
+          <button type="button" class="icon-btn collapse-btn" data-action="toggle-section" aria-expanded="true" aria-controls="sec-body-<%= section.id %>"
+                  aria-label="<%= t.paper.collapse %> <%= section.letter %>. <%= section.title %>"><%- include('../../partials/icon', { name: 'down' }) %></button>
+          <span class="section-letter"><%= section.letter %></span>
+          <div class="min-w-0 flex-1">
+            <h2 class="psec-title" id="sec-title-<%= section.id %>"><%= section.letter %>. <%= section.title %></h2>
+            <p class="text-xs text-muted-foreground"><%= t.paper.sectionStats(section.standards.length, section.mandatoryCount) %></p>
+          </div>
+          <span class="pill" data-kind="fix" data-role="warn" hidden></span>
+          <span class="pill" data-role="done"></span>
+        </header>
+        <div class="psec-body" id="sec-body-<%= section.id %>">
+          <% for (const s of section.standards) { const a = s.answer; %>
+          <div class="answer-row scroll-target" id="std-<%= s.id %>" data-standard-id="<%= s.id %>" data-value="<%= a.value || '' %>">
+            <span class="std-number"><%= s.number %></span>
+            <div class="min-w-0">
+              <div class="answer-title"><%= s.title %><% if (s.isMandatory) { %> <span class="mtag"><%= t.paper.mandatory %></span><% } %></div>
+              <% if (s.descriptionHtml) { %><%- include('../../partials/richText', { html: s.descriptionHtml, cls: 'answer-desc' }) %><% } %>
+              <% if (s.references.length) { %>
+              <div class="refs">
+                <% for (const r of s.references) { %>
+                <button type="button" class="ref-chip" data-action="view-reference" data-reference-id="<%= r.id %>" title="<%= r.note || r.title %>">
+                  <span aria-hidden="true"><%= t.referenceIcons[r.type] %></span><span class="font-semibold"><%= r.type %></span><span class="t"><%= r.title %></span>
+                </button>
+                <% } %>
+              </div>
+              <% } %>
+              <% if (isOwner) { %>
+              <div class="remark-line">
+                <input class="input remark" type="text" maxlength="2000" data-remark value="<%= a.remark %>"
+                       placeholder="<%= remarkPlaceholder(a.value) %>" aria-label="<%= t.paper.remarkLabel(s.number) %>"
+                       aria-describedby="err-<%= s.id %>">
+                <span class="remark-state" role="status" aria-live="polite"></span>
+              </div>
+              <p class="remark-error" id="err-<%= s.id %>"><%= a.value === 'na' ? t.paper.errorNa : t.paper.errorNo %></p>
+              <% } else { %>
+              <p class="remark-text"><%= a.remark || t.paper.noRemark %></p>
+              <% } %>
+              <%# The AI result line (FR-AI-07), filled by paper.js from the latest check. %>
+              <div class="ai-line" hidden></div>
+            </div>
+            <% if (isOwner) { %>
+            <div class="yn" role="group" aria-label="<%= t.paper.answerGroup(s.number) %>">
+              <% for (const v of ['yes', 'no', 'na']) { %>
+              <button type="button" data-action="answer" data-value="<%= v %>" aria-pressed="<%= a.value === v %>"><%= answerLabel[v] %></button>
+              <% } %>
+            </div>
+            <% } else { %>
+            <span class="answer-badge" data-value="<%= a.value || '' %>"><%= a.value ? answerLabel[a.value] : t.paper.notAnswered %></span>
+            <% } %>
+          </div>
+          <% } %>
+          <div class="filter-note" hidden>
+            <span><%= t.paper.nothingHere %></span>
+            <button type="button" class="btn" data-variant="outline" data-size="sm" data-action="show-all"><%= t.paper.showAll %></button>
+          </div>
+        </div>
+      </section>
+      <% } %>
+    </div>
+
+    <aside class="paper-side" aria-label="<%= t.paper.progress %>">
+      <div class="panel ready-card" id="ready-card" aria-live="polite"></div>
+      <div class="panel p-4">
+        <h3 class="side-title"><%= t.paper.progress %></h3>
+        <progress class="bar" id="progress-bar" max="1" value="0"></progress>
+        <div class="tile-meta mt-2" id="progress-stats"></div>
+      </div>
+      <div class="panel p-4">
+        <h3 class="side-title"><%= t.paper.aiTitle %></h3>
+        <div id="ai-card"><p class="text-[13px] text-muted-foreground"><%= t.paper.aiNotYet %></p></div>
+      </div>
+      <div class="panel p-4">
+        <h3 class="side-title"><%= t.paper.referencesFor(paper.paperTypeName) %></h3>
+        <% if (!references.length) { %>
+        <p class="text-[13px] text-muted-foreground"><%= t.paper.noReferences %></p>
+        <% } else { %>
+        <ul class="side-refs">
+          <% for (const r of references) { %>
+          <li><button type="button" data-action="view-reference" data-reference-id="<%= r.id %>">
+            <span aria-hidden="true"><%= t.referenceIcons[r.type] %></span>
+            <span class="min-w-0"><%= r.title %><span class="side-ref-meta"><%= r.type %><% if (r.note) { %> · <%= r.note %><% } %></span></span>
+          </button></li>
+          <% } %>
+        </ul>
+        <% } %>
+      </div>
+    </aside>
+  </div>
+</div>
+<%- include('../../partials/papers/checker', { isOwner }) %>
+<%- include('../../partials/papers/compareDialog') %>
+<%- include('../../partials/referenceViewer') %>

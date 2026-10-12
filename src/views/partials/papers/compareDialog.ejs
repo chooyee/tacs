@@ -1,0 +1,29 @@
+<%# Compare side by side (docs/03 §3.4, FR-AI-11): the paper page and the reference page, each with a
+    highlight over the area the AI used. Filled by public/js/lib/compare.js. %>
+<dialog class="dialog" id="compare-dialog" aria-labelledby="cmp-title">
+  <div class="dlg wide">
+    <div class="dlg-head">
+      <h2 id="cmp-title"></h2>
+      <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('../icon', { name: 'close' }) %></button>
+    </div>
+    <div class="grid gap-3 p-4">
+      <p id="cmp-finding" class="text-[13.5px]"></p>
+      <div class="cmp-grid">
+        <figure class="cmp-col">
+          <figcaption id="cmp-paper-label" class="cmp-label"></figcaption>
+          <div class="cmp-page" id="cmp-paper"></div>
+        </figure>
+        <figure class="cmp-col">
+          <figcaption id="cmp-ref-label" class="cmp-label"></figcaption>
+          <div class="cmp-page" id="cmp-ref"></div>
+        </figure>
+      </div>
+      <p class="text-xs text-muted-foreground"><%= t.checker.caption %></p>
+    </div>
+    <div class="dlg-foot">
+      <button type="button" class="btn" data-variant="outline" data-action="cmp-open-reference"><%= t.checker.openReference %></button>
+      <button type="button" class="btn" data-variant="outline" data-action="cmp-goto"></button>
+      <button type="button" class="btn" data-action="cmp-apply" hidden></button>
+    </div>
+  </div>
+</dialog>

@@ -1,8 +1,7 @@
 'use strict';
 
 /**
- * Simple pages that need no service yet. In M3 the papers page moves to paper.controller with a
- * real view model.
+ * Simple pages that need no service. The papers pages live in paper.controller.
  */
 
 /**
@@ -16,15 +15,4 @@ function home(req, res) {
   res.redirect(adminMode ? '/admin/types' : '/papers');
 }
 
-/** GET /papers — "My papers" (empty until M3). `?tab=all` selects the All papers tab. */
-function papers(req, res) {
-  const tab = req.query.tab === 'all' ? 'all' : 'mine';
-  res.render('layouts/main', {
-    page: 'pages/papers/index',
-    title: res.locals.t.papers.heading,
-    tab,
-    papers: [],
-  });
-}
-
-module.exports = { home, papers };
+module.exports = { home };

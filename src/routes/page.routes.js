@@ -7,17 +7,22 @@ const { requireAuth } = require('../middleware/requireAuth');
 const { requireRole } = require('../middleware/requireRole');
 const { rememberMode } = require('../middleware/rememberMode');
 const pages = require('../controllers/page.controller');
+const paperPages = require('../controllers/paper.controller');
 const adminUsers = require('../controllers/admin/user.controller');
 const paperTypes = require('../controllers/admin/paperType.controller');
 const libraryPages = require('../controllers/admin/reference.controller');
 const standardPages = require('../controllers/admin/structure.controller');
 const { redirectToSetupWhileNoAdmin } = require('../middleware/setupGate');
 const v = require('../validators/admin.validators');
+const pv = require('../validators/paper.validators');
 
 // HTML pages (docs/06 §2). Everything here needs sign-in (FR-ACC-01).
 // On first start (no administrator yet) the start page is /setup, like Keycloak's welcome page.
 router.get('/', redirectToSetupWhileNoAdmin, requireAuth, pages.home);
-router.get('/papers', requireAuth, requireRole('Architect'), rememberMode('architect'), pages.papers);
+// Papers (FR-PAP, FR-ANS): every architect may open any paper; only the owner can change it.
+const architect = [requireAuth, requireRole('Architect'), rememberMode('architect')];
+router.get('/papers', ...architect, validate(pv.listPapers), asyncHandler(paperPages.index));
+router.get('/papers/:paperId', ...architect, validate(pv.paperId), asyncHandler(paperPages.show));
 
 // Admin pages (FR-ACC-04, D-32)
 const admin = [requireAuth, requireRole('Admin'), rememberMode('admin')];

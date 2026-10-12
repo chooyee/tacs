@@ -93,13 +93,13 @@ available (FR-RDY-05). It is never a gap.
 
 | Method | Path | Body | Response `data` |
 |--------|------|------|-----------------|
-| POST | `/api/papers/:paperId/checks` | multipart `files[]` (1–3 PDFs) | `{ checkId, status:"queued" }` (202). 409 `CHECK_RUNNING` if one is active. |
-| POST | `/api/papers/:paperId/checks/rerun` | — | Same as above, re-using the current documents. 409 if none. |
-| GET | `/api/checks/:checkId` | — | `{ id, status, step, totalSteps:4, stepLabels:[…], errorMessage? }` — the polling endpoint (cheap, no joins). |
-| GET | `/api/papers/:paperId/checks/latest` | — | `{ check:{id, finishedAt, provider, model, documents:[{id,fileName,pageCount}]}, counts:{comply,partial,gap,none}, results:[{standardId, verdict, page, documentId, area, bbox, finding, referenceId, referencePage, issue:{level,message}\|null, kept}] }`, or `null` if never checked. |
-| POST | `/api/papers/:paperId/results/:standardId/apply` | — | `{ answer, readiness }` — FR-AI-09 |
-| POST | `/api/papers/:paperId/results/:standardId/keep` | — | `{ readiness }` — FR-AI-10 |
-| POST | `/api/papers/:paperId/results/apply-unanswered` | — | `{ filled: 5, readiness }` |
+| POST | `/api/papers/:paperId/checks` | multipart `files[]` (1–3 PDFs) | `{ checkId, status:"queued", skipped:[names] }` (202). Non-PDF files are skipped and named; only non-PDFs → 415. 409 `CHECK_RUNNING` if one is active; 429 `RATE_LIMITED` above 10 per user per hour. |
+| POST | `/api/papers/:paperId/checks/rerun` | — | Same as above, re-using the current documents. 409 `NO_DOCUMENTS` if they were removed. |
+| GET | `/api/checks/:checkId` | — | `{ id, paperId, status, step, totalSteps:4, stepLabels:[…], errorMessage? }` — the polling endpoint. |
+| GET | `/api/papers/:paperId/checks/latest` | — | `{ check:{id, finishedAt, provider, model, documents:[{id,fileName,pageCount,createdAt}], pdfsAvailable}, counts:{comply,partial,gap,none}, results:[{standardId, verdict, page, documentId, area, bbox, finding, referenceId, referencePage, issue:{level,message}\|null, kept, suggested}], standardsChanged }`, or `null` if never checked (D-40). |
+| POST | `/api/papers/:paperId/results/:standardId/apply` | — | `{ answer, readiness, sectionStatus, latest }` — FR-AI-09 |
+| POST | `/api/papers/:paperId/results/:standardId/keep` | — | `{ readiness, sectionStatus, latest }` — FR-AI-10 |
+| POST | `/api/papers/:paperId/results/apply-unanswered` | — | `{ filled: 5, answers, readiness, latest }` |
 
 ### Chat
 
@@ -115,7 +115,7 @@ available (FR-RDY-05). It is never a gap.
 |--------|------|-----|-------|
 | GET | `/files/documents/:documentId` | Any signed-in user (until the PDF expires after 7 days → 404 `DOCUMENT_EXPIRED`) | `Content-Type: application/pdf`, `Content-Disposition: inline`, `Cache-Control: private, max-age=300`. |
 | GET | `/files/references/:referenceId` | Any signed-in user | Same headers, with the reference's MIME type. |
-| GET | `/api/references/:referenceId` | Any signed-in user | Reference viewer data (FR-REF-02): `{ id, type, title, note, url, mimeType, pageCount, fileUrl, usedFor: [{id, number, text}] }`. |
+| GET | `/api/references/:referenceId` | Any signed-in user | Reference viewer data (FR-REF-02): `{ id, type, title, note, links: [{label, url}], mimeType, pageCount, fileUrl, usedFor: [{id, number, title, paperTypeName}] }`. |
 
 ## 4. Admin API (role `Admin`)
 
@@ -161,8 +161,8 @@ available (FR-RDY-05). It is never a gap.
 
 | Method | Path | Body | Notes |
 |--------|------|------|-------|
-| POST | `/api/admin/references` | multipart: `type, title, url?, guidance?, file` | Shared library (D-37). File required. PDF / PNG / JPG ≤ 15 MB. |
-| PATCH | `/api/admin/references/:referenceId` | multipart (all fields optional; a new `file` replaces the old one) | The old S3 object is deleted after the DB commit. |
+| POST | `/api/admin/references` | multipart: `type, title, guidance?, links?, file` | Shared library (D-37). File required. PDF / PNG / JPG ≤ 15 MB. `links` is a JSON string `[{"label","url"}]` (≤ 10, `https://` only, D-39); the order is kept and the first is the main link. Field errors use paths like `links.1.url`. |
+| PATCH | `/api/admin/references/:referenceId` | multipart (all fields optional; a new `file` replaces the old one; `links`, when sent, replaces all links) | The old S3 object is deleted after the DB commit. |
 | DELETE | `/api/admin/references/:referenceId` | — | Soft delete; links hidden. |
 | POST | `/api/admin/references/:referenceId/restore` | — | Undo (links come back). |
 

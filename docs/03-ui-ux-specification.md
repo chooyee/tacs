@@ -118,6 +118,11 @@ Behaviour details:
   roll back with a toast if the API call fails.
 - **Side panel** order: readiness card (with the optional AI tip, FR-RDY-05) →
   progress → AI check summary → references list.
+- (M3) A section with no standards is left out of the paper page, and the letters
+  run A, B, C… over the sections shown. The AI-check card says the checker arrives
+  with M4 until then. "Collapse" is kept in `sessionStorage` (this tab only).
+- (M3) *All papers* search and type filter are a plain GET form (`?tab=all&q=&typeId=&page=`),
+  so the URL is shareable; choosing a type submits at once.
 
 ### 3.2b Read-only paper view (non-owner)
 
@@ -174,8 +179,8 @@ Behaviour details:
 ### 3.5 Reference viewer dialog
 
 - Left: preview of page 1 (PDF via pdf.js with page next/previous) or the
-  image. Right: type badge, note, "Used for" list of standards, **Open
-  official document ↗** (only if a link exists).
+  image. Right: type badge, note, "Used for" list of standards, **Links** (D-39:
+  the first is a button, the others smaller links; hidden when there are none).
 
 ### 3.6 Admin — Paper types (`/admin/types`)
 
@@ -210,6 +215,13 @@ Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02.
 - (D-37) **References** (Admin tab): library list with search + type filter; full-screen reference
   page with type cards, title, file drop zone (current file + preview), link, guidance editor, and
   "Used by" per paper type.
+- (D-39) The full-screen reference form has three blocks in one panel — **About** (type cards with a
+  one-line hint, title with counter, Description editor with word count), **File** (file card with
+  Preview / remove-new-file, a slim "replace" drop zone under it) and **Reference links** (rows of
+  label + address with drag handle, number, MAIN tag on the first, ↑ ↓, open ↗, delete with Undo;
+  "Add link", max 10). Side column: **How architects see it** (chip + hover card, live), **Ready to
+  save** checklist, **Used by**. Errors appear under each field after leaving it or after Save;
+  the sticky bar shows "Unsaved changes".
 - (D-36) Add / Edit reference: type as four icon cards, file as a drop zone showing the chosen
   file, note with a character counter. Edit standard: text with counter, Mandatory as a highlighted
   check card, references grouped by type with a filter and "N selected" (warning above 4).

@@ -18,6 +18,10 @@
   <script src="/vendor/basecoat/basecoat.min.js?v=<%= assetVersion %>" defer></script>
   <script src="/vendor/basecoat/dropdown-menu.min.js?v=<%= assetVersion %>" defer></script>
   <script type="module" src="/js/lib/topbar.js?v=<%= assetVersion %>"></script>
+  <% if (locals.usesReadinessRules) { %>
+  <%# The readiness rules shared with the server (docs/04 §6): a classic script → window.readinessRules. %>
+  <script src="/js/shared/readinessRules.js?v=<%= assetVersion %>"></script>
+  <% } %>
   <% if (locals.pageScript) { %>
   <script type="module" src="/js/pages/<%= pageScript %>.js?v=<%= assetVersion %>"></script>
   <% } %>

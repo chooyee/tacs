@@ -19,11 +19,14 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "seed": "node db/seed/seed.js",
-    "test:e2e": "npm run build && node --env-file=tests/test.env --env-file-if-exists=tests/test.local.env --test --test-concurrency=1 \"tests/e2e/**/*.e2e.js\""
+    "test:e2e": "npm run build && node --env-file=tests/test.env --env-file-if-exists=tests/test.local.env --test --test-concurrency=1 \"tests/e2e/**/*.e2e.js\"",
+    "ai:smoke": "node scripts/aiSmoke.js"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1149.0",
     "@aws-sdk/client-s3": "^3.1149.0",
     "@azure/msal-node": "^7.0.1",
+    "@google/genai": "^2.28.0",
     "connect-pg-simple": "^10.0.0",
     "ejs": "^7.0.1",
     "express": "^4.22.3",
