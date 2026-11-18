@@ -9,16 +9,29 @@ const { query, toCamel } = require('../utils/db');
 const COLUMNS = `id, type, title, note, guidance_html, s3_key, file_name, mime_type, size_bytes,
   page_count, created_at, updated_at, updated_by, deleted_at`;
 
-/** Count of visible standards linking to a reference, and of paper types they belong to. */
+/**
+ * Versions that count as "in use" (D-45): each type's newest published version and its open draft.
+ * Older published versions still show their references, but are not counted.
+ */
+const CURRENT_VERSION = `
+  (v.status = 'draft' or v.number = (select max(x.number) from paper_type_versions x
+                                      where x.paper_type_id = v.paper_type_id and x.status = 'published'))`;
+
+/**
+ * Count of visible standards linking to a reference (a standard in both the draft and the published
+ * version counts once, by lineage), and of paper types they belong to.
+ */
 const USAGE = `
-  (select count(*)::int from standard_references sr
+  (select count(distinct s.lineage_id)::int from standard_references sr
      join standards s on s.id = sr.standard_id and s.deleted_at is null
      join sections sec on sec.id = s.section_id and sec.deleted_at is null
+     join paper_type_versions v on v.id = sec.version_id and ${CURRENT_VERSION}
      join paper_types t on t.id = sec.paper_type_id and t.deleted_at is null
     where sr.reference_id = r.id) as linked_count,
   (select count(distinct sec.paper_type_id)::int from standard_references sr
      join standards s on s.id = sr.standard_id and s.deleted_at is null
      join sections sec on sec.id = s.section_id and sec.deleted_at is null
+     join paper_type_versions v on v.id = sec.version_id and ${CURRENT_VERSION}
      join paper_types t on t.id = sec.paper_type_id and t.deleted_at is null
     where sr.reference_id = r.id) as type_count`;
 
@@ -38,11 +51,12 @@ async function listAll() {
 }
 
 /**
- * The references linked from a paper type's standards (the "used here" list in the type editor).
- * @param {string} paperTypeId
+ * The references linked from the standards of one paper type version (the "used here" list in the
+ * type editor, the paper page's side panel).
+ * @param {string} versionId
  * @returns {Promise<object[]>}
  */
-async function listUsedByType(paperTypeId) {
+async function listUsedByVersion(versionId) {
   const { rows } = await query(
     `select r.id, r.type, r.title, r.note, r.mime_type, r.updated_at, r.updated_by,
             count(*)::int as linked_count
@@ -51,10 +65,10 @@ async function listUsedByType(paperTypeId) {
        join sections sec on sec.id = s.section_id and sec.deleted_at is null
        join standard_references sr on sr.reference_id = r.id
                                   and sr.standard_id = coalesce(s.source_standard_id, s.id) -- live links (D-38)
-      where sec.paper_type_id = $1 and r.deleted_at is null
+      where sec.version_id = $1 and r.deleted_at is null
       group by r.id
       order by lower(r.title)`,
-    [paperTypeId],
+    [versionId],
   );
   return rows.map(toCamel);
 }
@@ -186,7 +200,7 @@ async function restore(id, updatedBy) {
 
 /**
  * The (non-deleted) standards a reference applies to, grouped by paper type and numbered like on
- * the paper (FR-REF-02 "Used for").
+ * the paper (FR-REF-02 "Used for"). Only each type's newest published version counts (D-45).
  * @param {string} id
  * @returns {Promise<Array<{id, title, number, paperTypeId, paperTypeName}>>}
  */
@@ -198,6 +212,9 @@ async function listLinkedStandards(id) {
                                   order by sec.position, sec.created_at, s.position, s.created_at)::int as number
          from standards s
          join sections sec on sec.id = s.section_id and sec.deleted_at is null
+         join paper_type_versions v on v.id = sec.version_id and v.status = 'published'
+          and v.number = (select max(x.number) from paper_type_versions x
+                           where x.paper_type_id = v.paper_type_id and x.status = 'published')
          join paper_types t on t.id = sec.paper_type_id and t.deleted_at is null
         where s.deleted_at is null)
      select n.* from numbered n
@@ -256,7 +273,7 @@ module.exports = {
   replaceLinks,
   listAllForPicker,
   listAll,
-  listUsedByType,
+  listUsedByVersion,
   listOptions,
   findById,
   countExisting,

@@ -14,7 +14,7 @@
         <label for="im-type"><%= t.importDialog.from %></label>
         <select class="select w-full" id="im-type">
           <option value=""><%= t.importDialog.choose %></option>
-          <% for (const other of otherTypes) { %><option value="<%= other.id %>"><%= other.name %></option><% } %>
+          <% for (const other of otherTypes) { %><option value="<%= other.id %>"><%= other.name %> · v<%= other.number %></option><% } %>
         </select>
       </div>
       <div class="field" id="im-tree-field" hidden>

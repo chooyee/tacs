@@ -1,15 +1,20 @@
 <%# Reference viewer (FR-REF-02, docs/03 §3.5), shared by the admin editor and (M3) the paper page.
-    Filled by public/js/lib/referenceViewer.js from GET /api/references/:id. %>
+    Filled by public/js/lib/referenceViewer.js from GET /api/references/:id. It can be maximised to
+    fill the window, links to the file itself, and says when and by whom it was last edited (D-44). %>
 <dialog class="dialog" id="reference-viewer" aria-labelledby="rv-title"
-        data-strings="<%= JSON.stringify({ usedFor: t.viewer.usedFor, noStandards: t.viewer.noStandards, loading: t.viewer.loading, failed: t.viewer.failed, pageOf: t.viewer.page('{n}', '{of}'), icons: t.referenceIcons }) %>">
-  <div class="dlg wide">
+        data-strings="<%= JSON.stringify({ usedFor: t.viewer.usedFor, noStandards: t.viewer.noStandards, loading: t.viewer.loading, failed: t.viewer.failed, pageOf: t.viewer.page('{n}', '{of}'), icons: t.referenceIcons, maximize: t.viewer.maximize, restore: t.viewer.restore, editedLabel: t.edited.label, editedBy: t.edited.by('{name}') }) %>">
+  <div class="dlg wide rv-dlg">
     <div class="dlg-head">
-      <h2 id="rv-title"></h2>
+      <h2 id="rv-title" class="min-w-0 flex-1 truncate"></h2>
+      <button type="button" class="icon-btn" data-action="rv-maximize" aria-pressed="false" aria-label="<%= t.viewer.maximize %>" title="<%= t.viewer.maximize %>">
+        <span data-rv-icon="maximize"><%- include('icon', { name: 'maximize' }) %></span>
+        <span data-rv-icon="minimize" hidden><%- include('icon', { name: 'minimize' }) %></span>
+      </button>
       <button type="button" class="icon-btn" data-action="close-dialog" aria-label="<%= t.viewer.close %>"><%- include('icon', { name: 'close' }) %></button>
     </div>
-    <div class="dlg-body md:grid-cols-[1fr_280px]">
+    <div class="dlg-body rv-body md:grid-cols-[1fr_280px]">
       <div>
-        <div class="viewer-preview">
+        <div class="viewer-preview" id="rv-preview">
           <canvas id="rv-canvas" hidden></canvas>
           <img id="rv-image" alt="" hidden>
           <p id="rv-status" class="text-[13px] text-muted-foreground"></p>
@@ -23,6 +28,17 @@
       <div class="grid content-start gap-3">
         <span id="rv-type" class="ttag w-fit"></span>
         <p id="rv-note" class="text-[13.5px]"></p>
+        <%# The file itself (D-44): opens in a new tab (served inline by /files/references/:id) or downloads. %>
+        <div>
+          <h3 class="mb-1 text-[11px] font-bold tracking-wide text-muted-foreground uppercase"><%= t.viewer.file %></h3>
+          <div class="rv-file">
+            <a id="rv-file-link" class="link-btn min-w-0" target="_blank" rel="noopener" title="<%= t.viewer.openFile %>">
+              <%- include('icon', { name: 'file' }) %> <span id="rv-file-name" class="truncate"></span>
+            </a>
+            <span id="rv-file-size" class="text-xs whitespace-nowrap text-muted-foreground tabular-nums"></span>
+            <a id="rv-file-download" class="icon-btn" download aria-label="<%= t.viewer.download %>" title="<%= t.viewer.download %>"><%- include('icon', { name: 'download' }) %></a>
+          </div>
+        </div>
         <div>
           <h3 class="mb-1 text-[11px] font-bold tracking-wide text-muted-foreground uppercase"><%= t.viewer.usedFor %></h3>
           <ul id="rv-used" class="grid gap-1 text-[13px]"></ul>
@@ -33,6 +49,7 @@
           <div id="rv-links" class="grid justify-items-start gap-1.5"></div>
         </div>
         <template id="rv-link-tpl"><a target="_blank" rel="noopener noreferrer"><%- include('icon', { name: 'external' }) %> <span></span></a></template>
+        <p id="rv-edited" class="edited border-t pt-2" hidden></p>
       </div>
     </div>
   </div>

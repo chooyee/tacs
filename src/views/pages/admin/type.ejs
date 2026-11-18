@@ -1,7 +1,13 @@
-<%# Paper type editor (docs/03 §3.7, FR-ADM-10…21, D-36, D-37). Behaviour: public/js/pages/adminType.js.
-    The two cards are partials, re-fetched from /admin/types/:id/cards/:card after each change. %>
+<%# Paper type editor (docs/03 §3.7, FR-ADM-10…21, D-36, D-37, D-45). Behaviour: public/js/pages/adminType.js.
+    Two modes (D-45): a published version is shown read-only with Edit; the draft (/draft) is edited
+    with autosave and has Cancel, Save and Publish. The two cards are partials, re-fetched from
+    /admin/types/:id/cards/:card after each change. %>
 <%- include('../../partials/admin/tabs') %>
-<div id="type-editor" data-type-id="<%= type.id %>"
+<%
+  const fmtDate = (d) => new Date(d).toISOString().slice(0, 10);
+  const nextNumber = (latestPublished ? latestPublished.number : 0) + 1;
+%>
+<div id="type-editor" data-type-id="<%= type.id %>" data-editable="<%= editable %>"
      data-reference-options="<%= JSON.stringify(referenceOptions.map((r) => ({ id: r.id, type: r.type, title: r.title, icon: t.referenceIcons[r.type] }))) %>"
      data-strings="<%= JSON.stringify({
   saving: t.adminType.saving, saved: t.adminType.saved, notSaved: t.adminType.notSaved,
@@ -11,7 +17,11 @@
   addStandard: t.adminType.addStandardLabel, tooMany: t.adminType.tooManyReferences,
   selected: t.adminType.selectedCount('{n}'), noMatch: t.adminType.noMatch,
   collapseAll: t.adminType.collapseAll, expandAll: t.adminType.expandAll,
-  importNone: t.importDialog.none, importResult: t.importDialog.resultImported, importSkipped: t.importDialog.resultSkipped
+  importNone: t.importDialog.none, importResult: t.importDialog.resultImported, importSkipped: t.importDialog.resultSkipped,
+  confirmCancel: latestPublished ? t.adminType.confirmCancel : t.adminType.confirmCancelNew,
+  confirmPublish: t.adminType.confirmPublish(nextNumber), publishedToast: t.adminType.publishedToast('{n}'),
+  draftSaved: t.adminType.draftSaved, cancelledToast: t.adminType.cancelledToast,
+  sectionsAll: t.paper.sectionsAll, sectionsSome: t.paper.sectionsSome('{shown}', '{total}')
 }) %>">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="/admin/types"><%= t.adminTypes.heading %></a>
@@ -21,14 +31,44 @@
 
   <div class="editor-head">
     <div class="editor-title">
+      <% if (editable) { %>
       <input class="title-input" type="text" data-field="name" value="<%= type.name %>" maxlength="80" required
              aria-label="<%= t.adminType.namePlaceholder %>" placeholder="<%= t.adminType.namePlaceholder %>">
       <textarea class="sub-input" data-field="description" maxlength="300" rows="1"
                 aria-label="<%= t.adminType.descriptionPlaceholder %>" placeholder="<%= t.adminType.descriptionPlaceholder %>"><%= type.description || '' %></textarea>
-      <div class="type-edited"><%- include('../../partials/edited', { at: type.updatedAt, by: type.updatedBy }) %></div>
+      <% } else { %>
+      <h1 class="page-title break-words"><%= type.name %></h1>
+      <p class="page-sub"><%= type.description || t.adminTypes.noDescription %></p>
+      <% } %>
+      <div class="type-edited">
+        <span class="version-badge" data-status="<%= version.status %>"><%= version.status === 'draft' ? t.adminType.draft : t.adminType.version(version.number) %></span>
+        <% if (version.status === 'published') { %>
+        <span class="edited"><%= t.adminType.published(fmtDate(version.publishedAt), version.publishedBy) %></span>
+        <% } else { %>
+        <%- include('../../partials/edited', { at: type.updatedAt, by: type.updatedBy }) %>
+        <% } %>
+      </div>
     </div>
     <div class="editor-actions">
+      <% if (editable) { %>
       <span class="save-state" data-state="idle" role="status" aria-live="polite"></span>
+      <button type="button" class="btn" data-variant="outline" data-action="cancel-draft"><%= t.adminType.cancelDraft %></button>
+      <button type="button" class="btn" data-variant="outline" data-action="save-draft"><%= t.adminType.save %></button>
+      <button type="button" class="btn" data-action="publish"><%= t.adminType.publish %></button>
+      <% } else { %>
+      <% if (versions.length > 1) { %>
+      <label class="sr-only" for="version-select"><%= t.adminType.versionLabel %></label>
+      <select class="select" id="version-select" data-action="choose-version">
+        <% for (const v of versions) { %>
+        <option value="<%= v.status === 'draft' ? 'draft' : v.number %>" <% if (v.id === version.id) { %>selected<% } %>>
+          <%= v.status === 'draft' ? t.adminType.draftOption : t.adminType.versionOption(v.number, v.papersCount) %>
+        </option>
+        <% } %>
+      </select>
+      <% } %>
+      <button type="button" class="btn" data-action="start-draft">
+        <%- include('../../partials/icon', { name: 'pencil' }) %> <%= draft ? t.adminType.continueEditing : t.adminType.edit %>
+      </button>
       <% if (papersInProgress > 0) { %>
       <span title="<%= t.adminType.inUse(papersInProgress) %>">
         <button type="button" class="btn text-danger" data-variant="outline" disabled aria-describedby="in-use-hint">
@@ -41,14 +81,38 @@
         <%- include('../../partials/icon', { name: 'trash' }) %> <%= t.adminType.deleteType %>
       </button>
       <% } %>
+      <% } %>
     </div>
   </div>
 
-  <div class="banner mb-4"><%- include('../../partials/icon', { name: 'info' }) %><span><%= t.adminType.banner(type.name, papersInProgress) %></span></div>
+  <% if (editable) { %>
+  <div class="banner banner-draft mb-4"><%- include('../../partials/icon', { name: 'pencil' }) %><span><%= t.adminType.draftBanner(latestPublished && latestPublished.number) %></span></div>
+  <% } else { %>
+  <div class="banner mb-4"><%- include('../../partials/icon', { name: 'info' }) %>
+    <span>
+      <%= latestPublished && version.number < latestPublished.number ? t.adminType.oldVersionBanner(version.number, latestPublished.number) : t.adminType.viewBanner(version.number, papersInProgress) %>
+      <% if (draft) { %> <b><%= t.adminType.draftOpenBy(draft.updatedBy) %></b><% } %>
+    </span>
+  </div>
+  <% } %>
 
-  <%# Sticky jump bar: chips are built by adminType.js from the sections on the page. %>
+  <%# Sticky bar: a "Sections" drop-down with a checkbox per section (shows / hides it, like the paper
+      page, D-43). The rows are built by adminType.js from the sections on the page. %>
   <nav class="jumpbar" aria-label="<%= t.adminType.jumpTo %>">
-    <div class="chips" id="jump-chips"></div>
+    <details class="sec-dd" id="sec-dd">
+      <summary class="btn" data-variant="outline" data-size="sm">
+        <%= t.paper.sectionsNav %>: <span id="sec-dd-label"><%= t.paper.sectionsAll %></span>
+        <%- include('../../partials/icon', { name: 'down', cls: 'size-3.5' }) %>
+      </summary>
+      <div class="sec-dd-menu" role="group" aria-label="<%= t.paper.sectionsNav %>">
+        <label class="sec-opt sec-opt-all">
+          <input type="checkbox" class="input" data-sec-toggle="all" checked>
+          <span class="flex-1 font-semibold"><%= t.paper.sectionsAll %></span>
+        </label>
+        <div id="sec-dd-options" class="grid gap-0.5"></div>
+      </div>
+    </details>
+    <span class="flex-1"></span>
     <button type="button" class="btn flex-none" data-variant="ghost" data-size="sm" data-action="toggle-all"><%= t.adminType.collapseAll %></button>
   </nav>
 
@@ -59,5 +123,5 @@
   </div>
 </div>
 
-<%- include('../../partials/admin/importDialog') %>
+<% if (editable) { %><%- include('../../partials/admin/importDialog') %><% } %>
 <%- include('../../partials/referenceViewer') %>

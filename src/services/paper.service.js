@@ -7,11 +7,16 @@
  */
 const paperModel = require('../models/paper.model');
 const paperTypeModel = require('../models/paperType.model');
+const versionModel = require('../models/paperTypeVersion.model');
 const sectionModel = require('../models/section.model');
+const standardModel = require('../models/standard.model');
 const referenceModel = require('../models/reference.model');
+const answerModel = require('../models/answer.model');
+const checkModel = require('../models/check.model');
 const readinessService = require('./readiness.service');
 const { letterFor } = require('./paperType.service');
-const { NotFoundError, NotOwnerError, ValidationError } = require('../utils/errors');
+const { withTransaction } = require('../utils/db');
+const { ConflictError, NotFoundError, NotOwnerError, ValidationError } = require('../utils/errors');
 
 /** Cards per page on "All papers" (FR-PAP-07). */
 const PAGE_SIZE = 24;
@@ -88,15 +93,18 @@ async function listAll({ search = '', paperTypeId = null, page = 1 }) {
 }
 
 /**
- * The paper types a new paper can use (FR-PAP-02): those with at least one standard.
- * @returns {Promise<Array<{id, name, description, standardsCount, mandatoryCount}>>}
+ * The paper types a new paper can use (FR-PAP-02): the newest PUBLISHED version of each type with at
+ * least one standard (D-45: drafts are never offered).
+ * @returns {Promise<Array<{id, versionId, versionNumber, name, description, standardsCount, mandatoryCount}>>}
  */
 async function listPaperTypeOptions() {
-  const types = await paperTypeModel.listWithStats();
+  const types = await paperTypeModel.listWithStats({ basis: 'published' });
   return types
     .filter((t) => t.standardsCount > 0)
     .map((t) => ({
       id: t.id,
+      versionId: t.versionId,
+      versionNumber: t.publishedNumber,
       name: t.name,
       description: t.description,
       standardsCount: t.standardsCount,
@@ -105,18 +113,20 @@ async function listPaperTypeOptions() {
 }
 
 /**
- * Create a paper (FR-PAP-02). The paper type is fixed from now on (FR-PAP-05).
+ * Create a paper (FR-PAP-02). The paper type is fixed from now on (FR-PAP-05); the paper is pinned
+ * to the type's newest published version (D-45).
  * @param {{user: object, title: string, vendor?: string|null, paperTypeId: string, log: import('pino').Logger}} params
  * @returns {Promise<{id: string, url: string}>}
  * @throws {ValidationError} unknown paper type or one without standards
  */
 async function createPaper({ user, title, vendor = null, paperTypeId, log }) {
   const types = await listPaperTypeOptions();
-  if (!types.some((t) => t.id === paperTypeId)) {
+  const type = types.find((t) => t.id === paperTypeId);
+  if (!type) {
     throw new ValidationError('Choose a paper type.', [{ field: 'paperTypeId', message: 'Unknown paper type' }]);
   }
-  const { id } = await paperModel.create({ ownerId: user.id, paperTypeId, title, vendor });
-  log.info({ paperId: id, paperTypeId, userId: user.id }, 'Paper created');
+  const { id } = await paperModel.create({ ownerId: user.id, paperTypeId, versionId: type.versionId, title, vendor });
+  log.info({ paperId: id, paperTypeId, version: type.versionNumber, userId: user.id }, 'Paper created');
   return { id, url: `/papers/${id}` };
 }
 
@@ -153,8 +163,8 @@ async function deletePaper({ user, paperId, log }) {
 async function getPaperPage({ user, paperId }) {
   const paper = await getPaperOrThrow(paperId);
   const [sections, references, state] = await Promise.all([
-    sectionModel.listForType(paper.paperTypeId),
-    referenceModel.listUsedByType(paper.paperTypeId),
+    sectionModel.listForVersion(paper.paperTypeVersionId),
+    referenceModel.listUsedByVersion(paper.paperTypeVersionId),
     readinessService.forPaper(paper),
   ]);
   const { standards, answers, readiness } = state;
@@ -194,6 +204,9 @@ async function getPaperPage({ user, paperId }) {
       paperTypeName: paper.paperTypeName,
       ownerName: paper.ownerName,
       updatedAt: paper.updatedAt,
+      // D-45: the version the paper uses, and the newest one if it can be upgraded.
+      versionNumber: paper.versionNumber,
+      newerVersion: paper.latestVersionNumber > paper.versionNumber ? paper.latestVersionNumber : null,
     },
     isOwner,
     sections: sectionViews,
@@ -211,8 +224,62 @@ async function getPaperPage({ user, paperId }) {
   };
 }
 
+/** Same content as far as the architect's answer is concerned (D-45). */
+const sameContent = (a, b) =>
+  a.title === b.title && a.descriptionHtml === b.descriptionHtml && a.isMandatory === b.isMandatory;
+/** Same content AND the same references: the AI result still holds. */
+const sameForAi = (a, b) =>
+  sameContent(a, b) && [...a.referenceIds].sort().join() === [...b.referenceIds].sort().join();
+
+/**
+ * Upgrade a paper to its type's newest published version (D-45, owner only). Answers to standards
+ * that did not change (same title, description and mandatory flag) carry over; changed and new
+ * standards start unanswered. The latest AI results carry over where the references are also the
+ * same. Answers to the old version stay stored but are no longer shown (like FR-ANS-15).
+ *
+ * @param {{user: object, paperId: string, log: import('pino').Logger}} params
+ * @returns {Promise<{version: number, carried: number, unanswered: number}>}
+ * @throws {ConflictError} UP_TO_DATE, CHECK_RUNNING
+ */
+async function upgradePaper({ user, paperId, log }) {
+  const paper = await getOwnedPaperOrThrow(paperId, user);
+  const latest = await versionModel.findLatestPublished(paper.paperTypeId);
+  if (!latest || latest.id === paper.paperTypeVersionId || latest.number < paper.versionNumber) {
+    throw new ConflictError('This paper already uses the newest version.', 'UP_TO_DATE');
+  }
+  if (await checkModel.findActiveCheck(paperId)) {
+    throw new ConflictError('Wait for the AI check to finish, then upgrade.', 'CHECK_RUNNING');
+  }
+  const [oldStandards, newStandards, lastCheck] = await Promise.all([
+    standardModel.listForVersion(paper.paperTypeVersionId),
+    standardModel.listForVersion(latest.id),
+    checkModel.findLatestDone(paperId),
+  ]);
+  const oldByLineage = new Map(oldStandards.map((s) => [s.lineageId, s]));
+  const answerPairs = [];
+  const resultPairs = [];
+  for (const s of newStandards) {
+    const old = oldByLineage.get(s.lineageId);
+    if (!old || !sameContent(old, s)) continue;
+    answerPairs.push({ oldId: old.id, newId: s.id });
+    if (sameForAi(old, s)) resultPairs.push({ oldId: old.id, newId: s.id });
+  }
+  const carried = await withTransaction(async () => {
+    const n = await answerModel.copyToStandards(paperId, answerPairs);
+    if (lastCheck) await checkModel.copyResultsToStandards(lastCheck.id, resultPairs);
+    await paperModel.setVersion(paperId, latest.id);
+    return n;
+  });
+  log.info(
+    { paperId, from: paper.versionNumber, to: latest.number, carried, unchanged: answerPairs.length },
+    'Paper upgraded',
+  );
+  return { version: latest.number, carried, unanswered: newStandards.length - carried };
+}
+
 module.exports = {
   PAGE_SIZE,
+  upgradePaper,
   getPaperOrThrow,
   getOwnedPaperOrThrow,
   listMine,

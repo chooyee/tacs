@@ -2,31 +2,34 @@
 
 const { query, toCamel } = require('../utils/db');
 
-const COLUMNS = 'id, paper_type_id, title, position, created_at, updated_at, updated_by, deleted_at';
+const COLUMNS =
+  'id, paper_type_id, version_id, title, position, created_at, updated_at, updated_by, deleted_at';
 
 /**
- * Non-deleted sections of a paper type, in order.
- * @param {string} paperTypeId
+ * Non-deleted sections of one paper type version (D-45), in order.
+ * @param {string} versionId
  * @returns {Promise<object[]>}
  */
-async function listForType(paperTypeId) {
+async function listForVersion(versionId) {
   const { rows } = await query(
-    `select ${COLUMNS} from sections where paper_type_id = $1 and deleted_at is null order by position, created_at`,
-    [paperTypeId],
+    `select ${COLUMNS} from sections where version_id = $1 and deleted_at is null order by position, created_at`,
+    [versionId],
   );
   return rows.map(toCamel);
 }
 
 /**
- * A section whose paper type is not deleted.
+ * A section whose paper type is not deleted, with its version's status (only a draft can change).
  * @param {string} id
  * @param {{includeDeleted?: boolean}} [opts]  true for restore (Undo)
  * @returns {Promise<object|null>}
  */
 async function findById(id, { includeDeleted = false } = {}) {
   const { rows } = await query(
-    `select s.id, s.paper_type_id, s.title, s.position, s.deleted_at
-       from sections s join paper_types t on t.id = s.paper_type_id and t.deleted_at is null
+    `select s.id, s.paper_type_id, s.version_id, v.status as version_status, s.title, s.position, s.deleted_at
+       from sections s
+       join paper_type_versions v on v.id = s.version_id
+       join paper_types t on t.id = s.paper_type_id and t.deleted_at is null
       where s.id = $1 and ($2 or s.deleted_at is null)`,
     [id, includeDeleted],
   );
@@ -34,18 +37,19 @@ async function findById(id, { includeDeleted = false } = {}) {
 }
 
 /**
- * Add a section at the end.
- * @param {string} paperTypeId
+ * Add a section at the end of a version.
+ * @param {string} versionId
  * @param {string} title
  * @param {string|null} updatedBy
  * @returns {Promise<object>}
  */
-async function create(paperTypeId, title, updatedBy = null) {
+async function create(versionId, title, updatedBy = null) {
   const { rows } = await query(
-    `insert into sections (paper_type_id, title, updated_by, position)
-     values ($1, $2, $3, (select coalesce(max(position) + 1, 0) from sections where paper_type_id = $1))
+    `insert into sections (paper_type_id, version_id, title, updated_by, position)
+     select v.paper_type_id, v.id, $2, $3, (select coalesce(max(position) + 1, 0) from sections where version_id = v.id)
+       from paper_type_versions v where v.id = $1
      returning ${COLUMNS}`,
-    [paperTypeId, title, updatedBy],
+    [versionId, title, updatedBy],
   );
   return toCamel(rows[0]);
 }
@@ -66,20 +70,20 @@ async function updateTitle(id, title, updatedBy) {
 }
 
 /**
- * IDs of the visible sections of a paper type, in order.
- * @param {string} paperTypeId
+ * IDs of the visible sections of a version, in order.
+ * @param {string} versionId
  * @returns {Promise<string[]>}
  */
-async function listIds(paperTypeId) {
+async function listIds(versionId) {
   const { rows } = await query(
-    `select id from sections where paper_type_id = $1 and deleted_at is null order by position, created_at`,
-    [paperTypeId],
+    `select id from sections where version_id = $1 and deleted_at is null order by position, created_at`,
+    [versionId],
   );
   return rows.map((r) => r.id);
 }
 
 /**
- * Store a new order for the sections of a paper type (positions 0…n-1). Call inside withTransaction().
+ * Store a new order for the sections of a version (positions 0…n-1). Call inside withTransaction().
  * @param {string[]} orderedIds  every visible section of the type, in the new order
  * @returns {Promise<void>}
  */
@@ -136,7 +140,7 @@ async function restoreWithStandards(id, updatedBy) {
 }
 
 module.exports = {
-  listForType,
+  listForVersion,
   findById,
   create,
   updateTitle,

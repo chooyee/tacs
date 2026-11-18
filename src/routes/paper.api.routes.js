@@ -17,6 +17,8 @@ router.use(requireAuth, requireRole('Architect'));
 router.post('/', validate(v.createPaper), asyncHandler(papers.create));
 router.patch('/:paperId', validate(v.updatePaper), asyncHandler(papers.update));
 router.delete('/:paperId', validate(v.paperId), asyncHandler(papers.remove));
+// D-45: move the paper to its type's newest published version (owner only).
+router.post('/:paperId/upgrade', validate(v.paperId), asyncHandler(papers.upgrade));
 router.get('/:paperId/readiness', validate(v.paperId), asyncHandler(papers.readiness));
 router.put('/:paperId/answers/:standardId', validate(v.saveAnswer), asyncHandler(papers.saveAnswer));
 

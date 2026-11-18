@@ -7,13 +7,19 @@ const { query, toCamel } = require('../utils/db');
  * Soft delete: `deleted_at` hides the paper; the retention job purges it 7 days later (FR-RET-01).
  */
 
-/** The columns every list and page needs: the paper, its type name and its owner's name. */
+/**
+ * The columns every list and page needs: the paper, the version of its type it is pinned to (D-45)
+ * and the newest published version number, and its owner's name.
+ */
 const SELECT = `
-  select p.id, p.owner_id, p.paper_type_id, p.title, p.vendor, p.created_at, p.updated_at,
-         t.name as paper_type_name, coalesce(u.display_name, u.email) as owner_name,
+  select p.id, p.owner_id, p.paper_type_id, p.paper_type_version_id, p.title, p.vendor, p.created_at, p.updated_at,
+         v.name as paper_type_name, v.number as version_number,
+         (select max(x.number) from paper_type_versions x
+           where x.paper_type_id = p.paper_type_id and x.status = 'published') as latest_version_number,
+         coalesce(u.display_name, u.email) as owner_name,
          exists (select 1 from checks c where c.paper_id = p.id and c.status = 'done') as ai_checked
     from papers p
-    join paper_types t on t.id = p.paper_type_id
+    join paper_type_versions v on v.id = p.paper_type_version_id
     join users u on u.id = p.owner_id`;
 
 /**
@@ -31,15 +37,26 @@ async function countActiveByType(paperTypeId) {
 }
 
 /**
- * @param {{ownerId: string, paperTypeId: string, title: string, vendor: string|null}} paper
+ * @param {{ownerId: string, paperTypeId: string, versionId: string, title: string, vendor: string|null}} paper
  * @returns {Promise<{id: string}>}
  */
-async function create({ ownerId, paperTypeId, title, vendor }) {
+async function create({ ownerId, paperTypeId, versionId, title, vendor }) {
   const { rows } = await query(
-    `insert into papers (owner_id, paper_type_id, title, vendor) values ($1, $2, $3, $4) returning id`,
-    [ownerId, paperTypeId, title, vendor],
+    `insert into papers (owner_id, paper_type_id, paper_type_version_id, title, vendor)
+     values ($1, $2, $3, $4, $5) returning id`,
+    [ownerId, paperTypeId, versionId, title, vendor],
   );
   return rows[0];
+}
+
+/**
+ * Pin the paper to another version of its type (upgrade, D-45).
+ * @param {string} id
+ * @param {string} versionId
+ * @returns {Promise<void>}
+ */
+async function setVersion(id, versionId) {
+  await query('update papers set paper_type_version_id = $2, updated_at = now() where id = $1', [id, versionId]);
 }
 
 /**
@@ -133,4 +150,4 @@ async function softDelete(id) {
   return rowCount === 1;
 }
 
-module.exports = { countActiveByType, create, findById, listByOwner, listAll, update, touch, softDelete };
+module.exports = { countActiveByType, create, setVersion, findById, listByOwner, listAll, update, touch, softDelete };

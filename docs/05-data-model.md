@@ -77,12 +77,27 @@ admin applies immediately.
 | description | text | |
 | created_at, updated_at, deleted_at | timestamptz | |
 
+The type's `name` / `description` are those of its newest published version (copied on publish, D-45).
+
+### 3.2a `paper_type_versions` (D-45, migration 004)
+
+| Column | Type | Notes |
+|--------|------|-------|
+| id | uuid PK | |
+| paper_type_id | uuid FK → paper_types | On delete cascade. |
+| number | integer | 1, 2, 3 … once published; **null while a draft**. Unique per type. |
+| status | text | `draft` \| `published`. **One draft per type** (partial unique index). A published version never changes. |
+| name, description | text | The type's name and description as of this version (the draft's are edited). |
+| created_at, created_by, updated_at, updated_by | | "Last edited … by …" of the draft. |
+| published_at, published_by | | Set on publish. |
+
 ### 3.3 `sections`
 
 | Column | Type | Notes |
 |--------|------|-------|
 | id | uuid PK | |
-| paper_type_id | uuid FK → paper_types | |
+| paper_type_id | uuid FK → paper_types | Kept for convenience; queries use `version_id`. |
+| version_id | uuid FK → paper_type_versions | The version the section belongs to (D-45). On delete cascade (a cancelled draft takes its sections and standards with it). |
 | title | text not null | |
 | position | integer not null | 0-based order. Letter A, B, C… is **computed** for display. |
 | created_at, updated_at, deleted_at | | |
@@ -95,7 +110,8 @@ admin applies immediately.
 | section_id | uuid FK → sections | |
 | title | text not null | ≤ 500 chars (check constraint). Was `text` before migration 002 (D-37). |
 | description_html | text not null default '' | Optional rich text, cleaned by `utils/richText.js` (D-37). |
-| source_standard_id | uuid FK → standards | Live link (D-38): when set, title, description, mandatory flag and references are read from the source; own content columns are ignored. |
+| source_standard_id | uuid FK → standards | Live link (D-38): when set, title, description, mandatory flag and references are read from the source; own content columns are ignored. Always a standard of a **published** version (D-45). |
+| lineage_id | uuid not null | The same for a standard and its copies in later versions (D-45); a new standard starts its own lineage (= its id). Used to carry answers over when a paper is upgraded. |
 | updated_by | text | "Last edited by" snapshot (D-37). |
 | is_mandatory | boolean not null default false | |
 | position | integer not null | Order within the section. The number 1…N is **computed**. |
@@ -149,6 +165,7 @@ Migration 003 copied each old `reference_docs.url` in as the first link, labelle
 | id | uuid PK | |
 | owner_id | uuid FK → users | Index. |
 | paper_type_id | uuid FK → paper_types | Cannot change after insert. |
+| paper_type_version_id | uuid FK → paper_type_versions | The published version the paper uses (D-45); set on create, changed only by an upgrade. |
 | title | text not null | 3–150 chars. |
 | vendor | text | ≤ 150 chars. |
 | created_at, updated_at, deleted_at | | `updated_at` also bumps when answers / checks change (for "newest first"). |

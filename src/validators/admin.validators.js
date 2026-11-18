@@ -82,6 +82,11 @@ module.exports = {
       .refine((b) => b.name !== undefined || b.description !== undefined, 'Nothing to change.'),
   },
   card: { params: z.object({ typeId: id, card: z.enum(['references', 'standards']) }) },
+  // ?version=N shows that published version read-only (D-45); a bad value just shows the newest.
+  showType: {
+    ...typeId,
+    query: z.object({ version: z.coerce.number().int().positive().optional().catch(undefined) }).loose(),
+  },
   addSection: { ...typeId, body: z.object({ title: text(150, 'Title') }).strict() },
   renameSection: { ...sectionId, body: z.object({ title: text(150, 'Title') }).strict() },
   moveSection: { ...sectionId, body: z.object({ direction: z.enum(['up', 'down']) }).strict() },

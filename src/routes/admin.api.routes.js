@@ -22,6 +22,10 @@ router.patch('/users/:userId', validate(updateUserSchema), asyncHandler(adminUse
 router.post('/types', validate(v.createType), asyncHandler(paperTypes.create));
 router.patch('/types/:typeId', validate(v.updateType), asyncHandler(paperTypes.update));
 router.delete('/types/:typeId', validate(v.typeId), asyncHandler(paperTypes.remove));
+// Versions (D-45): Edit opens the one shared draft, Publish freezes it, Cancel throws it away.
+router.post('/types/:typeId/draft', validate(v.typeId), asyncHandler(paperTypes.startDraft));
+router.delete('/types/:typeId/draft', validate(v.typeId), asyncHandler(paperTypes.discardDraft));
+router.post('/types/:typeId/publish', validate(v.typeId), asyncHandler(paperTypes.publish));
 
 // Sections
 router.post('/types/:typeId/sections', validate(v.addSection), asyncHandler(structure.addSection));

@@ -64,7 +64,7 @@ owner's request. **Do not build them** unless the scope changes:
 - sign-off workflow (Business Owner, Security Architect, PM…),
 - committee decision / approval status,
 - printable checklist, dashboards and KPIs,
-- versioning or publishing of standards (admin changes apply immediately),
+- ~~versioning or publishing of standards~~ — now in scope: paper types have draft and published versions (D-45),
 - co-editing papers (others can **view**, only the owner edits),
 - keeping uploaded PDFs or chat history longer than 7 days.
 

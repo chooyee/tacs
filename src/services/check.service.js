@@ -198,7 +198,7 @@ async function recheck({ user, paperId, log }) {
  */
 async function stepLabels(check) {
   const [docs, paper] = await Promise.all([checkModel.listCheckDocuments(check.id), paperModel.findById(check.paperId)]);
-  const standards = paper ? await standardModel.listForType(paper.paperTypeId) : [];
+  const standards = paper ? await standardModel.listForVersion(paper.paperTypeVersionId) : [];
   const refIds = new Set(standards.flatMap((s) => s.referenceIds));
   const pages = docs.reduce((sum, d) => sum + d.pageCount, 0);
   return [
@@ -459,8 +459,8 @@ async function runCheck(claimed, parentLog) {
     // Step 2: what to compare — standards by section and the references they link
     await checkModel.setStep(claimed.id, 2);
     const [sections, standards] = await Promise.all([
-      sectionModel.listForType(paper.paperTypeId),
-      standardModel.listForType(paper.paperTypeId),
+      sectionModel.listForVersion(paper.paperTypeVersionId),
+      standardModel.listForVersion(paper.paperTypeVersionId),
     ]);
     const refIds = [...new Set(standards.flatMap((s) => s.referenceIds))];
     const refs = (await Promise.all(refIds.map((id) => referenceModel.findById(id)))).filter(Boolean);

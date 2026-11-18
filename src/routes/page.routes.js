@@ -29,7 +29,8 @@ const admin = [requireAuth, requireRole('Admin'), rememberMode('admin')];
 router.get('/admin', ...admin, (_req, res) => res.redirect('/admin/types'));
 router.get('/admin/users', ...admin, asyncHandler(adminUsers.index));
 router.get('/admin/types', ...admin, asyncHandler(paperTypes.index));
-router.get('/admin/types/:typeId', ...admin, validate(v.typeId), asyncHandler(paperTypes.show));
+router.get('/admin/types/:typeId', ...admin, validate(v.showType), asyncHandler(paperTypes.show));
+router.get('/admin/types/:typeId/draft', ...admin, validate(v.typeId), asyncHandler(paperTypes.showDraft));
 router.get('/admin/types/:typeId/cards/:card', ...admin, validate(v.card), asyncHandler(paperTypes.card));
 // Standards: full-screen add / edit form (D-38)
 router.get(

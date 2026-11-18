@@ -2,22 +2,22 @@
 
 const { query, toCamel } = require('../utils/db');
 
-const COLUMNS = `id, section_id, title, description_html, is_mandatory, position, created_at, updated_at,
-  updated_by, deleted_at`;
+const COLUMNS = `id, section_id, title, description_html, is_mandatory, position, lineage_id, created_at,
+  updated_at, updated_by, deleted_at`;
 
 /**
  * A standard as it is shown: a linked standard (D-38) takes title, description, mandatory flag,
  * references and "last edited" from its source; its own section and position stay local.
  */
 const RESOLVED_SELECT = `
-  select s.id, s.section_id, s.position, s.source_standard_id,
+  select s.id, s.section_id, s.position, s.source_standard_id, s.lineage_id,
          coalesce(src.title, s.title) as title,
          coalesce(src.description_html, s.description_html) as description_html,
          coalesce(src.is_mandatory, s.is_mandatory) as is_mandatory,
          coalesce(src.updated_at, s.updated_at) as updated_at,
          coalesce(src.updated_by, s.updated_by) as updated_by,
          src.deleted_at is not null as source_deleted,
-         srct.id as source_type_id, srct.name as source_type_name,
+         srct.id as source_type_id, srct.name as source_type_name, srcv.number as source_version_number,
          row_number() over (order by sec.position, sec.created_at, s.position, s.created_at)::int as number,
          (select coalesce(array_agg(r.id order by lower(r.title)), '{}')
             from standard_references sr
@@ -27,36 +27,39 @@ const RESOLVED_SELECT = `
     join sections sec on sec.id = s.section_id and sec.deleted_at is null
     left join standards src on src.id = s.source_standard_id
     left join sections srcsec on srcsec.id = src.section_id
-    left join paper_types srct on srct.id = srcsec.paper_type_id`;
+    left join paper_types srct on srct.id = srcsec.paper_type_id
+    left join paper_type_versions srcv on srcv.id = srcsec.version_id`;
 
 /**
- * Every visible standard of a paper type in display order, numbered 1…N across the whole type
- * (FR-ANS-02), with the IDs of its non-deleted references. One query (docs/05 §4).
- * @param {string} paperTypeId
+ * Every visible standard of one paper type version (D-45) in display order, numbered 1…N across the
+ * whole version (FR-ANS-02), with the IDs of its non-deleted references. One query (docs/05 §4).
+ * @param {string} versionId
  * @returns {Promise<object[]>}
  */
-async function listForType(paperTypeId) {
+async function listForVersion(versionId) {
   const { rows } = await query(
     `${RESOLVED_SELECT}
-      where sec.paper_type_id = $1 and s.deleted_at is null
+      where sec.version_id = $1 and s.deleted_at is null
       order by sec.position, sec.created_at, s.position, s.created_at`,
-    [paperTypeId],
+    [versionId],
   );
   return rows.map(toCamel);
 }
 
 /**
- * A standard with its section's paper type (whose type is not deleted).
+ * A standard with its section's paper type and version (whose type is not deleted).
  * @param {string} id
  * @param {{includeDeleted?: boolean}} [opts]  true for restore (Undo)
- * @returns {Promise<object|null>}  includes paperTypeId and sectionDeleted
+ * @returns {Promise<object|null>}  includes paperTypeId, versionId, versionStatus and sectionDeleted
  */
 async function findById(id, { includeDeleted = false } = {}) {
   const { rows } = await query(
     `select s.id, s.section_id, s.title, s.description_html, s.is_mandatory, s.position, s.deleted_at,
-            s.source_standard_id, sec.paper_type_id, sec.deleted_at is not null as section_deleted
+            s.source_standard_id, s.lineage_id, sec.paper_type_id, sec.version_id, v.status as version_status,
+            sec.deleted_at is not null as section_deleted
        from standards s
        join sections sec on sec.id = s.section_id
+       join paper_type_versions v on v.id = sec.version_id
        join paper_types t on t.id = sec.paper_type_id and t.deleted_at is null
       where s.id = $1 and ($2 or (s.deleted_at is null and sec.deleted_at is null))`,
     [id, includeDeleted],
@@ -65,15 +68,16 @@ async function findById(id, { includeDeleted = false } = {}) {
 }
 
 /**
- * Add a standard at the end of a section (FR-ADM-16).
+ * Add a standard at the end of a section (FR-ADM-16). A new standard starts its own lineage (D-45).
  * @param {string} sectionId
  * @param {{title: string, descriptionHtml?: string, isMandatory?: boolean, updatedBy: string|null}} standard
  * @returns {Promise<object>}
  */
 async function create(sectionId, { title, descriptionHtml = '', isMandatory = false, updatedBy = null }) {
   const { rows } = await query(
-    `insert into standards (section_id, title, description_html, is_mandatory, updated_by, position)
-     values ($1, $2, $3, $4, $5, (select coalesce(max(position) + 1, 0) from standards where section_id = $1))
+    `insert into standards (id, lineage_id, section_id, title, description_html, is_mandatory, updated_by, position)
+     select g.id, g.id, $1, $2, $3, $4, $5, (select coalesce(max(position) + 1, 0) from standards where section_id = $1)
+       from (select gen_random_uuid() as id) g
      returning ${COLUMNS}`,
     [sectionId, title, descriptionHtml, isMandatory, updatedBy],
   );
@@ -175,15 +179,18 @@ async function restore(id, updatedBy) {
 }
 
 /**
- * One standard as shown (live link resolved), with its paper type — for the full-screen form.
+ * One standard as shown (live link resolved), with its paper type and version — for the full-screen
+ * form and Import.
  * @param {string} id
  * @returns {Promise<object|null>}
  */
 async function findResolved(id) {
   const { rows } = await query(
-    `select x.*, sec.paper_type_id, t.name as paper_type_name
+    `select x.*, sec.paper_type_id, sec.version_id, v.status as version_status, v.number as version_number,
+            t.name as paper_type_name
        from (${RESOLVED_SELECT} where s.id = $1 and s.deleted_at is null) x
        join sections sec on sec.id = x.section_id
+       join paper_type_versions v on v.id = sec.version_id
        join paper_types t on t.id = sec.paper_type_id and t.deleted_at is null`,
     [id],
   );
@@ -191,16 +198,18 @@ async function findResolved(id) {
 }
 
 /**
- * Source standards already linked into a paper type (to skip duplicates on import, D-38).
- * @param {string} paperTypeId
+ * Lineages of the source standards already linked into a version (to skip duplicates on import,
+ * D-38): another version of the same source counts as the same standard.
+ * @param {string} versionId
  * @returns {Promise<Set<string>>}
  */
-async function linkedSourceIds(paperTypeId) {
+async function linkedSourceLineages(versionId) {
   const { rows } = await query(
-    `select s.source_standard_id as id from standards s
+    `select src.lineage_id as id from standards s
        join sections sec on sec.id = s.section_id and sec.deleted_at is null
-      where sec.paper_type_id = $1 and s.deleted_at is null and s.source_standard_id is not null`,
-    [paperTypeId],
+       join standards src on src.id = s.source_standard_id
+      where sec.version_id = $1 and s.deleted_at is null`,
+    [versionId],
   );
   return new Set(rows.map((r) => r.id));
 }
@@ -214,10 +223,10 @@ async function linkedSourceIds(paperTypeId) {
  */
 async function createLink(sectionId, sourceId, updatedBy) {
   const { rows } = await query(
-    `insert into standards (section_id, title, description_html, is_mandatory, source_standard_id, updated_by, position)
-     select $1, src.title, src.description_html, src.is_mandatory, src.id, $3,
+    `insert into standards (id, lineage_id, section_id, title, description_html, is_mandatory, source_standard_id, updated_by, position)
+     select g.id, g.id, $1, src.title, src.description_html, src.is_mandatory, src.id, $3,
             (select coalesce(max(position) + 1, 0) from standards where section_id = $1)
-       from standards src where src.id = $2
+       from standards src, (select gen_random_uuid() as id) g where src.id = $2
      returning ${COLUMNS}`,
     [sectionId, sourceId, updatedBy],
   );
@@ -253,9 +262,9 @@ async function detach(id, updatedBy) {
 }
 
 module.exports = {
-  listForType,
+  listForVersion,
   findResolved,
-  linkedSourceIds,
+  linkedSourceLineages,
   createLink,
   detach,
   findById,

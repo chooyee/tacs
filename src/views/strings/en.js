@@ -120,10 +120,6 @@ module.exports = Object.freeze({
     notFoundInPaper: 'The AI found nothing about this in your paper.',
     pdfRemoved: 'The PDF was removed after 7 days — upload it again to see pages.',
     caption: 'Solid outline: where the AI looked in your paper. Dashed outline: the part of the reference it compared with.',
-    aiCardChecked: '{files} · {date}',
-    secondLook: '{n} answer(s) worth a second look.',
-    openChecker: 'Open AI checker',
-    checkMyPaper: '✦ Check my paper',
     uploadFailed: 'The upload failed.',
   },
   // The paper page (docs/03 §3.2, FR-ANS, FR-RDY)
@@ -133,13 +129,29 @@ module.exports = Object.freeze({
     titleLabel: 'Paper title',
     vendorLabel: 'Vendor or solution',
     vendorPlaceholder: 'Vendor / solution',
-    typeTag: (name) => `${name} standards`,
+    typeTag: (name, n) => `${name} standards${n ? ` v${n}` : ''}`,
+    // Upgrading to a newer published version of the paper type (D-45)
+    newerVersion: (name, mine, latest) =>
+      `Version ${latest} of the ${name} standards is available. This paper uses version ${mine}.`,
+    newerVersionHelp:
+      'Answers to standards that didn’t change are kept; new or changed standards start unanswered.',
+    upgrade: (n) => `Upgrade to version ${n}`,
+    confirmUpgrade: (n) =>
+      `Move this paper to version ${n}? Answers to standards that didn’t change are kept. This can’t be undone.`,
+    upgraded: (n, kept, open) =>
+      `Upgraded to version ${n}. ${kept} answer(s) kept, ${open} standard(s) to answer.`,
     delete: 'Delete',
     confirmDelete: 'Delete this paper? It disappears from the list now and is removed for good after 7 days.',
     deleted: 'Paper deleted',
     titleRequired: 'The title needs 3 to 150 characters. It was put back.',
     readOnly: (owner) => `You’re viewing ${owner}’s paper — read-only.`,
-    sectionsNav: 'Jump to section',
+    sectionsNav: 'Sections',
+    sectionsAll: 'All sections',
+    sectionsSome: (shown, total) => `${shown} of ${total}`,
+    collapseAll: 'Collapse all',
+    expandAll: 'Expand all',
+    hideSide: 'Hide side panel',
+    showSide: 'Show side panel',
     show: 'Show',
     filters: { all: 'All', todo: 'To do', attention: 'Needs attention', mandatory: 'Mandatory' },
     legendYes: 'my paper covers it',
@@ -177,11 +189,7 @@ module.exports = Object.freeze({
     notReadyTitle: 'Not ready yet',
     notReadyText: (n) => (n === 1 ? 'Fix this before you present:' : `Fix these ${n} things before you present:`),
     aiTip: 'Tip: check your paper PDF with the AI checker before you present.',
-    aiTipLater: 'The AI checker arrives in the next release.',
     progress: 'Progress',
-    aiTitle: '✦ AI paper check',
-    aiNotYet:
-      'Upload your paper PDF. The AI compares your pages with the policies and samples below and tells you, standard by standard, whether you comply.',
     referencesFor: (name) => `References for ${name}`,
     noReferences: 'No references yet.',
   },
@@ -212,6 +220,9 @@ module.exports = Object.freeze({
     never: 'Not edited yet',
   },
   standardForm: {
+    readOnly: (n) =>
+      `This standard is part of published version ${n}, so it can’t be changed. Edit the paper type to start a draft.`,
+    backButton: 'Back',
     newTitle: 'New standard',
     editTitle: 'Edit standard',
     section: 'Section',
@@ -267,7 +278,7 @@ module.exports = Object.freeze({
   },
   linked: {
     badge: 'Linked',
-    from: (type) => `from ${type}`,
+    from: (type, n) => `from ${type}${n ? ` v${n}` : ''}`,
     deleted: 'source deleted',
   },
   library: {
@@ -361,6 +372,11 @@ module.exports = Object.freeze({
     standards: 'standards',
     mandatory: 'mandatory',
     references: 'references',
+    // Versions (D-45)
+    versionTag: (n) => `v${n}`,
+    draftTag: 'Draft',
+    neverPublished: 'Not published yet',
+    draftInProgress: 'Draft in progress',
     empty: 'No paper types yet. Create the first one.',
     dialogTitle: 'New paper type',
     name: 'Name',
@@ -371,7 +387,8 @@ module.exports = Object.freeze({
     blankTitle: 'Start blank',
     blankHelp: 'One section, “General”. You add the standards.',
     copyTitle: 'Copy an existing type',
-    copyHelp: 'Sections, standards, mandatory flags and references are copied.',
+    copyHelp: 'Copies its newest published version: sections, standards, mandatory flags and references.',
+    noPublished: 'No published paper type to copy yet.',
     create: 'Create paper type',
     cancel: 'Cancel',
   },
@@ -381,6 +398,32 @@ module.exports = Object.freeze({
     descriptionPlaceholder: 'When does this paper type apply?',
     deleteType: 'Delete type',
     inUse: (n) => `${n} paper${n === 1 ? '' : 's'} use this type, so it cannot be deleted.`,
+    // Versions (D-45)
+    version: (n) => `Version ${n}`,
+    draft: 'Draft',
+    versionLabel: 'Version',
+    versionOption: (n, papers) => `v${n}${papers ? ` · ${papers} paper${papers === 1 ? '' : 's'}` : ''}`,
+    draftOption: 'Draft (being edited)',
+    published: (date, by) => `Published ${date}${by ? ` by ${by}` : ''}`,
+    continueEditing: 'Continue editing',
+    cancelDraft: 'Cancel',
+    publish: 'Publish',
+    viewBanner: (n, papers) =>
+      `You are viewing version ${n}. It can’t be changed: click Edit to start a draft. ${papers} paper${papers === 1 ? ' uses' : 's use'} this type.`,
+    oldVersionBanner: (n, latest) =>
+      `You are viewing version ${n}, an older version. The newest is version ${latest}.`,
+    draftBanner: (latest) =>
+      latest
+        ? `You are editing a draft. Changes save automatically and every admin edits the same draft. Architects keep using version ${latest} until you publish.`
+        : 'You are editing a new paper type. Changes save automatically. Architects can’t use it until you publish it.',
+    draftOpenBy: (by) => `A draft is in progress${by ? `, last edited by ${by}` : ''}.`,
+    confirmCancel: 'Throw away all changes in this draft? The published version stays as it is.',
+    confirmCancelNew: 'This paper type was never published. Cancelling deletes it. Continue?',
+    confirmPublish: (n) =>
+      `Publish this draft as version ${n}? New papers will use it. Existing papers keep their version until their owner upgrades.`,
+    publishedToast: (n) => `Published as version ${n}.`,
+    draftSaved: 'Draft saved. It stays open until you publish or cancel it.',
+    cancelledToast: 'Draft cancelled.',
     banner: (name, n) =>
       `Changes save automatically and apply straight away to every ${name} paper (${n} in progress).`,
     referencesTitle: 'References used here',
@@ -467,6 +510,11 @@ module.exports = Object.freeze({
     noStandards: 'Not linked to any standard yet.',
     openOfficial: 'Open official document',
     links: 'Links',
+    file: 'File',
+    openFile: 'Open the file in a new tab',
+    download: 'Download',
+    maximize: 'Maximise',
+    restore: 'Restore size',
     previous: 'Previous page',
     next: 'Next page',
     page: (n, of) => `Page ${n} of ${of}`,

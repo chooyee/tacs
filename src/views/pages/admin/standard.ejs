@@ -1,11 +1,15 @@
 <%# Full-screen standard form (D-38): add or edit a standard. Linked standards (imported live from
     another type) are read-only here, with "Open the source" and "Duplicate here". "New reference"
     opens the References module in a new tab; what is saved there is ticked here.
+    A standard of a PUBLISHED version is shown read-only, without Save (D-45).
     Behaviour: public/js/pages/adminStandard.js. %>
 <%- include('../../partials/admin/tabs') %>
-<% const isLinked = Boolean(standard && standard.sourceStandardId); %>
+<%
+  const isLinked = Boolean(standard && standard.sourceStandardId);
+  const locked = isLinked || !editable; // content can't be changed here
+%>
 <div id="standard-page" data-type-id="<%= type.id %>" data-standard-id="<%= standard ? standard.id : '' %>"
-     data-linked="<%= isLinked %>"
+     data-linked="<%= locked %>" data-editable="<%= editable %>" data-back-url="<%= backUrl %>"
      data-options="<%= JSON.stringify(referenceOptions.map((r) => ({ id: r.id, type: r.type, title: r.title, note: r.note || '', icon: t.referenceIcons[r.type] }))) %>"
      data-selected="<%= JSON.stringify(standard ? standard.referenceIds : []) %>"
      data-icons="<%= JSON.stringify(t.referenceIcons) %>"
@@ -13,25 +17,28 @@
   <nav class="crumbs" aria-label="Breadcrumb">
     <a href="/admin/types"><%= t.adminTypes.heading %></a>
     <%- include('../../partials/icon', { name: 'chevronRight', cls: 'size-3.5' }) %>
-    <a href="/admin/types/<%= type.id %>"><%= type.name %></a>
+    <a href="<%= backUrl %>"><%= type.name %><%= editable ? '' : ` · v${version.number}` %></a>
     <%- include('../../partials/icon', { name: 'chevronRight', cls: 'size-3.5' }) %>
     <span aria-current="page"><%= standard ? `#${standard.number}` : t.standardForm.newTitle %></span>
   </nav>
 
   <div class="page-head">
     <div>
-      <h1 class="page-title"><%= standard ? t.standardForm.editTitle : t.standardForm.newTitle %></h1>
+      <h1 class="page-title"><%= !standard ? t.standardForm.newTitle : editable ? t.standardForm.editTitle : `#${standard.number} ${standard.title}` %></h1>
       <% if (standard) { %><p class="page-sub"><%- include('../../partials/edited', { at: standard.updatedAt, by: standard.updatedBy }) %></p><% } %>
     </div>
   </div>
 
+  <% if (!editable) { %>
+  <div class="banner mb-4"><%- include('../../partials/icon', { name: 'info' }) %><span><%= t.standardForm.readOnly(version.number) %></span></div>
+  <% } %>
   <% if (isLinked) { %>
   <div class="banner mb-4 items-center">
     <%- include('../../partials/icon', { name: 'link' }) %>
     <span class="flex-1"><b><%= t.standardForm.linkedTitle(standard.sourceTypeName) %>.</b>
       <%= standard.sourceDeleted ? t.standardForm.sourceDeleted : t.standardForm.linkedText %></span>
     <a class="btn" data-variant="outline" data-size="sm" href="/admin/standards/<%= standard.sourceStandardId %>"><%- include('../../partials/icon', { name: 'external' }) %> <%= t.standardForm.openSource %></a>
-    <button type="button" class="btn" data-size="sm" data-action="duplicate" title="<%= t.standardForm.duplicateHelp %>"><%- include('../../partials/icon', { name: 'copy' }) %> <%= t.standardForm.duplicate %></button>
+    <% if (editable) { %><button type="button" class="btn" data-size="sm" data-action="duplicate" title="<%= t.standardForm.duplicateHelp %>"><%- include('../../partials/icon', { name: 'copy' }) %> <%= t.standardForm.duplicate %></button><% } %>
   </div>
   <% } %>
 
@@ -40,7 +47,7 @@
       <div class="form-section">
         <div class="field">
           <label for="sf-section"><%= t.standardForm.section %></label>
-          <select class="select w-full" id="sf-section" name="sectionId">
+          <select class="select w-full" id="sf-section" name="sectionId" <% if (!editable) { %>disabled<% } %>>
             <% sections.forEach((s, i) => { %><option value="<%= s.id %>" <% if (s.id === selectedSectionId) { %>selected<% } %>><%= String.fromCharCode(65 + i) %>. <%= s.title %></option><% }) %>
           </select>
           <% if (isLinked) { %><span class="help"><%= t.standardForm.position %></span><% } %>
@@ -48,11 +55,11 @@
         <div class="field">
           <label for="sf-title"><%= t.standardForm.title %> <span class="req">*</span></label>
           <input class="input" type="text" id="sf-title" name="title" maxlength="500" required autofocus
-                 value="<%= standard ? standard.title : '' %>" placeholder="<%= t.standardForm.titlePlaceholder %>" <% if (isLinked) { %>readonly<% } %>>
+                 value="<%= standard ? standard.title : '' %>" placeholder="<%= t.standardForm.titlePlaceholder %>" <% if (locked) { %>readonly<% } %>>
         </div>
         <div class="field">
           <span class="label" id="sf-description-label"><%= t.standardForm.description %></span>
-          <% if (isLinked) { %>
+          <% if (locked) { %>
             <% if (standard.descriptionHtml) { %><%- include('../../partials/richText', { html: standard.descriptionHtml, cls: 'readonly-rich' }) %><% } else { %><p class="help">—</p><% } %>
           <% } else { %>
           <div class="rich-editor basic" id="sf-description" data-html="<%= standard ? standard.descriptionHtml : '' %>"
@@ -61,7 +68,7 @@
           <% } %>
         </div>
         <label class="check-card">
-          <input class="input" type="checkbox" id="sf-mandatory" name="isMandatory" <% if (standard && standard.isMandatory) { %>checked<% } %> <% if (isLinked) { %>disabled<% } %>>
+          <input class="input" type="checkbox" id="sf-mandatory" name="isMandatory" <% if (standard && standard.isMandatory) { %>checked<% } %> <% if (locked) { %>disabled<% } %>>
           <span><b><%= t.standardForm.mandatory %></b><br><span class="text-[13px] text-muted-foreground"><%= t.standardForm.mandatoryHelp %></span></span>
         </label>
       </div>
@@ -74,13 +81,13 @@
             <h2 class="panel-title"><%= t.standardForm.references %> <span class="count" id="ref-count">0</span></h2>
             <p class="panel-sub"><%= t.standardForm.referencesHelp %></p>
           </div>
-          <% if (!isLinked) { %>
+          <% if (!locked) { %>
           <a class="btn flex-none" data-variant="outline" data-size="sm" href="/admin/references/new?for=standard" target="psc-new-reference" data-action="new-reference" title="<%= t.standardForm.newReferenceHint %>"><%- include('../../partials/icon', { name: 'upload' }) %> <%= t.standardForm.newReference %></a>
           <% } %>
         </div>
         <div class="selected-refs" id="selected-refs" aria-live="polite"></div>
         <p class="too-many text-[13px] text-warn" hidden><%- include('../../partials/icon', { name: 'alert', cls: 'inline align-[-3px]' }) %> <%= t.standardForm.tooMany %></p>
-        <% if (!isLinked) { %>
+        <% if (!locked) { %>
         <label class="relative block">
           <span class="sr-only"><%= t.standardForm.search %></span>
           <span class="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-muted-foreground"><%- include('../../partials/icon', { name: 'search' }) %></span>
@@ -94,8 +101,8 @@
     <div class="form-bar">
       <p class="form-error" role="alert" hidden></p>
       <span class="save-state" data-state="idle" role="status" aria-live="polite"></span>
-      <a class="btn" data-variant="outline" href="/admin/types/<%= type.id %><%= standard ? `#std-${standard.id}` : '' %>"><%= t.standardForm.cancel %></a>
-      <button type="submit" class="btn"><%= standard ? t.standardForm.save : t.standardForm.create %></button>
+      <a class="btn" data-variant="outline" href="<%= backUrl %><%= standard ? `#std-${standard.id}` : '' %>"><%= editable ? t.standardForm.cancel : t.standardForm.backButton %></a>
+      <% if (editable) { %><button type="submit" class="btn"><%= standard ? t.standardForm.save : t.standardForm.create %></button><% } %>
     </div>
   </form>
 </div>

@@ -38,4 +38,25 @@ async function upsert({ paperId, standardId, value, remark }) {
   return rows[0];
 }
 
-module.exports = { listForPapers, upsert };
+/**
+ * Copy a paper's answers from old standards to their copies in another version (upgrade, D-45).
+ * Call inside withTransaction().
+ * @param {string} paperId
+ * @param {Array<{oldId: string, newId: string}>} pairs
+ * @returns {Promise<number>} how many answers were copied
+ */
+async function copyToStandards(paperId, pairs) {
+  if (!pairs.length) return 0;
+  const { rowCount } = await query(
+    `insert into answers (paper_id, standard_id, value, remark)
+     select $1, x.new_id, a.value, a.remark
+       from unnest($2::uuid[], $3::uuid[]) as x(old_id, new_id)
+       join answers a on a.paper_id = $1 and a.standard_id = x.old_id
+     on conflict (paper_id, standard_id)
+       do update set value = excluded.value, remark = excluded.remark, updated_at = now()`,
+    [paperId, pairs.map((p) => p.oldId), pairs.map((p) => p.newId)],
+  );
+  return rowCount;
+}
+
+module.exports = { listForPapers, upsert, copyToStandards };

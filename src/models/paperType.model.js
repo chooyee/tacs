@@ -15,31 +15,70 @@ function nameTaken(err) {
 
 /**
  * All non-deleted paper types with the numbers shown on their cards (FR-ADM-01), by name.
- * References are a shared library (D-37): a type "uses" the references its standards link to.
+ * The numbers come from one version per type (D-45):
+ *   - basis 'head' (admin): the draft when one is open, else the newest published version;
+ *   - basis 'published' (new paper dialog): the newest published version; types never published
+ *     are left out.
+ * References are a shared library (D-37): a version "uses" the references its standards link to.
+ *
+ * @param {{basis?: 'head'|'published'}} [opts]
  * @returns {Promise<object[]>}
  */
-async function listWithStats() {
+async function listWithStats({ basis = 'head' } = {}) {
   const { rows } = await query(
-    `select t.id, t.name, t.description, t.updated_at, t.updated_by,
+    `with vers as (
+       select t.id as type_id,
+              (select v.id from paper_type_versions v where v.paper_type_id = t.id and v.status = 'published'
+                order by v.number desc limit 1) as published_id,
+              (select v.id from paper_type_versions v where v.paper_type_id = t.id and v.status = 'draft') as draft_id
+         from paper_types t where t.deleted_at is null)
+     select t.id, hv.id as version_id, hv.name, hv.description, hv.updated_at, hv.updated_by,
+            pv.number as published_number, pv.published_at, pv.published_by,
+            dv.id is not null as has_draft, dv.updated_at as draft_updated_at, dv.updated_by as draft_updated_by,
             (select count(*)::int from papers p where p.paper_type_id = t.id and p.deleted_at is null) as papers_count,
             (select count(*)::int from standards s join sections sec on sec.id = s.section_id
-              where sec.paper_type_id = t.id and sec.deleted_at is null and s.deleted_at is null) as standards_count,
+              where sec.version_id = hv.id and sec.deleted_at is null and s.deleted_at is null) as standards_count,
             -- A live link (D-38) takes the mandatory flag of its source.
             (select count(*)::int from standards s join sections sec on sec.id = s.section_id
                left join standards src on src.id = s.source_standard_id
-              where sec.paper_type_id = t.id and sec.deleted_at is null and s.deleted_at is null
+              where sec.version_id = hv.id and sec.deleted_at is null and s.deleted_at is null
                 and coalesce(src.is_mandatory, s.is_mandatory)) as mandatory_count,
             (select count(distinct sr.reference_id)::int
                from standards s
                join sections sec on sec.id = s.section_id and sec.deleted_at is null
                join standard_references sr on sr.standard_id = coalesce(s.source_standard_id, s.id)
                join reference_docs r on r.id = sr.reference_id and r.deleted_at is null
-              where sec.paper_type_id = t.id and s.deleted_at is null) as references_count
-       from paper_types t
-      where t.deleted_at is null
-      order by lower(t.name)`,
+              where sec.version_id = hv.id and s.deleted_at is null) as references_count
+       from vers
+       join paper_types t on t.id = vers.type_id
+       left join paper_type_versions pv on pv.id = vers.published_id
+       left join paper_type_versions dv on dv.id = vers.draft_id
+       join paper_type_versions hv on hv.id = case when $1 = 'published' then vers.published_id
+                                                   else coalesce(vers.draft_id, vers.published_id) end
+      order by lower(hv.name)`,
+    [basis],
   );
   return rows.map(toCamel);
+}
+
+/**
+ * Is this name used by another non-deleted type? Checked when the draft's name changes, because
+ * the unique index is only on paper_types (the published name).
+ * @param {string} name
+ * @param {string} exceptTypeId
+ * @returns {Promise<boolean>}
+ */
+async function nameTakenByOther(name, exceptTypeId) {
+  const { rows } = await query(
+    `select 1 from paper_types t
+      where t.deleted_at is null and t.id <> $2
+        and (lower(t.name) = lower($1)
+             or exists (select 1 from paper_type_versions v
+                         where v.paper_type_id = t.id and v.status = 'draft' and lower(v.name) = lower($1)))
+      limit 1`,
+    [name, exceptTypeId],
+  );
+  return rows.length > 0;
 }
 
 /**
@@ -71,7 +110,8 @@ async function create({ name, description, updatedBy = null }) {
 }
 
 /**
- * Change name and/or description; undefined fields stay as they are.
+ * Change name and/or description; undefined fields stay as they are. Called when a version is
+ * published, so the type carries the name of its newest published version (D-45).
  * @param {string} id
  * @param {{name?: string, description?: string|null, updatedBy: string}} changes
  * @returns {Promise<object|null>}
@@ -119,4 +159,4 @@ async function softDelete(id, updatedBy) {
   return rowCount === 1;
 }
 
-module.exports = { listWithStats, findById, create, update, touch, softDelete };
+module.exports = { listWithStats, nameTakenByOther, findById, create, update, touch, softDelete };

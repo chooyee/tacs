@@ -137,6 +137,8 @@ async function seedType(data, existingByTitle) {
       });
     }
   }
+  // A new type is a draft until it is published (D-45); architects only see published versions.
+  await paperTypeService.publishDraft({ typeId, ...ctx });
   return typeId;
 }
 

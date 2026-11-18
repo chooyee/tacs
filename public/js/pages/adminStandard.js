@@ -11,7 +11,6 @@ import { openReferenceViewer, setupReferenceViewer } from '../lib/referenceViewe
 const page = $('#standard-page');
 const form = $('#standard-form');
 const t = JSON.parse(page.dataset.strings);
-const typeId = page.dataset.typeId;
 const standardId = page.dataset.standardId;
 const isLinked = page.dataset.linked === 'true';
 const options = JSON.parse(page.dataset.options);
@@ -141,9 +140,10 @@ channel.addEventListener('message', ({ data }) => {
 
 /* ---------- Save ---------- */
 
+/** Back to the draft editor (or the published version this standard is in, D-45). */
 function backToType(id) {
   dirty = false;
-  window.location.assign(`/admin/types/${typeId}${id ? `#std-${id}` : ''}`);
+  window.location.assign(`${page.dataset.backUrl}${id ? `#std-${id}` : ''}`);
 }
 
 form.addEventListener('submit', async (event) => {

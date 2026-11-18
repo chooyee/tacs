@@ -250,9 +250,14 @@ async function getViewer(referenceId) {
     title: reference.title,
     note: reference.note,
     links: reference.links,
+    fileName: reference.fileName,
     mimeType: reference.mimeType,
+    sizeBytes: reference.sizeBytes,
     pageCount: reference.pageCount,
     fileUrl: `/files/references/${reference.id}`,
+    // "Last edited … by …" in the viewer (D-44)
+    updatedAt: reference.updatedAt,
+    updatedBy: reference.updatedBy,
     usedFor: usedFor.map((s) => ({
       id: s.id,
       number: s.number,

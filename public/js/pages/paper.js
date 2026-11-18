@@ -61,7 +61,8 @@ const keep = new Set();
 function setFilter(next) {
   filter = next;
   keep.clear();
-  for (const button of $$('[data-action="filter"]')) button.setAttribute('aria-pressed', String(button.dataset.filter === next));
+  for (const button of $$('[data-action="filter"]'))
+    button.setAttribute('aria-pressed', String(button.dataset.filter === next));
   render();
 }
 
@@ -76,9 +77,12 @@ const collapsed = (() => {
   }
 })();
 
-function setCollapsed(sectionId, value) {
-  if (value) collapsed.add(sectionId);
-  else collapsed.delete(sectionId);
+/** Collapse or expand one or more sections, remember it and redraw. */
+function setCollapsed(sectionIds, value) {
+  for (const sectionId of [].concat(sectionIds)) {
+    if (value) collapsed.add(sectionId);
+    else collapsed.delete(sectionId);
+  }
   try {
     sessionStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsed]));
   } catch {
@@ -96,7 +100,97 @@ function applyCollapse() {
     const title = $('.psec-title', section).textContent;
     button.setAttribute('aria-label', `${isCollapsed ? t.expand : t.collapse} ${title}`);
   }
+  // The one Collapse all / Expand all button says what a click will do.
+  const allCollapsed = state.sections.every((s) => collapsed.has(s.id));
+  $('[data-action="toggle-all"]').textContent = allCollapsed ? t.expandAll : t.collapseAll;
 }
+
+/** Collapse all / Expand all in the section bar (D-43): one button, like the admin editor. */
+const setAllCollapsed = (value) =>
+  setCollapsed(
+    state.sections.map((s) => s.id),
+    value,
+  );
+
+/* ---------- Shown sections: the "Sections" drop-down, remembered for this tab only (D-43) ---------- */
+
+const HIDDEN_KEY = `psc.paper.hiddenSections.${paperId}`;
+const hiddenSections = (() => {
+  try {
+    return new Set(JSON.parse(sessionStorage.getItem(HIDDEN_KEY) ?? '[]'));
+  } catch {
+    return new Set();
+  }
+})();
+
+/** Show or hide one or more sections (the checkboxes), remember it and redraw. */
+function setSectionShown(sectionIds, shown) {
+  for (const sectionId of [].concat(sectionIds)) {
+    if (shown) hiddenSections.delete(sectionId);
+    else hiddenSections.add(sectionId);
+  }
+  try {
+    sessionStorage.setItem(HIDDEN_KEY, JSON.stringify([...hiddenSections]));
+  } catch {
+    // Storage blocked: the state lasts until reload.
+  }
+  applyShownSections();
+}
+
+function applyShownSections() {
+  for (const section of state.sections) {
+    const shown = !hiddenSections.has(section.id);
+    document.getElementById(`sec-${section.id}`).hidden = !shown;
+    $(`[data-sec-toggle="${section.id}"]`).checked = shown;
+  }
+  const shownCount = state.sections.filter((s) => !hiddenSections.has(s.id)).length;
+  const all = $('[data-sec-toggle="all"]');
+  all.checked = shownCount === state.sections.length;
+  all.indeterminate = shownCount > 0 && shownCount < state.sections.length;
+  $('#sec-dd-label').textContent = all.checked
+    ? t.sectionsAll
+    : fill(t.sectionsSome, { shown: shownCount, total: state.sections.length });
+}
+
+const sectionMenu = $('#sec-dd');
+sectionMenu.addEventListener('change', (event) => {
+  const box = event.target.closest('[data-sec-toggle]');
+  if (!box) return;
+  const id = box.dataset.secToggle;
+  setSectionShown(id === 'all' ? state.sections.map((s) => s.id) : id, box.checked);
+});
+// Close the drop-down on Escape or a click outside it.
+document.addEventListener('click', (event) => {
+  if (sectionMenu.open && !sectionMenu.contains(event.target)) sectionMenu.open = false;
+});
+sectionMenu.addEventListener('keydown', (event) => {
+  if (event.key !== 'Escape' || !sectionMenu.open) return;
+  sectionMenu.open = false;
+  $('summary', sectionMenu).focus();
+});
+
+/* ---------- Side panel: hide / show, remembered in this browser (D-43) ---------- */
+
+const SIDE_KEY = 'psc.paper.sideHidden';
+function setSideHidden(hidden, remember = true) {
+  $('.paper-layout').classList.toggle('side-hidden', hidden);
+  const button = $('#side-toggle');
+  button.textContent = hidden ? t.showSide : t.hideSide;
+  button.setAttribute('aria-expanded', String(!hidden));
+  if (!remember) return;
+  try {
+    localStorage.setItem(SIDE_KEY, hidden ? '1' : '0');
+  } catch {
+    // Storage blocked: the state lasts until reload.
+  }
+}
+const sideHiddenAtStart = (() => {
+  try {
+    return localStorage.getItem(SIDE_KEY) === '1';
+  } catch {
+    return false;
+  }
+})();
 
 /* ---------- Rendering the live parts ---------- */
 
@@ -113,7 +207,8 @@ function renderRow(id) {
   }
   const remark = $('[data-remark]', row);
   if (remark) {
-    remark.placeholder = answer.value === 'no' ? t.remarkNo : answer.value === 'na' ? t.remarkNa : t.remarkYes;
+    remark.placeholder =
+      answer.value === 'no' ? t.remarkNo : answer.value === 'na' ? t.remarkNa : t.remarkYes;
     remark.setAttribute('aria-invalid', String(rules.needsRemark(answer)));
     $('.remark-error', row).textContent = answer.value === 'na' ? t.errorNa : t.errorNo;
   }
@@ -131,7 +226,7 @@ function renderSections() {
     done.dataset.kind = status.complete ? 'ready' : '';
     done.textContent = status.complete ? t.complete : fill(t.doneOf, status);
 
-    const chip = $(`.sec-chip[data-section-id="${section.id}"]`);
+    const chip = $(`.sec-opt[data-section-id="${section.id}"]`);
     chip.dataset.state = status.complete ? 'done' : status.warn ? 'warn' : '';
     $('.chip-count', chip).textContent = status.complete ? '✓' : `${status.done}/${status.total}`;
 
@@ -139,7 +234,9 @@ function renderSections() {
     let shown = 0;
     for (const s of list) {
       const visible =
-        filter === 'all' || keep.has(s.id) || rules.matchesFilter(filter, s, answers, aiMaps.results, aiMaps.kept);
+        filter === 'all' ||
+        keep.has(s.id) ||
+        rules.matchesFilter(filter, s, answers, aiMaps.results, aiMaps.kept);
       rowOf(s.id).hidden = !visible;
       if (visible) shown += 1;
     }
@@ -175,13 +272,20 @@ function renderReadiness() {
   });
   const text = Object.assign(document.createElement('p'), {
     className: 'text-[13px] text-muted-foreground',
-    textContent: r.ready ? t.readyText : r.gaps.length === 1 ? t.notReadyOne : fill(t.notReadyMany, { n: r.gaps.length }),
+    textContent: r.ready
+      ? t.readyText
+      : r.gaps.length === 1
+        ? t.notReadyOne
+        : fill(t.notReadyMany, { n: r.gaps.length }),
   });
   const parts = [big, text];
   if (!r.ready) {
     const list = Object.assign(document.createElement('ul'), { className: 'gap-list' });
     for (const gap of r.gaps) {
-      const button = Object.assign(document.createElement('button'), { type: 'button', textContent: gap.text });
+      const button = Object.assign(document.createElement('button'), {
+        type: 'button',
+        textContent: gap.text,
+      });
       button.dataset.action = 'goto-standard';
       button.dataset.standardId = gap.standardId;
       const li = document.createElement('li');
@@ -190,13 +294,9 @@ function renderReadiness() {
     }
     parts.push(list);
   }
-  // FR-RDY-05: the AI check is optional — a tip, never a gap.
-  if (r.aiTip) {
-    const tip = Object.assign(document.createElement('div'), { className: 'ai-tip' });
-    tip.append(t.aiTip);
-    if (isOwner) tip.append(' ', aiButton(cs.checkMyPaper, 'open-checker', {}, true));
-    parts.push(tip);
-  }
+  // FR-RDY-05: the AI check is optional — a tip, never a gap. The floating ✦ button opens it (D-43).
+  if (r.aiTip)
+    parts.push(Object.assign(document.createElement('div'), { className: 'ai-tip', textContent: t.aiTip }));
   card.replaceChildren(...parts);
 
   const bar = $('#progress-bar');
@@ -214,12 +314,16 @@ function renderReadiness() {
   );
 }
 
-/* ---------- AI lines, AI card and the checker badge (FR-AI-01/07) ---------- */
+/* ---------- AI lines and the checker badge (FR-AI-01/07) ---------- */
 
-function aiButton(text, action, data = {}, primary = false) {
-  const b = Object.assign(document.createElement('button'), { type: 'button', className: 'btn', textContent: text });
+function aiButton(text, action, data = {}) {
+  const b = Object.assign(document.createElement('button'), {
+    type: 'button',
+    className: 'btn',
+    textContent: text,
+  });
   b.dataset.size = 'sm';
-  if (!primary) b.dataset.variant = 'outline';
+  b.dataset.variant = 'outline';
   b.dataset.action = action;
   Object.assign(b.dataset, data);
   return b;
@@ -233,7 +337,10 @@ function renderAiLine(id) {
   if (!r) return line.replaceChildren();
   line.dataset.verdict = r.verdict;
   const msg = Object.assign(document.createElement('div'), { className: 'ai-msg' });
-  const vd = Object.assign(document.createElement('span'), { className: 'vd', textContent: `✦ ${cs.verdicts[r.verdict]}` });
+  const vd = Object.assign(document.createElement('span'), {
+    className: 'vd',
+    textContent: `✦ ${cs.verdicts[r.verdict]}`,
+  });
   vd.dataset.verdict = r.verdict;
   msg.append(vd, r.page ? ` · ${fill(cs.page, { n: r.page })} — ${r.finding}` : ` — ${r.finding}`);
   if (r.issue) {
@@ -244,67 +351,25 @@ function renderAiLine(id) {
       }),
     );
   }
-  if (r.kept) msg.append(Object.assign(document.createElement('span'), { className: 'issue kept', textContent: cs.kept }));
+  if (r.kept)
+    msg.append(
+      Object.assign(document.createElement('span'), { className: 'issue kept', textContent: cs.kept }),
+    );
   const actions = Object.assign(document.createElement('div'), { className: 'ai-actions' });
   actions.append(aiButton(cs.compare, 'compare', { standardId: id }));
   if (isOwner && answerOf(id).value !== r.suggested) {
-    actions.append(aiButton(fill(cs.useAi, { answer: r.suggested === 'yes' ? 'Yes' : 'No' }), 'apply-ai', { standardId: id }));
+    actions.append(
+      aiButton(fill(cs.useAi, { answer: r.suggested === 'yes' ? 'Yes' : 'No' }), 'apply-ai', {
+        standardId: id,
+      }),
+    );
   }
   if (isOwner && r.issue) actions.append(aiButton(cs.keepMine, 'keep-mine', { standardId: id }));
   line.replaceChildren(msg, actions);
 }
 
-function aiIssueCounts() {
-  let gap = 0;
-  let check = 0;
-  for (const s of standards) {
-    const issue = resultFor(s.id)?.issue;
-    if (issue?.level === 'gap') gap += 1;
-    else if (issue) check += 1;
-  }
-  return { gap, check };
-}
-
-function renderAiCard() {
-  const card = $('#ai-card');
-  if (!latest) {
-    const parts = [
-      Object.assign(document.createElement('p'), { className: 'text-[13px] text-muted-foreground', textContent: t.aiNotYet }),
-    ];
-    if (isOwner) parts.push(aiButton(cs.checkMyPaper, 'open-checker', {}, true));
-    card.replaceChildren(...parts);
-    return;
-  }
-  const docs = latest.check.documents.map((d) => d.fileName).join(', ') || cs.pdfRemoved;
-  const date = new Date(latest.check.finishedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-  const counts = Object.assign(document.createElement('div'), { className: 'ai-counts' });
-  for (const v of ['comply', 'partial', 'gap', 'none']) {
-    const chip = Object.assign(document.createElement('span'), {
-      className: 'vd',
-      textContent: `${latest.counts[v]} ${cs.verdicts[v].toLowerCase()}`,
-    });
-    chip.dataset.verdict = v;
-    counts.append(chip);
-  }
-  const parts = [
-    Object.assign(document.createElement('p'), {
-      className: 'text-[12.5px] text-muted-foreground',
-      textContent: fill(cs.aiCardChecked, { files: docs, date }),
-    }),
-    counts,
-  ];
-  const { check } = aiIssueCounts();
-  if (check) {
-    parts.push(
-      Object.assign(document.createElement('p'), {
-        className: 'text-[12.5px] text-muted-foreground',
-        textContent: fill(cs.secondLook, { n: check }),
-      }),
-    );
-  }
-  parts.push(aiButton(cs.openChecker, 'open-checker'));
-  card.replaceChildren(...parts);
-}
+/** How many standards have an AI "gap" issue (the badge's "N to fix"). */
+const aiGapCount = () => standards.filter((s) => resultFor(s.id)?.issue?.level === 'gap').length;
 
 /** The floating button's badge (FR-AI-01): "Not checked", "N to fix" (AI gap issues) or ✓. */
 function updateBadge() {
@@ -314,7 +379,7 @@ function updateBadge() {
     badge.dataset.kind = 'none';
     return;
   }
-  const { gap } = aiIssueCounts();
+  const gap = aiGapCount();
   badge.textContent = gap ? fill(cs.badgeFix, { n: gap }) : '✓';
   badge.dataset.kind = gap ? 'fix' : 'ok';
 }
@@ -323,7 +388,6 @@ function render() {
   renderSections();
   renderReadiness();
   for (const s of standards) renderAiLine(s.id);
-  renderAiCard();
   updateBadge();
 }
 
@@ -395,7 +459,11 @@ function answer(id, value) {
 // One debounced save per row: typing in one remark never delays another.
 const remarkSavers = new Map();
 function remarkSaver(id) {
-  if (!remarkSavers.has(id)) remarkSavers.set(id, debounce(() => save(id), 600));
+  if (!remarkSavers.has(id))
+    remarkSavers.set(
+      id,
+      debounce(() => save(id), 600),
+    );
   return remarkSavers.get(id);
 }
 const dirtyRemarks = new Set();
@@ -469,6 +537,7 @@ function jumpToStandard(id) {
   const row = rowOf(id);
   if (!row) return;
   const section = row.closest('.paper-section');
+  if (section.hidden) setSectionShown(section.dataset.sectionId, true);
   setCollapsed(section.dataset.sectionId, false);
   if (row.hidden) setFilter('all');
   row.scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'center' });
@@ -489,12 +558,8 @@ const actions = {
     const id = button.closest('.paper-section').dataset.sectionId;
     setCollapsed(id, !collapsed.has(id));
   },
-  'jump-section': (button) => {
-    setCollapsed(button.dataset.sectionId, false);
-    document
-      .getElementById(`sec-${button.dataset.sectionId}`)
-      .scrollIntoView({ behavior: reducedMotion ? 'auto' : 'smooth', block: 'start' });
-  },
+  'toggle-all': () => setAllCollapsed(!state.sections.every((s) => collapsed.has(s.id))),
+  'toggle-side': () => setSideHidden(!$('.paper-layout').classList.contains('side-hidden')),
   'goto-standard': (button) => jumpToStandard(button.dataset.standardId),
   'view-reference': (button) => openReferenceViewer(button.dataset.referenceId),
   compare: (button) => openCompare(button.dataset.standardId),
@@ -507,6 +572,19 @@ const actions = {
     await keepMine(button.dataset.standardId);
   },
   'open-checker': () => checker.open(),
+  // D-45: move the paper to the newest published version of its type, then reload the page.
+  'upgrade-paper': async (button) => {
+    if (!window.confirm(t.confirmUpgrade)) return;
+    button.disabled = true;
+    try {
+      const result = await api(`/api/papers/${paperId}/upgrade`, { method: 'POST' });
+      toast(fill(t.upgraded, { n: result.version, kept: result.carried, open: result.unanswered }));
+      setTimeout(() => window.location.reload(), 1200);
+    } catch (err) {
+      button.disabled = false;
+      toast(err.message, { error: true, ref: err.requestId });
+    }
+  },
   'delete-paper': async () => {
     // A native confirm is accessible and enough for this rare action.
     if (!window.confirm(t.confirmDelete)) return;
@@ -533,7 +611,8 @@ page.addEventListener('click', (event) => {
 /* ---------- Sticky offsets: the section bar's height can change (wrapping, phone width) ---------- */
 
 const secbar = $('#secbar');
-const setSecbarHeight = () => document.documentElement.style.setProperty('--secbar-h', `${secbar.offsetHeight}px`);
+const setSecbarHeight = () =>
+  document.documentElement.style.setProperty('--secbar-h', `${secbar.offsetHeight}px`);
 new ResizeObserver(setSecbarHeight).observe(secbar);
 setSecbarHeight();
 
@@ -635,4 +714,6 @@ const checker = setupChecker(store);
 
 for (const s of standards) renderRow(s.id);
 applyCollapse();
+applyShownSections();
+setSideHidden(sideHiddenAtStart, false);
 render();

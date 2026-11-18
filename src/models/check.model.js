@@ -325,7 +325,29 @@ async function keep(checkId, standardId) {
   return rowCount === 1;
 }
 
+/**
+ * Copy a check's results from old standards to their copies in another version (upgrade, D-45),
+ * so the AI lines stay on standards that did not change. Call inside withTransaction().
+ * @param {string} checkId
+ * @param {Array<{oldId: string, newId: string}>} pairs
+ * @returns {Promise<void>}
+ */
+async function copyResultsToStandards(checkId, pairs) {
+  if (!pairs.length) return;
+  await query(
+    `insert into check_results (check_id, standard_id, verdict, page, document_id, area, bbox, finding,
+                                reference_id, reference_page, confidence, kept_by_user_at)
+     select r.check_id, x.new_id, r.verdict, r.page, r.document_id, r.area, r.bbox, r.finding,
+            r.reference_id, r.reference_page, r.confidence, r.kept_by_user_at
+       from unnest($2::uuid[], $3::uuid[]) as x(old_id, new_id)
+       join check_results r on r.check_id = $1 and r.standard_id = x.old_id
+     on conflict (check_id, standard_id) do nothing`,
+    [checkId, pairs.map((p) => p.oldId), pairs.map((p) => p.newId)],
+  );
+}
+
 module.exports = {
+  copyResultsToStandards,
   replaceCurrentDocuments,
   listCurrentDocuments,
   findDocument,

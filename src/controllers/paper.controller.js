@@ -100,4 +100,14 @@ async function saveAnswer(req, res) {
   res.json({ data });
 }
 
-module.exports = { index, show, create, update, remove, readiness, saveAnswer };
+/** POST /api/papers/:paperId/upgrade — to the newest published version of the type (D-45). */
+async function upgrade(req, res) {
+  const result = await paperService.upgradePaper({
+    user: req.user,
+    paperId: req.params.paperId,
+    log: req.log,
+  });
+  res.json({ data: result });
+}
+
+module.exports = { index, show, create, update, remove, readiness, saveAnswer, upgrade };

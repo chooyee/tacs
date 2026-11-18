@@ -12,7 +12,7 @@ const rules = require('../utils/readinessRules');
 
 /**
  * Only the fields the rules use, in display order.
- * @param {object[]} standards  rows of standardModel.listForType
+ * @param {object[]} standards  rows of standardModel.listForVersion
  * @returns {Array<{id, number, sectionId, isMandatory}>}
  */
 function ruleStandards(standards) {
@@ -57,14 +57,14 @@ function compute(input) {
 /**
  * Everything about one paper's state: standards (display order), answers, the latest completed check
  * with its results, and the readiness computed from them.
- * @param {{id: string, paperTypeId: string}} paper
- * @param {{standards?: object[]}} [opts]  the type's standards, when the caller already has them
+ * @param {{id: string, paperTypeVersionId: string}} paper
+ * @param {{standards?: object[]}} [opts]  the version's standards, when the caller already has them
  * @returns {Promise<{standards: object[], ruleStandards: object[], answers: object, latest: object|null,
  *   resultRows: object[], results: object, kept: object, readiness: object}>}
  */
 async function forPaper(paper, opts = {}) {
   const [standards, answerRows, latest] = await Promise.all([
-    opts.standards ?? standardModel.listForType(paper.paperTypeId),
+    opts.standards ?? standardModel.listForVersion(paper.paperTypeVersionId),
     answerModel.listForPapers([paper.id]),
     checkModel.findLatestDone(paper.id),
   ]);
@@ -85,19 +85,19 @@ async function forPaper(paper, opts = {}) {
 
 /**
  * Readiness of many papers (the cards on the home page): one query for the answers, one for the
- * latest results and one per paper type for its standards.
- * @param {Array<{id, paperTypeId, aiChecked}>} papers
+ * latest results and one per paper type version for its standards (D-45).
+ * @param {Array<{id, paperTypeVersionId, aiChecked}>} papers
  * @returns {Promise<Map<string, object>>} paper ID → readiness
  */
 async function forPapers(papers) {
   const ids = papers.map((p) => p.id);
-  const typeIds = [...new Set(papers.map((p) => p.paperTypeId))];
+  const versionIds = [...new Set(papers.map((p) => p.paperTypeVersionId))];
   const [answerRows, resultRows, ...standardLists] = await Promise.all([
     answerModel.listForPapers(ids),
     checkModel.listLatestResultsForPapers(ids),
-    ...typeIds.map((id) => standardModel.listForType(id)),
+    ...versionIds.map((id) => standardModel.listForVersion(id)),
   ]);
-  const standardsByType = new Map(typeIds.map((id, i) => [id, ruleStandards(standardLists[i])]));
+  const standardsByVersion = new Map(versionIds.map((id, i) => [id, ruleStandards(standardLists[i])]));
   const group = (rows) => {
     const map = new Map();
     for (const row of rows) {
@@ -112,7 +112,7 @@ async function forPapers(papers) {
     papers.map((p) => [
       p.id,
       compute({
-        standards: standardsByType.get(p.paperTypeId),
+        standards: standardsByVersion.get(p.paperTypeVersionId),
         answers: answerMap(answersByPaper.get(p.id) ?? []),
         ...resultMaps(resultsByPaper.get(p.id) ?? []),
         hasCheck: p.aiChecked,

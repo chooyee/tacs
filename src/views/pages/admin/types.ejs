@@ -1,5 +1,7 @@
-<%# Paper types (docs/03 §3.6, FR-ADM-01/02). The dialog is driven by public/js/pages/adminTypes.js. %>
+<%# Paper types (docs/03 §3.6, FR-ADM-01/02, D-45). The dialog is driven by public/js/pages/adminTypes.js.
+    Each card shows the newest published version (vN) and whether a draft is open. %>
 <%- include('../../partials/admin/tabs') %>
+<% const published = types.filter((type) => type.publishedNumber); %>
 <div class="page-head">
   <div>
     <h1 class="page-title"><%= t.adminTypes.heading %></h1>
@@ -10,10 +12,20 @@
 
 <div class="tile-grid">
   <% for (const type of types) { %>
-  <a class="tile" href="/admin/types/<%= type.id %>">
+  <a class="tile" href="/admin/types/<%= type.id %><%= type.publishedNumber ? '' : '/draft' %>">
     <div class="tile-top">
       <span class="tile-name"><%= type.name %></span>
       <span class="ttag"><%= t.adminTypes.papers(type.papersCount) %></span>
+    </div>
+    <div class="tile-versions">
+      <% if (type.publishedNumber) { %>
+      <span class="version-badge" data-status="published"><%= t.adminTypes.versionTag(type.publishedNumber) %></span>
+      <% } else { %>
+      <span class="version-badge" data-status="draft"><%= t.adminTypes.neverPublished %></span>
+      <% } %>
+      <% if (type.hasDraft && type.publishedNumber) { %>
+      <span class="version-badge" data-status="draft"><%= t.adminTypes.draftInProgress %></span>
+      <% } %>
     </div>
     <p class="tile-desc"><%= type.description || t.adminTypes.noDescription %></p>
     <div class="tile-meta">
@@ -52,13 +64,13 @@
             <input class="input" type="radio" name="copyFromTypeId" value="" checked>
             <span><b><%= t.adminTypes.blankTitle %></b><br><span class="text-[13px] text-muted-foreground"><%= t.adminTypes.blankHelp %></span></span>
           </label>
-          <% if (types.length) { %>
+          <% if (published.length) { %>
           <label class="check-card start-option">
             <input class="input" type="radio" name="copyFromTypeId" value="copy">
             <span class="grid flex-1 gap-1.5">
               <span><b><%= t.adminTypes.copyTitle %></b><br><span class="text-[13px] text-muted-foreground"><%= t.adminTypes.copyHelp %></span></span>
               <select class="select w-full" id="nt-copy" aria-label="<%= t.adminTypes.copyTitle %>">
-                <% for (const type of types) { %><option value="<%= type.id %>"><%= type.name %></option><% } %>
+                <% for (const type of published) { %><option value="<%= type.id %>"><%= type.name %> · <%= t.adminTypes.versionTag(type.publishedNumber) %></option><% } %>
               </select>
             </span>
           </label>

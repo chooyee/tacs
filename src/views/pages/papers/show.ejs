@@ -10,11 +10,14 @@
        filters: t.paper.filters, toFix: t.paper.toFix('{n}'), complete: t.paper.complete, doneOf: t.paper.doneOf('{done}', '{total}'),
        readyTitle: t.paper.readyTitle, readyText: t.paper.readyText, notReadyTitle: t.paper.notReadyTitle,
        notReadyOne: t.paper.notReadyText(1), notReadyMany: t.paper.notReadyText(2).replace('2', '{n}'),
-       aiTip: t.paper.aiTip, aiTipLater: t.paper.aiTipLater, answered: t.papers.answered, mandatoryMet: t.papers.mandatoryMet,
+       aiTip: t.paper.aiTip, answered: t.papers.answered, mandatoryMet: t.papers.mandatoryMet,
        remarkYes: t.paper.remarkYes, remarkNo: t.paper.remarkNo, remarkNa: t.paper.remarkNa,
        errorNo: t.paper.errorNo, errorNa: t.paper.errorNa, saving: t.paper.saving, saved: t.paper.saved, notSaved: t.paper.notSaved,
        answerFailed: t.paper.answerFailed, titleRequired: t.paper.titleRequired, confirmDelete: t.paper.confirmDelete,
-       expand: t.paper.expand, collapse: t.paper.collapse
+       expand: t.paper.expand, collapse: t.paper.collapse, expandAll: t.paper.expandAll, collapseAll: t.paper.collapseAll, sectionsAll: t.paper.sectionsAll,
+       sectionsSome: t.paper.sectionsSome('{shown}', '{total}'), hideSide: t.paper.hideSide, showSide: t.paper.showSide,
+       confirmUpgrade: paper.newerVersion ? t.paper.confirmUpgrade(paper.newerVersion) : '',
+       upgraded: t.paper.upgraded('{n}', '{kept}', '{open}')
      }) %>">
   <nav class="crumbs" aria-label="Breadcrumb">
     <a class="inline-flex items-center gap-1" href="<%= isOwner ? '/papers' : '/papers?tab=all' %>"><%- include('../../partials/icon', { name: 'arrowLeft', cls: 'size-3.5' }) %> <%= isOwner ? t.paper.back : t.paper.backAll %></a>
@@ -22,6 +25,18 @@
 
   <% if (!isOwner) { %>
   <div class="banner mb-4" role="status"><%- include('../../partials/icon', { name: 'info' }) %><span><%= t.paper.readOnly(paper.ownerName) %></span></div>
+  <% } %>
+
+  <%# A newer published version of the paper type exists (D-45): the owner can upgrade. %>
+  <% if (paper.newerVersion) { %>
+  <div class="banner banner-upgrade mb-4 items-center" role="status">
+    <%- include('../../partials/icon', { name: 'info' }) %>
+    <span class="flex-1"><b><%= t.paper.newerVersion(paper.paperTypeName, paper.versionNumber, paper.newerVersion) %></b>
+      <% if (isOwner) { %><%= t.paper.newerVersionHelp %><% } %></span>
+    <% if (isOwner) { %>
+    <button type="button" class="btn" data-size="sm" data-action="upgrade-paper"><%= t.paper.upgrade(paper.newerVersion) %></button>
+    <% } %>
+  </div>
   <% } %>
 
   <div class="page-head">
@@ -36,7 +51,7 @@
     </div>
     <div class="flex flex-wrap items-center gap-2">
       <span class="save-state" data-state="idle" role="status" aria-live="polite" id="paper-save-state"></span>
-      <span class="ttag"><%= t.paper.typeTag(paper.paperTypeName) %></span>
+      <span class="ttag"><%= t.paper.typeTag(paper.paperTypeName, paper.versionNumber) %></span>
       <span class="pill" id="head-pill" data-kind="<%= readiness.pill.kind %>"><%= readiness.pill.text %></span>
       <% if (isOwner) { %>
       <button type="button" class="btn text-danger" data-variant="outline" data-size="sm" data-action="delete-paper"><%- include('../../partials/icon', { name: 'trash' }) %> <%= t.paper.delete %></button>
@@ -44,20 +59,39 @@
     </div>
   </div>
 
-  <%# Sticky section bar (FR-ANS-08/09): chips per section + filters with live counts. %>
+  <%# Sticky section bar (FR-ANS-08/09, D-43): a "Sections" drop-down with a checkbox per section
+      (which sections are shown), the filters with live counts, expand / collapse all, and the
+      side-panel toggle. A native <details> keeps the drop-down working without extra libraries. %>
   <div class="secbar" id="secbar">
-    <nav class="chips" aria-label="<%= t.paper.sectionsNav %>">
-      <% for (const section of sections) { %>
-      <button type="button" class="chip sec-chip" data-action="jump-section" data-section-id="<%= section.id %>" title="<%= section.letter %>. <%= section.title %>">
-        <span class="chip-key"><%= section.letter %></span><span class="chip-name"><%= section.title.length > 26 ? section.title.slice(0, 25) + '…' : section.title %></span><span class="chip-count"></span>
-      </button>
-      <% } %>
-    </nav>
+    <details class="sec-dd" id="sec-dd">
+      <summary class="btn" data-variant="outline" data-size="sm">
+        <%= t.paper.sectionsNav %>: <span id="sec-dd-label"><%= t.paper.sectionsAll %></span>
+        <%- include('../../partials/icon', { name: 'down', cls: 'size-3.5' }) %>
+      </summary>
+      <div class="sec-dd-menu" role="group" aria-label="<%= t.paper.sectionsNav %>">
+        <label class="sec-opt sec-opt-all">
+          <input type="checkbox" class="input" data-sec-toggle="all" checked>
+          <span class="flex-1 font-semibold"><%= t.paper.sectionsAll %></span>
+        </label>
+        <% for (const section of sections) { %>
+        <label class="sec-opt" data-section-id="<%= section.id %>" title="<%= section.letter %>. <%= section.title %>">
+          <input type="checkbox" class="input" data-sec-toggle="<%= section.id %>" checked>
+          <span class="chip-key"><%= section.letter %></span>
+          <span class="sec-opt-name"><%= section.title %></span>
+          <span class="chip-count"></span>
+        </label>
+        <% } %>
+      </div>
+    </details>
     <div class="seg" role="group" aria-label="<%= t.paper.show %>">
       <% for (const [key, label] of Object.entries(t.paper.filters)) { %>
       <button type="button" data-action="filter" data-filter="<%= key %>" aria-pressed="<%= key === 'all' %>"><%= label %> <b class="filter-count"></b></button>
       <% } %>
     </div>
+    <%# One button, like the admin editor: "Collapse all", or "Expand all" when every section is collapsed. %>
+    <button type="button" class="btn" data-variant="ghost" data-size="sm" data-action="toggle-all"><%= t.paper.collapseAll %></button>
+    <button type="button" class="btn ml-auto" data-variant="outline" data-size="sm" data-action="toggle-side"
+            aria-controls="paper-side" aria-expanded="true" id="side-toggle"><%= t.paper.hideSide %></button>
   </div>
 
   <div class="paper-layout">
@@ -133,16 +167,12 @@
       <% } %>
     </div>
 
-    <aside class="paper-side" aria-label="<%= t.paper.progress %>">
+    <aside class="paper-side" id="paper-side" aria-label="<%= t.paper.progress %>">
       <div class="panel ready-card" id="ready-card" aria-live="polite"></div>
       <div class="panel p-4">
         <h3 class="side-title"><%= t.paper.progress %></h3>
         <progress class="bar" id="progress-bar" max="1" value="0"></progress>
         <div class="tile-meta mt-2" id="progress-stats"></div>
-      </div>
-      <div class="panel p-4">
-        <h3 class="side-title"><%= t.paper.aiTitle %></h3>
-        <div id="ai-card"><p class="text-[13px] text-muted-foreground"><%= t.paper.aiNotYet %></p></div>
       </div>
       <div class="panel p-4">
         <h3 class="side-title"><%= t.paper.referencesFor(paper.paperTypeName) %></h3>

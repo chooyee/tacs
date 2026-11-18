@@ -65,7 +65,7 @@ async function quickAction({ user, paperId, action, standardId, log }) {
   if (action === 'gaps') {
     reply = await say(paperId, 'gaps', { quick: true, ready: state.readiness.ready, gaps: state.readiness.gaps });
   } else if (action === 'refs') {
-    const refs = await referenceModel.listUsedByType(paper.paperTypeId);
+    const refs = await referenceModel.listUsedByVersion(paper.paperTypeVersionId);
     reply = await say(paperId, 'refs', { quick: true, references: refs.map((r) => ({ id: r.id, type: r.type, title: r.title, note: r.note })) });
   } else if (action === 'summary') {
     const view = checkService.latestView(state);

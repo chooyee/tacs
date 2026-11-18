@@ -57,6 +57,7 @@ There are two kinds of routes:
 | POST | `/api/papers` | `{ title, vendor?, paperTypeId }` | `{ id, url }` (201) |
 | PATCH | `/api/papers/:paperId` | `{ title?, vendor? }` | `{ id, title, vendor }` |
 | DELETE | `/api/papers/:paperId` | — | 204 |
+| POST | `/api/papers/:paperId/upgrade` | — | Owner only (D-45): move to the type's newest published version. `{ version, carried, unanswered }`. 409 `UP_TO_DATE`, 409 `CHECK_RUNNING`. |
 | GET | `/api/papers/:paperId/readiness` | — | Readiness object (below) |
 
 ### Answers
@@ -115,7 +116,7 @@ available (FR-RDY-05). It is never a gap.
 |--------|------|-----|-------|
 | GET | `/files/documents/:documentId` | Any signed-in user (until the PDF expires after 7 days → 404 `DOCUMENT_EXPIRED`) | `Content-Type: application/pdf`, `Content-Disposition: inline`, `Cache-Control: private, max-age=300`. |
 | GET | `/files/references/:referenceId` | Any signed-in user | Same headers, with the reference's MIME type. |
-| GET | `/api/references/:referenceId` | Any signed-in user | Reference viewer data (FR-REF-02): `{ id, type, title, note, links: [{label, url}], mimeType, pageCount, fileUrl, usedFor: [{id, number, title, paperTypeName}] }`. |
+| GET | `/api/references/:referenceId` | Any signed-in user | Reference viewer data (FR-REF-02): `{ id, type, title, note, links: [{label, url}], fileName, mimeType, sizeBytes, pageCount, fileUrl, updatedAt, updatedBy, usedFor: [{id, number, title, paperTypeName}] }` (`fileName`, `sizeBytes`, `updatedAt`, `updatedBy` added by D-44). |
 
 ## 4. Admin API (role `Admin`)
 
@@ -129,11 +130,16 @@ available (FR-RDY-05). It is never a gap.
 
 | Method | Path | Body | Notes |
 |--------|------|------|-------|
-| POST | `/api/admin/types` | `{ name, description?, copyFromTypeId? }` | 201 `{ id, url }`. 409 `NAME_TAKEN`. |
-| PATCH | `/api/admin/types/:typeId` | `{ name?, description? }` | Autosave. |
+| POST | `/api/admin/types` | `{ name, description?, copyFromTypeId? }` | 201 `{ id, url }` — a **draft** (D-45); `url` is its `/draft` editor. Copies the source's newest published version (400 if it was never published). 409 `NAME_TAKEN`. |
+| PATCH | `/api/admin/types/:typeId` | `{ name?, description? }` | Autosave into the draft. 409 `NO_DRAFT`. |
+| POST | `/api/admin/types/:typeId/draft` | — | **Edit** (D-45): open the type's one draft, created from the newest published version if none is open. 201 (new) / 200 (joined) `{ id, created, url }`. |
+| DELETE | `/api/admin/types/:typeId/draft` | — | **Cancel**: throw the draft away. `{ typeDeleted, url }` — a type never published is deleted. 409 `NO_DRAFT`. |
+| POST | `/api/admin/types/:typeId/publish` | — | **Publish** the draft as the next version. `{ number, url }`. 409 `NO_DRAFT`, `NO_STANDARDS`, `NAME_TAKEN`. |
 | DELETE | `/api/admin/types/:typeId` | — | 409 `TYPE_IN_USE` if papers use it. |
 
 ### Sections
+
+Every section and standard change works on the **draft** only (D-45): a call on a section or standard of a published version → 409 `VERSION_PUBLISHED`; type-level calls without an open draft → 409 `NO_DRAFT`.
 
 | Method | Path | Body | Notes |
 |--------|------|------|-------|

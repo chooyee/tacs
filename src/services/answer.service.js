@@ -54,9 +54,9 @@ async function stateAfterChange(paper, sectionId, standards) {
  */
 async function saveAnswer({ user, paperId, standardId, value, remark, log }) {
   const paper = await paperService.getOwnedPaperOrThrow(paperId, user);
-  const standards = await standardModel.listForType(paper.paperTypeId);
+  const standards = await standardModel.listForVersion(paper.paperTypeVersionId);
   const standard = standards.find((s) => s.id === standardId);
-  if (!standard) throw new NotFoundError('This standard is not part of the paper type.', 'STANDARD_NOT_FOUND');
+  if (!standard) throw new NotFoundError('This standard is not part of the paper’s version of its type.', 'STANDARD_NOT_FOUND');
 
   const answer = await writeAnswer({ paper, standardId, value, remark });
   // Never log the remark (docs/09: no user text in logs).

@@ -61,7 +61,7 @@ leave them out.
   any width ≥ 320 px.
 - Breakpoints: **≥ 1100 px** desktop (two columns; chat docks and pushes
   content), **720–1099 px** tablet (side panel moves under the form; chat
-  overlays), **< 720 px** mobile (chips show letter + count only; chat is full
+  overlays), **< 720 px** mobile (the section bar wraps; chat is full
   screen).
 
 ## 3. Screens
@@ -88,7 +88,7 @@ leave them out.
 [Paper title (inline edit)]                      [SaaS standards] [3 things to fix] [Delete]
 [Vendor / solution (inline edit)]
 ┌ sticky section bar ─────────────────────────────────────────────────────────┐
-│ (A Identity… 8/9) (B Security ✓) (C Data ✓) (D Backup… 4/5)  [All 33|To do 6|…] │
+│ [Sections: All ▾] [All 33|To do 6|…] Expand all  Collapse all  [Hide side panel] │
 └──────────────────────────────────────────────────────────────────────────────┘
 ┌ form column ───────────────────────────────┐ ┌ side panel (sticky) ─────────┐
 │ legend                                      │ │ Ready for committee / Not    │
@@ -96,9 +96,9 @@ leave them out.
 │ │ 1  Entra ID / SSO … [MANDATORY]        │  │ ├──────────────────────────────┤
 │ │    (📜 Policy · Identity & Access…)    │  │ │ Progress                     │
 │ │    [remark ……………………………]  [Yes|No|N/A]│  │ ├──────────────────────────────┤
-│ │    ✦ Complies · page 3 — … [Compare]   │  │ │ ✦ AI paper check (summary)   │
-│ └────────────────────────────────────────┘  │ ├──────────────────────────────┤
-│ ┌ B. … ┐                                    │ │ References for SaaS          │
+│ │    ✦ Complies · page 3 — … [Compare]   │  │ │ References for SaaS          │
+│ └────────────────────────────────────────┘  │ │                              │
+│ ┌ B. … ┐                                    │ │                              │
 └─────────────────────────────────────────────┘ └──────────────────────────────┘
                                                         [✦ AI paper checker ·2]  ← floating button
 ```
@@ -108,7 +108,17 @@ Behaviour details:
 - **Section bar** sticks under the top bar. The app sets `--top-bar-h` and
   `--section-bar-h` CSS variables from JavaScript, so sticky offsets and
   `scroll-margin-top` work at every width.
-- **Jump** (chip click, gap click, "Go to #N"): smooth scroll to the row,
+- **Sections drop-down** (D-43): a checkbox per section (letter, title, "answered/total" or ✓,
+  red when something to fix) plus **All sections**; unticked sections are hidden. The
+  button reads "Sections: All sections" or "Sections: 3 of 5". Remembered in `sessionStorage`
+  (this tab only); jumping to a gap in a hidden section shows it again.
+- One **Collapse all / Expand all** button in the section bar (D-43), as in the admin editor: it reads "Expand all" when every section is collapsed.
+- **Upgrade banner** (D-45): when a newer version of the type is published, an amber banner above the
+  title — "Version N of the <type> standards is available. This paper uses version M." — with
+  **Upgrade to version N** for the owner (confirm, then reload). The type tag reads "<type> standards vM".
+- **Hide / Show side panel** button at the right of the section bar (D-43): the form takes
+  the full width; remembered in `localStorage` (this browser).
+- **Jump** (gap click, "Go to #N"): smooth scroll to the row,
   centre it, then **flash** it (1.4 s highlight). Disable the animation when
   `prefers-reduced-motion` is set.
 - **AI line colours**: Complies = ok-soft, Partially = warn-soft, Does not
@@ -117,10 +127,10 @@ Behaviour details:
   "Saved", "Not saved – retry"). Answer buttons update optimistically and
   roll back with a toast if the API call fails.
 - **Side panel** order: readiness card (with the optional AI tip, FR-RDY-05) →
-  progress → AI check summary → references list.
+  progress → references list. There is no AI summary card and no "Check my paper" button
+  (D-43): the floating ✦ AI paper checker button is the only way into the checker.
 - (M3) A section with no standards is left out of the paper page, and the letters
-  run A, B, C… over the sections shown. The AI-check card says the checker arrives
-  with M4 until then. "Collapse" is kept in `sessionStorage` (this tab only).
+  run A, B, C… over the sections shown. "Collapse" is kept in `sessionStorage` (this tab only).
 - (M3) *All papers* search and type filter are a plain GET form (`?tab=all&q=&typeId=&page=`),
   so the URL is shareable; choosing a type submits at once.
 
@@ -179,18 +189,29 @@ Behaviour details:
 ### 3.5 Reference viewer dialog
 
 - Left: preview of page 1 (PDF via pdf.js with page next/previous) or the
-  image. Right: type badge, note, "Used for" list of standards, **Links** (D-39:
-  the first is a button, the others smaller links; hidden when there are none).
+  image. Right: type badge, note, **File** (D-44: the file name links to the file in a new tab,
+  then its size and a download button), "Used for" list of standards, **Links** (D-39:
+  the first is a button, the others smaller links; hidden when there are none), and
+  "Last edited 2 h ago by Dana Tan" (D-44; exact time on hover).
+- A **Maximise** button next to Close (D-44) makes the dialog fill the window; the PDF page is
+  redrawn to the wider preview. **Restore size** switches back. The choice lasts while the page is open.
 
 ### 3.6 Admin — Paper types (`/admin/types`)
 
-Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02.
+Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02. Each card shows its newest
+published version ("v3") or "Not published yet", and "Draft in progress" when a draft is open (D-45).
+The copy list only offers published types.
 
-### 3.7 Admin — Paper type editor (`/admin/types/:id`)
+### 3.7 Admin — Paper type editor (`/admin/types/:id`, `/admin/types/:id/draft`)
 
-- Header: inline name (large) + inline description; **Delete type** (disabled
-  with a tooltip if in use).
-- Info banner (FR-ADM-10).
+- **Versions (D-45).** `/admin/types/:id` shows the newest published version **read-only** (no grips,
+  ↑ ↓, delete, add, inline inputs or mandatory toggles): a "Version N · Published <date> by <name>" badge,
+  a version picker (`?version=N` for older versions), **Edit** / **Continue editing** and **Delete type**.
+  A banner says it can't be changed and, when a draft is open, who edited it last.
+  `/admin/types/:id/draft` is the shared draft: amber "Draft" badge and banner ("Architects keep using
+  version N until you publish"), the save indicator, and **Cancel** · **Save** · **Publish**. A type never
+  published opens its draft directly. A standard of a published version opens its form read-only.
+- Header (draft): inline name (large) + inline description.
 - **References** card (FR-ADM-11/12), **under the Standards card** (D-42): row actions appear on hover / focus
   (always visible on touch devices).
 - **Standards** card: section header rows (letter, inline title, count, ↑ ↓
@@ -199,8 +220,11 @@ Cards per FR-ADM-01 + a dashed **New paper type** card. Dialog per FR-ADM-02.
   "＋ Add standard" row per section.
 - Inline add box hint: "Enter adds it and starts the next one · Esc to finish".
 - (D-36) Breadcrumb "Paper types › <name>"; one save indicator ("Saving… / ✓ Saved / Not saved") next
-  to **Delete type** covers every autosave; a sticky jump bar under the banner (References + a chip per
-  section: letter, title, count) scrolls to that part and highlights the one in view.
+  to **Delete type** covers every autosave; a sticky bar under the banner holds a **Sections** drop-down
+  like the paper page's (D-43): **All sections** plus a checkbox per section (letter, title, count) and
+  one for "References used here"; unticked parts are hidden ("Sections: 4 of 6"), remembered for this
+  tab; coming back from a standard's form shows its section again. **Collapse all / Expand all** sits
+  at the right.
 - (D-36) References are compact rows: icon, title + type tag, note (one line), "linked to N",
   actions ⊙ preview, ↗ intranet link, ✎ edit, 🗑 delete — always visible, muted until hover.
 - (D-37) Sections collapse (chevron, remembered per browser; "Collapse all"); each row has a grip

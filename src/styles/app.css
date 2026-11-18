@@ -163,6 +163,35 @@
   .banner .icon {
     @apply mt-0.5 text-primary;
   }
+  /* Editing a draft / a newer version to upgrade to (D-45): amber, so it stands out from info. */
+  .banner-draft,
+  .banner-upgrade {
+    background: var(--warn-soft);
+  }
+  .banner-draft .icon,
+  .banner-upgrade .icon {
+    color: var(--warn);
+  }
+  /* Version badge: "Version 3" / "v3" (published) or "Draft" (D-45) */
+  .version-badge {
+    @apply inline-flex items-center rounded-full px-2 py-0.5 text-[11.5px] font-semibold whitespace-nowrap;
+    color: var(--ok);
+    background: var(--ok-soft);
+  }
+  .version-badge[data-status='draft'] {
+    color: var(--warn);
+    background: var(--warn-soft);
+  }
+  .type-edited {
+    @apply flex flex-wrap items-center gap-2;
+  }
+  .tile-versions {
+    @apply -mt-1 mb-1 flex flex-wrap gap-1.5;
+  }
+  /* A section title in a published version: plain text, not an input */
+  .section-title.is-static {
+    @apply hover:border-transparent;
+  }
 
   /* ---------- Small parts ---------- */
   .ttag {
@@ -329,7 +358,7 @@
     background: var(--accent-soft);
   }
   .section-title {
-    @apply min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[14.5px] font-bold hover:border-border focus:bg-card focus:outline-2 focus:outline-ring;
+    @apply w-full min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-1.5 py-1 text-[14.5px] font-bold hover:border-border focus:bg-card focus:outline-2 focus:outline-ring;
   }
   .std-row {
     @apply grid items-start gap-2.5 border-t px-4 py-2.5 hover:bg-muted/60;
@@ -570,6 +599,25 @@
   .viewer-preview canvas,
   .viewer-preview img {
     @apply h-auto max-w-full rounded border bg-white;
+  }
+  /* Reference viewer: sized from the window, so it doesn't depend on the preview's width. */
+  .dialog > .dlg.rv-dlg {
+    @apply w-[min(900px,calc(100vw-2rem))] max-w-none;
+  }
+  /* Maximised reference viewer (D-44): fills the window; the preview gets the extra room. */
+  .dialog > .dlg.rv-dlg.max {
+    @apply h-[calc(100vh-1rem)] w-[calc(100vw-1rem)] max-w-none;
+  }
+  .dlg.max .rv-body {
+    @apply max-h-[calc(100vh-5rem)];
+  }
+  @media (min-width: 768px) {
+    .dlg.max .rv-body {
+      grid-template-columns: minmax(0, 1fr) 300px;
+    }
+  }
+  .rv-file {
+    @apply flex min-w-0 items-center gap-2 text-[13px];
   }
 
   /* ---------- Toasts: bottom centre, like the prototype ---------- */
@@ -1038,17 +1086,49 @@
     top: var(--topbar-h);
     background: var(--page);
   }
-  .sec-chip[data-state='done'] .chip-count {
+  /* "Sections" drop-down with a checkbox per section (D-43) */
+  .sec-dd {
+    @apply relative;
+  }
+  .sec-dd > summary {
+    @apply list-none;
+  }
+  .sec-dd > summary::-webkit-details-marker {
+    @apply hidden;
+  }
+  .sec-dd[open] > summary .icon {
+    @apply rotate-180;
+  }
+  .sec-dd-menu {
+    @apply absolute top-full left-0 z-30 mt-1 grid max-h-[70vh] w-80 max-w-[calc(100vw-2rem)] gap-0.5 overflow-y-auto rounded-lg border bg-card p-1.5 text-foreground shadow-md;
+  }
+  .sec-opt {
+    @apply flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-[13px] hover:bg-muted;
+  }
+  .sec-opt-all {
+    @apply mb-1 border-b pb-2;
+  }
+  .sec-opt-name {
+    @apply min-w-0 flex-1 truncate;
+  }
+  .sec-opt[data-state='done'] .chip-count {
     color: var(--ok);
     @apply font-bold;
   }
-  .sec-chip[data-state='warn'] {
-    border-color: var(--bad);
+  .sec-opt[data-state='warn'] .sec-opt-name,
+  .sec-opt[data-state='warn'] .chip-count {
+    color: var(--bad);
+  }
+  .sec-opt[data-state='warn'] .chip-key {
     color: var(--bad);
     background: var(--bad-soft);
   }
-  .sec-chip[data-state='warn'] .chip-count {
-    color: var(--bad);
+  /* Side panel hidden with "Hide side panel" (D-43): the form takes the whole width. */
+  .paper-layout.side-hidden {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .paper-layout.side-hidden .paper-side {
+    @apply hidden;
   }
   .seg .filter-count {
     @apply ml-1 tabular-nums;

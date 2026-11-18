@@ -3,12 +3,14 @@
 /**
  * Standards: add, edit (title, rich-text description, mandatory, linked references), move with the
  * buttons or by drag and drop (also into another section), delete with Undo (FR-ADM-15…19,
- * FR-ADM-21, D-37). Changes apply immediately to every paper of the type (D-12).
+ * FR-ADM-21, D-37). Only the type's draft can change; papers see the changes once the draft is
+ * published and they upgrade (D-45, replaces D-12).
  */
 const standardModel = require('../models/standard.model');
 const sectionModel = require('../models/section.model');
 const referenceModel = require('../models/reference.model');
-const paperTypeModel = require('../models/paperType.model');
+const versionModel = require('../models/paperTypeVersion.model');
+const { getDraftOrThrow, assertDraft, getTypeOrThrow } = require('./paperType.service');
 const { withTransaction } = require('../utils/db');
 const { actorName } = require('../utils/actor');
 const { sanitizeRichText } = require('../utils/richText');
@@ -27,6 +29,7 @@ const MAX_DESCRIPTION_HTML = 20_000;
 async function getStandardOrThrow(id, opts) {
   const standard = await standardModel.findById(id, opts);
   if (!standard) throw new NotFoundError('Standard not found.');
+  assertDraft(standard); // every caller changes the standard
   return standard;
 }
 
@@ -70,6 +73,7 @@ async function addStandard({
 }) {
   const section = await sectionModel.findById(sectionId);
   if (!section) throw new NotFoundError('Section not found.');
+  assertDraft(section);
   const ids = (await checkReferenceIds(referenceIds)) ?? [];
   const by = actorName(actor);
   const standard = await withTransaction(async () => {
@@ -80,7 +84,7 @@ async function addStandard({
       updatedBy: by,
     });
     if (ids.length) await standardModel.setReferences(created.id, ids);
-    await paperTypeModel.touch(section.paperTypeId, by);
+    await versionModel.touch(section.versionId, by);
     return created;
   });
   log.info({ sectionId, standardId: standard.id }, 'Standard added');
@@ -115,7 +119,7 @@ async function updateStandard({ standardId, title, description, isMandatory, ref
       updatedBy: by,
     });
     if (ids) await standardModel.setReferences(standardId, ids);
-    await paperTypeModel.touch(current.paperTypeId, by);
+    await versionModel.touch(current.versionId, by);
     return updated;
   });
   const warnings =
@@ -145,7 +149,7 @@ async function moveStandard({ standardId, direction, sectionId, index, actor, lo
     const targetId = sectionId ?? standard.sectionId;
     if (targetId !== standard.sectionId) {
       const target = await sectionModel.findById(targetId);
-      if (!target || target.paperTypeId !== standard.paperTypeId) {
+      if (!target || target.versionId !== standard.versionId) {
         throw new ValidationError('A standard can only move within its paper type.');
       }
     }
@@ -173,7 +177,7 @@ async function moveStandard({ standardId, direction, sectionId, index, actor, lo
         by,
       );
     }
-    await paperTypeModel.touch(standard.paperTypeId, by);
+    await versionModel.touch(standard.versionId, by);
   });
   log.info({ standardId, direction, sectionId, index }, 'Standard moved');
 }
@@ -186,7 +190,7 @@ async function deleteStandard({ standardId, actor, log }) {
   const standard = await getStandardOrThrow(standardId);
   const by = actorName(actor);
   await standardModel.softDelete(standardId, by);
-  await paperTypeModel.touch(standard.paperTypeId, by);
+  await versionModel.touch(standard.versionId, by);
   log.info({ standardId }, 'Standard deleted');
 }
 
@@ -203,41 +207,51 @@ async function restoreStandard({ standardId, actor, log }) {
   }
   const by = actorName(actor);
   await standardModel.restore(standardId, by);
-  await paperTypeModel.touch(standard.paperTypeId, by);
+  await versionModel.touch(standard.versionId, by);
   log.info({ standardId }, 'Standard restored');
 }
 
 /**
  * The full-screen standard form (D-38): the standard (live link resolved) or a blank one, the
- * sections it can go in, and the reference library for the picker.
+ * sections it can go in, and the reference library for the picker. A new standard always goes into
+ * the draft; a standard of a published version is shown read-only (`editable: false`, D-45).
  * @param {{typeId?: string, standardId?: string, sectionId?: string}} params
  * @returns {Promise<object>}
  * @throws {NotFoundError}
+ * @throws {ConflictError} NO_DRAFT (new standard while nobody is editing), NO_SECTION
  */
 async function getStandardForm({ typeId, standardId, sectionId }) {
   let standard = null;
-  let paperTypeId = typeId;
+  let version;
   if (standardId) {
     standard = await standardModel.findResolved(standardId);
     if (!standard) throw new NotFoundError('Standard not found.');
-    paperTypeId = standard.paperTypeId;
+    version = await versionModel.findById(standard.versionId);
+  } else {
+    version = await getDraftOrThrow(typeId);
   }
-  const type = await paperTypeModel.findById(paperTypeId);
-  if (!type) throw new NotFoundError('Paper type not found.');
+  if (!version) throw new NotFoundError('Paper type not found.');
   const [sections, options] = await Promise.all([
-    sectionModel.listForType(paperTypeId),
+    sectionModel.listForVersion(version.id),
     referenceModel.listAllForPicker(),
   ]);
   if (!sections.length) throw new ConflictError('Add a section first.', 'NO_SECTION');
   const preferred = sections.some((sec) => sec.id === sectionId) ? sectionId : sections[0].id;
   if (standard) {
-    // Number and references as shown in the type (numbering runs across all sections).
-    const shown = (await standardModel.listForType(paperTypeId)).find((st) => st.id === standard.id);
+    // Number and references as shown in the version (numbering runs across all sections).
+    const shown = (await standardModel.listForVersion(version.id)).find((st) => st.id === standard.id);
     standard.number = shown?.number;
     standard.referenceIds = shown?.referenceIds ?? [];
   }
+  const editable = version.status === 'draft';
   return {
-    type: { id: type.id, name: type.name },
+    type: { id: version.paperTypeId, name: version.name },
+    version: { id: version.id, number: version.number, status: version.status },
+    editable,
+    // Where Cancel / Back goes: the draft editor, or the published version the standard is in.
+    backUrl: editable
+      ? `/admin/types/${version.paperTypeId}/draft`
+      : `/admin/types/${version.paperTypeId}?version=${version.number}`,
     sections: sections.map((sec) => ({ id: sec.id, title: sec.title })),
     standard,
     selectedSectionId: standard?.sectionId ?? preferred,
@@ -256,39 +270,44 @@ async function detachStandard({ standardId, actor, log }) {
   const by = actorName(actor);
   await withTransaction(async () => {
     await standardModel.detach(standardId, by);
-    await paperTypeModel.touch(standard.paperTypeId, by);
+    await versionModel.touch(standard.versionId, by);
   });
   log.info({ standardId }, 'Linked standard duplicated');
 }
 
 /**
- * Import standards of other paper types as live links (D-38). "sections" mode recreates each
- * source section (same title) in this type; "into" puts everything into one chosen section.
- * A standard already linked into this type is skipped and reported (warn and skip).
+ * Import standards of other paper types into the draft as live links (D-38). Only standards of a
+ * PUBLISHED version can be imported (D-45). "sections" mode recreates each source section (same
+ * title) in the draft; "into" puts everything into one chosen section. A standard already linked
+ * into the draft (any version of it) is skipped and reported (warn and skip).
  *
  * @param {{typeId: string, standardIds: string[], mode: 'sections'|'into', targetSectionId?: string,
  *          actor: object, log: import('pino').Logger}} params
  * @returns {Promise<{imported: number, skipped: string[]}>}
+ * @throws {ConflictError} NO_DRAFT
  */
 async function importStandards({ typeId, standardIds, mode, targetSectionId, actor, log }) {
-  if (!(await paperTypeModel.findById(typeId))) throw new NotFoundError('Paper type not found.');
+  const draft = await getDraftOrThrow(typeId);
   if (mode === 'into') {
     const target = await sectionModel.findById(targetSectionId);
-    if (!target || target.paperTypeId !== typeId)
+    if (!target || target.versionId !== draft.id)
       throw new ValidationError('Choose a section of this paper type.');
   }
   const by = actorName(actor);
   return withTransaction(async () => {
-    const already = await standardModel.linkedSourceIds(typeId);
+    const already = await standardModel.linkedSourceLineages(draft.id);
     const sectionFor = new Map(); // source section → its new copy (sections mode)
     let imported = 0;
     const skipped = [];
     for (const id of [...new Set(standardIds)]) {
       const std = await standardModel.findResolved(id);
-      if (!std) continue;
+      if (!std || std.versionStatus !== 'published') continue; // never from a draft (D-45)
       // Always link to the ORIGINAL standard, never to a link of a link.
       const sourceId = std.sourceStandardId ?? std.id;
-      if (std.paperTypeId === typeId || already.has(sourceId)) {
+      const lineage = std.sourceStandardId
+        ? (await standardModel.findById(std.sourceStandardId))?.lineageId
+        : std.lineageId;
+      if (std.paperTypeId === typeId || already.has(lineage)) {
         skipped.push(std.title);
         continue;
       }
@@ -296,31 +315,35 @@ async function importStandards({ typeId, standardIds, mode, targetSectionId, act
       if (mode === 'sections') {
         if (!sectionFor.has(std.sectionId)) {
           const sourceSection = await sectionModel.findById(std.sectionId);
-          const created = await sectionModel.create(typeId, sourceSection.title, by);
+          const created = await sectionModel.create(draft.id, sourceSection.title, by);
           sectionFor.set(std.sectionId, created.id);
         }
         sectionId = sectionFor.get(std.sectionId);
       }
       await standardModel.createLink(sectionId, sourceId, by);
-      already.add(sourceId);
+      already.add(lineage);
       imported += 1;
     }
-    if (imported) await paperTypeModel.touch(typeId, by);
+    if (imported) await versionModel.touch(draft.id, by);
     log.info({ paperTypeId: typeId, imported, skipped: skipped.length }, 'Standards imported');
     return { imported, skipped };
   });
 }
 
 /**
- * Sections and standards of a paper type for the Import picker (titles resolved).
+ * Sections and standards of a type's newest PUBLISHED version for the Import picker (titles
+ * resolved). A draft is never offered (D-45).
  * @param {string} typeId
  * @returns {Promise<object[]>}
+ * @throws {NotFoundError} unknown type, or never published
  */
 async function getImportTree(typeId) {
-  if (!(await paperTypeModel.findById(typeId))) throw new NotFoundError('Paper type not found.');
+  await getTypeOrThrow(typeId);
+  const version = await versionModel.findLatestPublished(typeId);
+  if (!version) throw new NotFoundError('This paper type has no published version.');
   const [sections, standards] = await Promise.all([
-    sectionModel.listForType(typeId),
-    standardModel.listForType(typeId),
+    sectionModel.listForVersion(version.id),
+    standardModel.listForVersion(version.id),
   ]);
   return sections.map((sec) => ({
     id: sec.id,
